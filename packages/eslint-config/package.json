@@ -1,0 +1,32 @@
+{
+  "name": "@neurokit/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.mjs",
+    "./core": "./core.mjs",
+    "./neverthrow": "./neverthrow.mjs",
+    "./node": "./node.mjs",
+    "./web-api": "./web-api.mjs"
+  },
+  "scripts": {
+    "lint": "prettier --check .",
+    "lint:fix": "prettier --write .",
+    "check": "pnpm run lint",
+    "check:fix": "pnpm run lint:fix"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^8.57.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-functional": "^9.0.4",
+    "eslint-plugin-human-first": "^0.4.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-unicorn": "^63.0.0",
+    "ts-api-utils": "^2.5.0",
+    "typescript-eslint": "^8.57.2"
+  },
+  "peerDependencies": {
+    "eslint": "^9"
+  }
+}
