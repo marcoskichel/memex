@@ -12,5 +12,11 @@
   "keywords": [],
   "author": "tknickman",
   "license": "ISC",
-  "packageManager": "pnpm@7.30.5"
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "devDependencies": {
+    "@exodus/openspec": "^1.2.6"
+  }
 }
