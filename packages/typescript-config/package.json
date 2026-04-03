@@ -1,0 +1,15 @@
+{
+  "name": "@neurokit/typescript-config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./base": "./base.json",
+    "./node": "./node.json"
+  },
+  "scripts": {
+    "lint": "prettier --check .",
+    "lint:fix": "prettier --write .",
+    "check": "pnpm run lint",
+    "check:fix": "pnpm run lint:fix"
+  }
+}

@@ -1,11 +1,17 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "pipeline": {
+  "ui": "tui",
+  "tasks": {
     "build": {},
-    "lint": {},
     "dev": {
       "cache": false,
       "persistent": true
-    }
+    },
+    "test": {},
+    "lint": {},
+    "lint:fix": {
+      "cache": false
+    },
+    "typecheck": {}
   }
 }

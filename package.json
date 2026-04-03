@@ -1,22 +1,40 @@
 {
-  "name": "turborepo-empty-starter",
+  "name": "@neurokit/root",
   "version": "1.0.0",
   "private": true,
-  "description": "An empty Turborepo starter",
+  "description": "Neurokit monorepo",
   "main": "index.js",
   "scripts": {
     "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
     "lint": "turbo lint",
-    "dev": "turbo dev"
+    "lint:fix": "turbo lint:fix",
+    "typecheck": "turbo typecheck",
+    "check": "turbo run lint typecheck test --continue=never",
+    "check:fix": "turbo run lint:fix typecheck test --continue=never",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{md,json,yaml,yml}": "prettier --write"
   },
   "keywords": [],
-  "author": "tknickman",
-  "license": "ISC",
+  "license": "MIT",
   "engines": {
     "node": ">=22"
   },
   "packageManager": "pnpm@10.11.0",
   "devDependencies": {
-    "@exodus/openspec": "^1.2.6"
+    "@exodus/openspec": "^1.2.6",
+    "@neurokit/eslint-config": "workspace:*",
+    "eslint": "^9.39.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "turbo": "^2.9.3"
   }
 }
