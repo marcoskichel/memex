@@ -1,0 +1,354 @@
+import type { LtmRecord } from '@neurokit/ltm';
+import { errAsync, okAsync } from 'neverthrow';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { EventBus } from '../hippocampus-process.js';
+import { HippocampusProcess } from '../hippocampus-process.js';
+
+function makeRecord(id: number, overrides: Partial<LtmRecord> = {}): LtmRecord {
+  return {
+    id,
+    data: `record ${id.toString()}`,
+    metadata: {},
+    embedding: new Float32Array([0.1, 0.2]),
+    embeddingMeta: { modelId: 'test', dimensions: 2 },
+    tier: 'episodic',
+    importance: 0,
+    stability: 1,
+    lastAccessedAt: new Date('2024-01-01'),
+    accessCount: 5,
+    createdAt: new Date('2024-01-01'),
+    tombstoned: false,
+    tombstonedAt: undefined,
+    ...overrides,
+  };
+}
+
+function makeLtm(clusters: LtmRecord[][] = []) {
+  return {
+    storage: {
+      acquireLock: vi.fn().mockReturnValue(true),
+      releaseLock: vi.fn(),
+    },
+    findConsolidationCandidates: vi.fn().mockReturnValue(clusters),
+    consolidate: vi.fn().mockResolvedValue(99),
+    prune: vi.fn().mockReturnValue({ pruned: 2, remaining: 10 }),
+  };
+}
+
+const DEFAULT_LLM_RESULT = {
+  summary: 'summary',
+  confidence: 0.9,
+  preservedFacts: ['f1'],
+  uncertainties: [],
+};
+
+function makeLlmAdapter(
+  result: {
+    summary: string;
+    confidence: number;
+    preservedFacts: string[];
+    uncertainties: string[];
+  } = DEFAULT_LLM_RESULT,
+) {
+  return {
+    complete: vi.fn(),
+    completeStructured: vi.fn().mockReturnValue(okAsync(result)),
+  };
+}
+
+function makeEventBus(): EventBus & {
+  listeners: Map<string, ((...arguments_: unknown[]) => void)[]>;
+} {
+  const listeners = new Map<string, ((...arguments_: unknown[]) => void)[]>();
+  return {
+    listeners,
+    emit(event: string, payload?: unknown): boolean {
+      const handlers = listeners.get(event) ?? [];
+      for (const handler of handlers) {
+        handler(payload);
+      }
+      return handlers.length > 0;
+    },
+    on(event: string, listener: (...arguments_: unknown[]) => void) {
+      const existing = listeners.get(event) ?? [];
+      listeners.set(event, [...existing, listener]);
+      return this;
+    },
+  };
+}
+
+describe('HippocampusProcess', () => {
+  let events: ReturnType<typeof makeEventBus>;
+
+  beforeEach(() => {
+    events = makeEventBus();
+  });
+
+  it('calls findConsolidationCandidates with correct params', async () => {
+    const ltm = makeLtm([]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      similarityThreshold: 0.85,
+      minAccessCount: 2,
+      events,
+    });
+    await process.run();
+    expect(ltm.findConsolidationCandidates).toHaveBeenCalledWith({
+      similarityThreshold: 0.85,
+      minAccessCount: 2,
+    });
+  });
+
+  it('skips clusters below minClusterSize without LLM call', async () => {
+    const cluster = [makeRecord(1), makeRecord(2)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+    await process.run();
+    expect(llmAdapter.completeStructured).not.toHaveBeenCalled();
+    expect(ltm.consolidate).not.toHaveBeenCalled();
+  });
+
+  it('qualifying cluster triggers LLM call and ltm.consolidate with confidence forwarded', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = makeLlmAdapter({
+      summary: 'merged',
+      confidence: 0.8,
+      preservedFacts: ['fact'],
+      uncertainties: [],
+    });
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+    await process.run();
+    expect(llmAdapter.completeStructured).toHaveBeenCalledOnce();
+    expect(ltm.consolidate).toHaveBeenCalledWith(
+      [1, 2, 3],
+      expect.objectContaining({
+        data: 'merged',
+        options: expect.objectContaining({ deflateSourceStability: true, confidence: 0.8 }),
+      }),
+    );
+  });
+
+  it('retries once on LLM failure; succeeds on retry', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = {
+      complete: vi.fn(),
+      completeStructured: vi
+        .fn()
+        .mockReturnValueOnce(errAsync({ type: 'UNEXPECTED_RESPONSE' as const }))
+        .mockReturnValueOnce(
+          okAsync({
+            summary: 's',
+            confidence: 0.9,
+            preservedFacts: [],
+            uncertainties: [],
+          }),
+        ),
+    };
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+    await process.run();
+    expect(llmAdapter.completeStructured).toHaveBeenCalledTimes(2);
+    expect(ltm.consolidate).toHaveBeenCalledOnce();
+  });
+
+  it('skips cluster when both LLM attempts fail', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = {
+      complete: vi.fn(),
+      completeStructured: vi
+        .fn()
+        .mockReturnValue(errAsync({ type: 'UNEXPECTED_RESPONSE' as const })),
+    };
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+    await process.run();
+    expect(llmAdapter.completeStructured).toHaveBeenCalledTimes(2);
+    expect(ltm.consolidate).not.toHaveBeenCalled();
+  });
+
+  it('always calls prune after consolidation pass completes', async () => {
+    const ltm = makeLtm([]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({ ltm: ltm as never, llmAdapter, events });
+    await process.run();
+    expect(ltm.prune).toHaveBeenCalledWith({ minRetention: 0.1 });
+  });
+
+  it('does not call prune if consolidation pass throws unrecovered error', async () => {
+    const ltm = makeLtm([]);
+    ltm.findConsolidationCandidates.mockImplementation(() => {
+      throw new Error('storage failure');
+    });
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({ ltm: ltm as never, llmAdapter, events });
+    await expect(process.run()).rejects.toThrow('storage failure');
+    expect(ltm.prune).not.toHaveBeenCalled();
+  });
+
+  it('emits false-memory-risk when confidence < 0.5', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    ltm.consolidate.mockResolvedValue(42);
+    const llmAdapter = makeLlmAdapter({
+      summary: 's',
+      confidence: 0.4,
+      preservedFacts: [],
+      uncertainties: ['u1'],
+    });
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+
+    const riskPayloads: unknown[] = [];
+    events.on('hippocampus:false-memory-risk', (payload) => riskPayloads.push(payload));
+
+    await process.run();
+    expect(riskPayloads).toHaveLength(1);
+    expect(riskPayloads[0]).toMatchObject({ recordId: 42, confidence: 0.4, sourceIds: [1, 2, 3] });
+  });
+
+  it('does not emit false-memory-risk when confidence >= 0.5', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = makeLlmAdapter({
+      summary: 's',
+      confidence: 0.7,
+      preservedFacts: [],
+      uncertainties: [],
+    });
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+
+    const riskPayloads: unknown[] = [];
+    events.on('hippocampus:false-memory-risk', (payload) => riskPayloads.push(payload));
+
+    await process.run();
+    expect(riskPayloads).toHaveLength(0);
+  });
+
+  it('is idempotent: second run with no new candidates produces no additional consolidations', async () => {
+    const ltm = makeLtm([]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({ ltm: ltm as never, llmAdapter, events });
+    await process.run();
+    await process.run();
+    expect(ltm.consolidate).not.toHaveBeenCalled();
+  });
+
+  it('skips full cycle if lock cannot be acquired', async () => {
+    const ltm = makeLtm([]);
+    ltm.storage.acquireLock.mockReturnValue(false);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({ ltm: ltm as never, llmAdapter, events });
+    await process.run();
+    expect(ltm.findConsolidationCandidates).not.toHaveBeenCalled();
+    expect(ltm.prune).not.toHaveBeenCalled();
+  });
+
+  it('releases lock after consolidation pass completes', async () => {
+    const ltm = makeLtm([]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({ ltm: ltm as never, llmAdapter, events });
+    await process.run();
+    expect(ltm.storage.releaseLock).toHaveBeenCalledWith('hippocampus');
+  });
+
+  it('releases lock even when consolidation throws', async () => {
+    const ltm = makeLtm([]);
+    ltm.findConsolidationCandidates.mockImplementation(() => {
+      throw new Error('fail');
+    });
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({ ltm: ltm as never, llmAdapter, events });
+    await expect(process.run()).rejects.toThrow();
+    expect(ltm.storage.releaseLock).toHaveBeenCalledWith('hippocampus');
+  });
+
+  it('emits consolidation:start before any ltm.consolidate call', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = makeLlmAdapter();
+    const order: string[] = [];
+    events.on('hippocampus:consolidation:start', () => order.push('start'));
+    ltm.consolidate.mockImplementation(() => {
+      order.push('consolidate');
+      return Promise.resolve(1);
+    });
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+    await process.run();
+    expect(order.indexOf('start')).toBeLessThan(order.indexOf('consolidate'));
+  });
+
+  it('emits consolidation:end with accurate counts', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    ltm.prune.mockReturnValue({ pruned: 5, remaining: 3 });
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+
+    let endPayload: Record<string, unknown> | undefined;
+    events.on('hippocampus:consolidation:end', (payload) => {
+      endPayload = payload as Record<string, unknown>;
+    });
+
+    await process.run();
+    expect(endPayload).toMatchObject({ clustersConsolidated: 1, recordsPruned: 5 });
+  });
+
+  it('defers consolidation cycle when maxLLMCallsPerHour is exhausted', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      maxLLMCallsPerHour: 0,
+      events,
+    });
+    await process.run();
+    expect(ltm.findConsolidationCandidates).not.toHaveBeenCalled();
+    expect(ltm.prune).not.toHaveBeenCalled();
+  });
+});
