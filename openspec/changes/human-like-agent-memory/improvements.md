@@ -1010,4 +1010,65 @@ packages/
 - Add: After `shutdown()` is called, any subsequent `logInsight()` call MUST throw `ShutdownError`
 - Add: `memory.getStats()` MUST return `MemoryStats` as specified; callable at any time including during shutdown
 - Add: `memory.pruneContextFiles({ olderThanDays })` MUST delete `safeToDelete = true` files older than the threshold; MUST NOT delete pending files regardless of age; MUST return `PruneContextFilesReport`
+
+---
+
+## Design Amendments (post-coverage review)
+
+The following decisions were made after a full three-type memory coverage review (episodic / semantic / procedural) and supersede or extend the decisions above where they conflict.
+
+### Amendment 1: `sessionId` as a schema column on `LtmRecord`
+
+**Decision:** Add `session_id TEXT` as a first-class column in the SQLite schema (not stored in the `metadata` bag).
+
+**Rationale:** `metadata` is untyped and unindexed. Session-scoped recall (`recallSession(sessionId)`) and hippocampus session-boundary awareness during consolidation clustering both require efficient filtering by session. A dedicated column enables a SQLite index on `(session_id, tier, created_at)` and makes session queries O(log n) rather than full-table scans with JSON extraction.
+
+**Impact:**
+
+- `LtmRecord` gains `sessionId: string` field
+- SQLite schema: `session_id TEXT NOT NULL` with an index
+- Amygdala reads `sessionId` from `AmygdalaConfig` and writes it to every `LtmRecord` it inserts
+- `LtmQueryOptions` gains `sessionId?: string` filter
+- `Memory` interface gains `recallSession(sessionId: string, query: string): Promise<LtmQueryResult[]>` as a thin wrapper
+
+### Amendment 2: `category` as a generic string field with exported constants
+
+**Decision:** Add `category?: string` to `LtmRecord` as an open string field. Export a well-known constants object (`LtmCategory`) rather than a closed union type.
+
+```typescript
+export const LtmCategory = {
+  USER_PREFERENCE: 'user_preference',
+  WORLD_FACT: 'world_fact',
+  TASK_CONTEXT: 'task_context',
+  AGENT_BELIEF: 'agent_belief',
+} as const;
+```
+
+**Rationale:** A closed union type forces a library version bump every time a consumer needs a new category. Exported constants give type-safety for known values while allowing consumers to pass arbitrary strings for domain-specific categories (e.g. `'project_convention'`, `'tool_output'`). SQLite stores it as `category TEXT` with an optional index.
+
+**Impact:**
+
+- `LtmRecord` gains `category?: string`
+- SQLite schema: `category TEXT` (nullable, indexed)
+- `LtmQueryOptions` gains `category?: string` filter
+- Amygdala does not set `category` — it is the caller's responsibility via `InsightEntry.tags` or explicit metadata. Document this.
+- Semantic records produced by hippocampus inherit no automatic category; callers may set it via `ConsolidateOptions.category`
+
+### Amendment 3: `episodeSummary` replaces context file references on `LtmRecord`
+
+**Decision:** Store the STM-compressed text (`InsightEntry.text`) as an `episodeSummary?: string` field directly on `LtmRecord`, rather than a `contextFile` path pointer to the raw context file on disk.
+
+**Rationale:** The raw context file is large and creates a file-system dependency that outlives the STM lifecycle. The STM compression output (`InsightEntry.text`) is already computed and represents a high-fidelity (not very lossy) summary of the context phase — more detailed than the amygdala's importance-scored insight, but a fraction of the raw context size. Storing it inline on the record eliminates the external file dependency, enables cue-based episode reconstruction from LTM alone, and makes context file deletion by hippocampus safe without cross-referencing active LTM records.
+
+**Impact:**
+
+- `LtmRecord` gains `episodeSummary?: string` (populated for episodic records; null for semantic)
+- SQLite schema: `episode_summary TEXT` (nullable)
+- Amygdala writes `entry.text` (the STM-compressed insight text) to `episodeSummary` at insert time
+- `Memory` interface gains `recallFull(id: string): Promise<{ record: LtmRecord; episodeSummary: string | null }>` for callers that need the richer episode context
+- Context files (`InsightEntry.contextFile`) continue to exist during the session but are marked `safeToDelete = true` immediately after amygdala writes `episodeSummary` to the record — no need to retain them for LTM purposes
+- Hippocampus deletion logic is simplified: delete all `safeToDelete = true` files without cross-referencing LTM records (the dependency is gone)
+
+**Note on the `strengthen: true` default change:** The decision to change `Memory.recall()` default to `strengthen: true` is agreed, but performance impact under concurrent amygdala writes is being investigated first. Tracked in [marcoskichel/memex#1](https://github.com/marcoskichel/memex/issues/1). Do not implement until that issue is resolved.
+
 - Add: `memory.events` MUST be a typed `MemoryEventEmitter` emitting all events in the `MemoryEvents` catalog
