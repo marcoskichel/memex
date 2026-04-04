@@ -1,0 +1,84 @@
+import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+
+import { AmygdalaProcess } from '@neurokit/amygdala';
+import { HippocampusProcess } from '@neurokit/hippocampus';
+import type { EmbeddingAdapter } from '@neurokit/ltm';
+import { LtmEngine, SqliteAdapter, TransformersJsAdapter } from '@neurokit/ltm';
+import { InsightLog } from '@neurokit/stm';
+
+import { MemoryEventEmitter } from './memory-events.js';
+import { MemoryImpl } from './memory-impl.js';
+import type { CreateMemoryResult, MemoryConfig } from './memory-types.js';
+import { DEFAULT_MAX_TOKENS } from './memory-types.js';
+
+function buildAmygdala(
+  config: MemoryConfig,
+  deps: { ltm: LtmEngine; stm: InsightLog; events: MemoryEventEmitter },
+): AmygdalaProcess {
+  return new AmygdalaProcess({
+    ltm: deps.ltm,
+    stm: deps.stm,
+    llmAdapter: config.llmAdapter,
+    ...(config.amygdalaCadenceMs !== undefined && { cadenceMs: config.amygdalaCadenceMs }),
+    ...(config.maxLLMCallsPerHour !== undefined && {
+      maxLLMCallsPerHour: config.maxLLMCallsPerHour,
+    }),
+    ...(config.lowCostModeThreshold !== undefined && {
+      lowCostModeThreshold: config.lowCostModeThreshold,
+    }),
+    events: deps.events,
+  });
+}
+
+function buildHippocampus(
+  config: MemoryConfig,
+  deps: { ltm: LtmEngine; events: MemoryEventEmitter; contextDirectory: string },
+): HippocampusProcess {
+  return new HippocampusProcess({
+    ltm: deps.ltm,
+    llmAdapter: config.llmAdapter,
+    ...(config.hippocampusScheduleMs !== undefined && { scheduleMs: config.hippocampusScheduleMs }),
+    ...(config.maxLLMCallsPerHour !== undefined && {
+      maxLLMCallsPerHour: config.maxLLMCallsPerHour,
+    }),
+    contextDir: deps.contextDirectory,
+    events: deps.events,
+  });
+}
+
+export async function createMemory(config: MemoryConfig): Promise<CreateMemoryResult> {
+  const storage = new SqliteAdapter(config.storagePath);
+  const embeddingAdapter: EmbeddingAdapter = config.embeddingAdapter ?? new TransformersJsAdapter();
+  const ltm = new LtmEngine({ storage, embeddingAdapter });
+  const stm = new InsightLog();
+  const sessionId = randomUUID();
+  const contextDirectory =
+    config.contextDirectory ?? path.join(path.dirname(config.storagePath), 'context');
+  const sessionContextDirectory = path.join(contextDirectory, sessionId);
+
+  await mkdir(sessionContextDirectory, { recursive: true });
+
+  const events = new MemoryEventEmitter();
+  const maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
+  void maxTokens;
+
+  const amygdala = buildAmygdala(config, { ltm, stm, events });
+  const hippocampus = buildHippocampus(config, { ltm, events, contextDirectory });
+
+  amygdala.start();
+  hippocampus.start();
+
+  const memory = new MemoryImpl({
+    sessionId,
+    events,
+    ltm,
+    stm,
+    amygdala,
+    hippocampus,
+    contextDirectory: sessionContextDirectory,
+  });
+  const startupStats = await memory.getStats();
+  return { memory, startupStats };
+}
