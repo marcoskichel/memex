@@ -92,3 +92,92 @@ Agent code SHALL import exclusively from `@neurokit/memory`. Direct imports from
 
 - **WHEN** a consuming project's package.json is inspected
 - **THEN** only `@neurokit/memory` appears as a dependency; sub-packages are not listed
+
+### Requirement: createMemory returns { memory, startupStats }
+
+`createMemory(config)` SHALL return `{ memory: Memory, startupStats: MemoryStats }` rather than a bare `Memory` instance. This is a breaking change. The `startupStats` expose inherited state from a prior session, which is operationally critical on crash recovery.
+
+#### Scenario: createMemory returns both fields
+
+- **WHEN** `createMemory(config)` is called
+- **THEN** the return value has a `memory` field and a `startupStats` field
+
+#### Scenario: startupStats reflects inherited state
+
+- **WHEN** `createMemory(config)` is called after a prior crashed session left STM entries
+- **THEN** `startupStats.stm.pendingInsights` reflects the count of entries inherited from the crashed session
+
+### Requirement: Orphan recovery on startup
+
+During startup, `createMemory()` SHALL detect STM entries that are `processed = false` but whose `contextFile` no longer exists on disk. These SHALL be marked `importance_scoring_failed` so they rejoin the first amygdala cycle rather than blocking indefinitely.
+
+#### Scenario: Orphaned entries are recovered
+
+- **WHEN** `createMemory()` is called and two STM entries reference missing context files
+- **THEN** both entries are marked `importance_scoring_failed` before the first amygdala cycle runs
+
+#### Scenario: Entries with existing context files are not affected
+
+- **WHEN** `createMemory()` runs orphan recovery
+- **THEN** entries whose context files exist on disk remain in their current state
+
+### Requirement: Ordered shutdown with ShutdownReport
+
+`memory.shutdown()` SHALL execute an ordered 6-step shutdown and return a `ShutdownReport`: (1) gate new writes (subsequent `logInsight()` throws `ShutdownError`), (2) flush STM compression, (3) run final amygdala pass, (4) wait for in-progress hippocampus cycle or skip, (5) close SQLite, (6) return report with `sessionId`, `shutdownAt`, `durationMs`, `stmPhasesCompressed`, `insightsDrained`, `hippocampusCycleWaitedMs`, `ltmRecordsAtClose`, `contextFilesRemainingOnDisk`.
+
+#### Scenario: logInsight throws after shutdown called
+
+- **WHEN** `memory.shutdown()` has been called
+- **THEN** any subsequent `memory.logInsight()` call throws `ShutdownError`
+
+#### Scenario: shutdown drains all pending STM entries
+
+- **WHEN** `memory.shutdown()` is called with 5 unprocessed STM entries
+- **THEN** all 5 are processed in the final amygdala pass before `shutdown()` returns
+
+#### Scenario: ShutdownReport includes accurate counts
+
+- **WHEN** `memory.shutdown()` returns
+- **THEN** `insightsDrained` equals the number of entries processed in the final amygdala pass
+
+### Requirement: getStats returns MemoryStats
+
+`memory.getStats()` SHALL return a `MemoryStats` object with sub-interfaces: `ltm` (totalRecords, episodicCount, semanticCount, tombstonedCount, averageRetention, belowThresholdCount, totalEdges, averageEdgeRetention), `stm` (pendingInsights, averageInsightAgeMs, oldestInsightAgeMs), `amygdala` (lastCycleStartedAt, lastCycleDurationMs, lastCycleInsightsProcessed, lastCycleFailures, sessionTotalLlmCalls, sessionEstimatedTokens), `hippocampus` (lastConsolidationAt, lastRunClustersConsolidated, lastRunRecordsPruned, falseMemoryCandidates, nextScheduledRunAt), and `disk` (contextFilesOnDisk, contextTotalBytes, oldestContextFileAgeMs, contextDir). It SHALL be callable at any time including during shutdown.
+
+#### Scenario: getStats is callable during shutdown
+
+- **WHEN** `memory.shutdown()` is in progress
+- **THEN** `memory.getStats()` returns a valid `MemoryStats` without throwing
+
+#### Scenario: falseMemoryCandidates counts low-confidence semantic records
+
+- **WHEN** 3 semantic records have `metadata.confidence < 0.5`
+- **THEN** `getStats().hippocampus.falseMemoryCandidates` equals 3
+
+### Requirement: pruneContextFiles removes safe-to-delete files older than threshold
+
+`memory.pruneContextFiles({ olderThanDays: number })` SHALL delete context files where `safeToDelete = true` AND `age >= olderThanDays`. It SHALL NEVER delete context files where the associated insight is still pending, regardless of age. It SHALL return `PruneContextFilesReport` with `deletedCount`, `deletedBytes`, `skippedCount`, and `errors`.
+
+#### Scenario: Old safe-to-delete files are deleted
+
+- **WHEN** `pruneContextFiles({ olderThanDays: 7 })` is called and a file is 10 days old with `safeToDelete = true`
+- **THEN** the file is deleted and counted in `deletedCount`
+
+#### Scenario: Pending files are never deleted regardless of age
+
+- **WHEN** `pruneContextFiles({ olderThanDays: 1 })` is called and a file is 30 days old but its insight is still pending
+- **THEN** the file is NOT deleted and appears in `skippedCount`
+
+### Requirement: memory.events typed event emitter
+
+`memory.events` SHALL be a typed `MemoryEventEmitter` (a Node.js `EventEmitter` subclass) that emits all events in the `MemoryEvents` catalog: `amygdala:cycle:start`, `amygdala:cycle:end`, `amygdala:entry:scored`, `hippocampus:consolidation:start`, `hippocampus:consolidation:end`, `hippocampus:false-memory-risk`, `ltm:record:decayed-below-threshold`, `ltm:prune:executed`, `stm:compression:triggered`. Multiple independent consumers SHALL be able to attach listeners without coordination.
+
+#### Scenario: Consumers can attach to memory.events
+
+- **WHEN** `memory.events.on('amygdala:cycle:end', handler)` is called
+- **THEN** `handler` is called on every subsequent `amygdala:cycle:end` emission
+
+#### Scenario: Multiple consumers receive the same event
+
+- **WHEN** two listeners are attached for `ltm:record:decayed-below-threshold`
+- **THEN** both are called when the event fires

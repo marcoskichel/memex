@@ -112,3 +112,45 @@ When `deflateSourceStability: true` (the default), `consolidate()` SHALL divide 
 
 - **WHEN** `stats()` is called on records with varying decay
 - **THEN** `avgRetention` is the mean of current retention values across all records
+
+### Requirement: Confidence-adjusted stability for consolidated records
+
+`consolidate()` SHALL accept `confidence?: number` (default `1.0`), `preservedFacts?: string[]`, and `uncertainties?: string[]` in its options. The initial stability of the semantic record SHALL be `max(source stabilities) × (1.0 + confidence × 0.5)`.
+
+#### Scenario: Full confidence produces 1.5× multiplier
+
+- **WHEN** `consolidate(sourceIds, data, { confidence: 1.0 })` is called with max source stability 8
+- **THEN** the semantic record's stability is 12 (8 × 1.5)
+
+#### Scenario: Zero confidence produces 1.0× multiplier
+
+- **WHEN** `consolidate(sourceIds, data, { confidence: 0.0 })` is called with max source stability 8
+- **THEN** the semantic record's stability is 8 (8 × 1.0)
+
+#### Scenario: Default confidence is 1.0
+
+- **WHEN** `consolidate(sourceIds, data)` is called with no options
+- **THEN** the stability multiplier is 1.5 (unchanged from prior behavior)
+
+### Requirement: Confidence metadata stored on semantic record
+
+`consolidate()` SHALL store `confidence`, `preservedFacts`, and `uncertainties` in the semantic record's metadata alongside `consolidatedAt` and `sourceIds`.
+
+#### Scenario: Semantic record metadata includes confidence
+
+- **WHEN** `consolidate(sourceIds, data, { confidence: 0.7, preservedFacts: ['fact A'] })` is called
+- **THEN** the semantic record's metadata has `confidence: 0.7` and `preservedFacts: ['fact A']`
+
+### Requirement: Tombstone episodic records on prune when consolidated
+
+When `prune()` removes an episodic record that is referenced as a `toId` by any `consolidates` edge, it SHALL tombstone the record (`data = null`, `embedding = null`, `tombstoned = 1`, `tombstoned_at = now`) rather than fully deleting it. Episodic records with no `consolidates` back-reference SHALL be fully deleted.
+
+#### Scenario: Consolidated episodic is tombstoned not deleted
+
+- **WHEN** `prune()` removes an episodic record that has a `consolidates` edge pointing to it
+- **THEN** the record row remains with `tombstoned = 1`, `data = null`, `embedding = null`
+
+#### Scenario: Unconsolidated episodic is fully deleted
+
+- **WHEN** `prune()` removes an episodic record with no `consolidates` back-reference
+- **THEN** the record row is removed entirely from the `records` table

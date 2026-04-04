@@ -119,3 +119,128 @@ The package SHALL ship a `SqliteAdapter` backed by `better-sqlite3` targeting No
 
 - **WHEN** a record is inserted, the process exits, and a new engine is created with the same SQLite file
 - **THEN** the record is still retrievable
+
+### Requirement: Embedding metadata on records
+
+Every LtmRecord SHALL carry an `embeddingMeta` field with `modelId: string` and `dimensions: number`. The `SqliteAdapter` schema SHALL include `embedding_model_id TEXT NOT NULL` and `embedding_dimensions INTEGER NOT NULL` columns alongside the embedding BLOB.
+
+#### Scenario: Record insertion stores embedding metadata
+
+- **WHEN** `insert(data, options)` is called
+- **THEN** the stored record has `embeddingMeta.modelId` and `embeddingMeta.dimensions` matching the adapter used
+
+#### Scenario: getById returns embedding metadata
+
+- **WHEN** `getById(id)` is called on an existing record
+- **THEN** the returned record includes a populated `embeddingMeta` field
+
+### Requirement: WAL mode and synchronous pragma
+
+The `SqliteAdapter` SHALL enable WAL mode at connection time: `journal_mode = WAL` and `synchronous = NORMAL`. This is required to support concurrent readers while a write transaction is open.
+
+#### Scenario: WAL mode is set on connection open
+
+- **WHEN** a new `SqliteAdapter` is instantiated
+- **THEN** `PRAGMA journal_mode = WAL` and `PRAGMA synchronous = NORMAL` have been executed before any read or write operation
+
+### Requirement: process_locks table for mutual exclusion
+
+The `SqliteAdapter` schema SHALL include a `process_locks` table with columns `process TEXT PRIMARY KEY`, `acquired_at INTEGER NOT NULL`, and `ttl_ms INTEGER NOT NULL`. The storage adapter SHALL expose `acquireLock(process: string, ttlMs: number): boolean` and `releaseLock(process: string): void`.
+
+#### Scenario: acquireLock returns true when no competing lock exists
+
+- **WHEN** `acquireLock('amygdala', 60000)` is called and no lock row exists
+- **THEN** the row is inserted and `true` is returned
+
+#### Scenario: acquireLock returns false when a live lock exists
+
+- **WHEN** another process holds a lock that has not expired
+- **THEN** `acquireLock` returns `false` without modifying the existing row
+
+#### Scenario: acquireLock clears stale lock and returns true
+
+- **WHEN** a lock row exists but `now >= acquired_at + ttl_ms`
+- **THEN** the stale row is deleted, a new row is inserted, and `true` is returned
+
+#### Scenario: releaseLock deletes own row
+
+- **WHEN** `releaseLock('amygdala')` is called
+- **THEN** the row with `process = 'amygdala'` is removed from `process_locks`
+
+### Requirement: FTS5 content virtual table
+
+The `SqliteAdapter` schema init SHALL create a FTS5 content virtual table: `CREATE VIRTUAL TABLE ltm_records_fts USING fts5(data, content='ltm_records', content_rowid='id')`. The `insertRecord` operation SHALL trigger the FTS5 index update. BM25 scoring SHALL NOT be wired into the retrieval pipeline in v1.
+
+#### Scenario: FTS5 table exists after schema init
+
+- **WHEN** a new `SqliteAdapter` is instantiated
+- **THEN** the `ltm_records_fts` virtual table exists in the database
+
+#### Scenario: insertRecord updates FTS5 index
+
+- **WHEN** `insertRecord` is called with a new record
+- **THEN** the FTS5 index contains the inserted data
+
+### Requirement: Tombstone columns on records table
+
+The `records` table SHALL include `tombstoned INTEGER DEFAULT 0` and `tombstoned_at INTEGER` columns.
+
+#### Scenario: New records have tombstoned = 0
+
+- **WHEN** `insert(data)` is called
+- **THEN** the new record has `tombstoned = 0` and `tombstoned_at = null`
+
+### Requirement: Transaction boundaries on multi-step operations
+
+`bulkInsert()`, `delete()`, `consolidate()`, and `prune()` SHALL execute inside explicit SQLite transactions. A failure mid-operation SHALL roll back all changes.
+
+#### Scenario: bulkInsert is fully atomic
+
+- **WHEN** `bulkInsert([...])` fails partway through
+- **THEN** no records from the batch are persisted
+
+#### Scenario: consolidate rollback on failure
+
+- **WHEN** `consolidate()` fails after creating the semantic record but before all edges are written
+- **THEN** the semantic record and any partial edges are rolled back
+
+### Requirement: getById returns tombstone marker for pruned-but-consolidated records
+
+When `getById(id)` is called for a record that has been tombstoned, it SHALL return `{ id, tombstoned: true, tombstonedAt: Date, data: null }` rather than `null`. `null` SHALL only be returned when the ID has never existed.
+
+#### Scenario: getById distinguishes tombstoned from never-existed
+
+- **WHEN** `getById(id)` is called for a tombstoned record
+- **THEN** the return value has `tombstoned: true` and `data: null`
+
+#### Scenario: getById returns null for unknown ID
+
+- **WHEN** `getById(id)` is called for an ID that was never inserted
+- **THEN** `null` is returned
+
+### Requirement: query excludes tombstoned records from scoring
+
+`query()` SHALL exclude tombstoned records from the scoring candidate pool. Tombstoned records have no embedding and cannot be scored.
+
+#### Scenario: query does not return tombstoned records
+
+- **WHEN** `query(nlQuery)` is called and some records are tombstoned
+- **THEN** no tombstoned record appears in the result set
+
+### Requirement: updateEmbedding on StorageAdapter
+
+The `StorageAdapter` interface SHALL expose `updateEmbedding(id: number, embedding: Float32Array, meta: EmbeddingMeta): void` as distinct from `updateMetadata`. This method is used by the `reembedAll` migration utility.
+
+#### Scenario: updateEmbedding replaces embedding and meta
+
+- **WHEN** `updateEmbedding(id, newVec, newMeta)` is called
+- **THEN** the stored embedding and embeddingMeta are updated; the record data is unchanged
+
+### Requirement: getAllRecords on StorageAdapter
+
+The `StorageAdapter` interface SHALL expose `getAllRecords(): LtmRecord[]` to support brute-force cosine scan during query.
+
+#### Scenario: getAllRecords returns all non-tombstoned records
+
+- **WHEN** `getAllRecords()` is called with 5 live records and 2 tombstoned records
+- **THEN** 5 records are returned; tombstoned records are excluded
