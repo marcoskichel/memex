@@ -4,9 +4,7 @@ All original improvements from the design phase are implemented. This document t
 
 ---
 
-## Design Amendments (not yet implemented)
-
-Decisions made during a post-implementation coverage review. These are not yet in the codebase.
+## Pending Implementation
 
 ### 1. `sessionId` as a schema column on `LtmRecord`
 
@@ -49,7 +47,7 @@ export const LtmCategory = {
 
 **Decision:** Store the STM-compressed text (`InsightEntry.text`) as `episodeSummary?: string` directly on `LtmRecord` instead of a `contextFile` path pointer.
 
-**Rationale:** The raw context file creates an external file dependency that outlives the STM lifecycle. The STM compression output is already computed and is a high-fidelity (not very lossy) summary — more detailed than the amygdala's importance-scored insight, but a fraction of raw context size. Storing it inline eliminates the file dependency and simplifies hippocampus deletion logic.
+**Rationale:** The raw context file creates an external file dependency that outlives the STM lifecycle. The STM compression output is already computed and is a high-fidelity (not very lossy) summary — more detail than the amygdala's importance-scored insight, but a fraction of raw context size. Storing it inline eliminates the file dependency and simplifies hippocampus deletion logic.
 
 **Changes required:**
 
@@ -57,78 +55,59 @@ export const LtmCategory = {
 - SQLite schema: `episode_summary TEXT` (nullable)
 - Amygdala writes `entry.text` to `episodeSummary` at insert time
 - `Memory` interface gains `recallFull(id: string): Promise<{ record: LtmRecord; episodeSummary: string | null }>`
-- Context files are marked `safeToDelete = true` immediately after amygdala writes `episodeSummary` — no need to retain them
+- Context files are marked `safeToDelete = true` immediately after amygdala writes `episodeSummary`
 - Hippocampus deletion logic simplified: delete all `safeToDelete = true` files without cross-referencing LTM records
 
----
+### 4. Importance-gated direct semantic promotion for singleton episodics
 
-## Deferred Improvements (from coverage review)
+**Rationale:** The `minClusterSize = 3` gate in `findConsolidationCandidates` means any episodic with fewer than 3 near-neighbors decays and is hard-deleted by `prune()` with no semantic promotion path — even if its importance score is high. A single critical fact stated once (e.g. "user has a nut allergy") will be lost.
 
-Items surfaced during the three-type memory coverage review, ranked by impact. None are implemented yet.
+**Changes required:**
 
-### High
+- In amygdala `applyAction`: if `importanceScore >= singletonPromotionThreshold` and the LTM relatedness check finds no existing related memory, insert directly as `tier: 'semantic'` rather than `tier: 'episodic'`
+- Add `singletonPromotionThreshold?: number` to `AmygdalaConfig` (default: `0.7`)
 
-**Isolated high-importance episodics silently vanish**
+### 5. Direct semantic seeding path
 
-The `minClusterSize = 3` gate in `findConsolidationCandidates` means any episodic with fewer than 3 near-neighbors decays and is hard-deleted by `prune()` with no semantic promotion path — even if its importance score is high. A single critical fact stated once (e.g. "user has a nut allergy") will be lost.
+**Rationale:** `ltm.insert()` and `ltm.bulkInsert()` are hardcoded to `tier: 'episodic'`. There is no way to bootstrap an agent with pre-existing world knowledge (domain facts, project conventions) without routing through the full STM → amygdala pipeline.
 
-Fix is amygdala-side: in `applyAction`, if `importanceScore >= threshold` and no related memory exists in LTM, insert directly as `tier: 'semantic'` rather than `tier: 'episodic'`. Make the threshold configurable in `AmygdalaConfig` (suggested default: `0.7`).
+**Changes required:**
 
----
+- Expose `tier?: 'episodic' | 'semantic'` on `LtmInsertOptions`
+- When `tier === 'semantic'`, require `confidence` in metadata (default `1.0` if omitted)
+- Throw if `tier === 'semantic'` is passed without `confidence`
 
-### Medium
+### 6. Temporal proximity constraint in hippocampus clustering
 
-**Direct semantic seeding path**
+**Rationale:** `findConsolidationCandidates` clusters by cosine similarity only. Episodics from different time periods can be consolidated together, destroying temporal distinctness — which is the primary value of episodic memory.
 
-`ltm.insert()` and `ltm.bulkInsert()` are hardcoded to `tier: 'episodic'`. There is no way to bootstrap an agent with pre-existing world knowledge (domain facts, project conventions) without routing through the full STM → amygdala pipeline.
+**Changes required:**
 
-Fix: expose `tier?: 'episodic' | 'semantic'` on insert/bulkInsert options. When `tier === 'semantic'`, require `confidence` in metadata (default to `1.0` if omitted). Guard: throw if `tier === 'semantic'` is passed without `confidence`.
+- Add `maxCreatedAtSpreadDays?: number` to `FindConsolidationOptions` (default: `30`)
+- Clusters where `max(createdAt) - min(createdAt)` exceeds the threshold are split at the temporal gap before the LLM consolidation call
 
----
+### 7. Tags wired from STM to LTM
 
-**Temporal proximity constraint in hippocampus clustering**
+**Rationale:** `InsightEntry.tags` (agent-supplied tags like `['behavioral']`) are consumed by amygdala only for internal filtering and are never written to `LtmRecord`. Agent-supplied tags are silently dropped.
 
-`findConsolidationCandidates` clusters by cosine similarity only. Episodics from different time periods (e.g. six months apart) can be consolidated together, destroying their temporal distinctness — which is the primary value of episodic memory.
+**Changes required:**
 
-Fix: add `maxCreatedAtSpreadDays?: number` to `FindConsolidationOptions` (suggested default: `30`). Clusters where `max(createdAt) - min(createdAt)` exceeds the threshold are split at the temporal gap before the LLM consolidation call.
-
----
-
-**Tags not wired from STM to LTM**
-
-`InsightEntry.tags` (agent-supplied tags like `['behavioral']`) are consumed by amygdala only for internal filtering (`permanently_skipped`, `llm_rate_limited`) and are never written to `LtmRecord`. Agent-supplied tags are silently dropped.
-
-Fix: amygdala writes the original `entry.tags` (minus internal tags) to `LtmRecord.metadata.tags` at insert time. Expose `tags?: string[]` as an array filter in `LtmQueryOptions`.
+- Amygdala writes the original `entry.tags` (minus internal tags: `permanently_skipped`, `llm_rate_limited`) to `LtmRecord.metadata.tags` at insert time
+- `LtmQueryOptions` gains `tags?: string[]` as an array filter (matches records containing all specified tags)
 
 ---
 
-### Low
+## Deferred
 
-**Semantic re-consolidation cycle**
+### Low priority
 
-When new episodics accumulate that contradict or refine an existing semantic record, there is no mechanism to produce a corrected semantic record linked via `supersedes`. The hippocampus only consolidates episodics; it never re-evaluates existing semantics against newer evidence.
+**Semantic re-consolidation cycle** — a second hippocampus pass targeting semantic records with `elaborates`/`contradicts` incoming edges from newer episodics, producing a superseding semantic record. Defer until the base consolidation cycle is stable; risk of infinite loop without a visited-set guard.
 
-Fix: a second pass in hippocampus that targets semantic records with `elaborates` or `contradicts` incoming edges from episodics created after the semantic record's `createdAt`. Produces a superseding semantic record. Defer until the base consolidation cycle is stable — risk of infinite loop without a visited-set guard.
+**`expiresAt` on `ConsolidateOptions`** — explicit wall-clock expiry for time-bounded semantic facts. Hippocampus tombstones the record at `expiresAt` regardless of stability.
 
----
+**Document procedural memory exclusion** — JSDoc on `Memory.recall()` and `createMemory()` noting that behavioral rules must be managed by the consumer and injected into the system prompt externally.
 
-**`expiresAt` on `ConsolidateOptions` for time-sensitive semantic facts**
-
-Semantic records for time-bounded knowledge (e.g. "user is on vacation until Friday") have no explicit expiry mechanism. Standard decay is time/access-driven, not wall-clock-bound.
-
-Fix: add `expiresAt?: Date` to `ConsolidateOptions`. When set, hippocampus tombstones the record at that wall-clock time regardless of stability. Affects only records where the caller explicitly sets it.
-
----
-
-**Document procedural memory exclusion in the `Memory` interface**
-
-The design excludes procedural memory, but the `Memory` interface gives no guidance to consumers about how to handle behavioral rule injection at startup. Agents using this library must manage that externally and currently have no indication of this.
-
-Fix: add a JSDoc note to `Memory.recall()` and `createMemory()` noting that behavioral/procedural rules must be managed by the consumer and injected into the agent's system prompt externally.
-
----
-
-## V2 Deferred (intentionally out of scope for v1)
+### V2 (intentionally out of scope for v1)
 
 | Capability                   | Notes                                                                             |
 | ---------------------------- | --------------------------------------------------------------------------------- |
@@ -138,6 +117,6 @@ Fix: add a JSDoc note to `Memory.recall()` and `createMemory()` noting that beha
 
 ---
 
-## Performance Investigation Pending
+## Blocked
 
 **`recall()` default `strengthen: true`** — agreed but blocked on [marcoskichel/memex#1](https://github.com/marcoskichel/memex/issues/1). Do not change the `memory-impl.ts` default until that issue is resolved.
