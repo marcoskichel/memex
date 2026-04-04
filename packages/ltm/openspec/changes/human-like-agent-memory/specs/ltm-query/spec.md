@@ -119,3 +119,101 @@ The engine SHALL support a `limit` option that caps the number of returned resul
 
 - **WHEN** `query(nlQuery, { limit: 3 })` is called and 10 records match
 - **THEN** exactly 3 results are returned
+
+### Requirement: Query embeds via injected EmbeddingAdapter
+
+`queryLtm` SHALL embed the query string using the injected `EmbeddingAdapter`. It SHALL NOT compute embeddings internally. The embedding adapter is injected at engine construction time.
+
+#### Scenario: Embedding is produced via the injected adapter
+
+- **WHEN** `query(nlQuery)` is called
+- **THEN** `embeddingAdapter.embed(nlQuery)` is called exactly once
+
+### Requirement: Three-strategy RRF retrieval pipeline
+
+`queryLtm` SHALL run three retrieval strategies in parallel and merge results with Reciprocal Rank Fusion (RRF, K=60): (1) semantic cosine, (2) temporal-weighted cosine (cosine × retention), and (3) one-hop associative graph traversal following `elaborates`, `supersedes`, and `consolidates` edges from top semantic hits.
+
+#### Scenario: Semantic strategy scores by cosine similarity
+
+- **WHEN** query runs
+- **THEN** each record receives a cosine similarity score against the query embedding
+
+#### Scenario: Temporal strategy weights by retention
+
+- **WHEN** query runs
+- **THEN** each record also receives a temporal-weighted score of `cosineSimilarity × retention`
+
+#### Scenario: Associative strategy follows outbound edges
+
+- **WHEN** a top semantic hit has outbound `elaborates` edges
+- **THEN** the connected records are added to the candidate pool with discounted scores
+
+#### Scenario: contradicts edges surface both records
+
+- **WHEN** a candidate has a `contradicts` edge to another record
+- **THEN** both records appear in results and are marked for caller resolution
+
+#### Scenario: RRF merges all strategy lists
+
+- **WHEN** all three strategies produce ranked lists
+- **THEN** the final order is determined by RRF with K=60; records present in multiple lists rank higher
+
+### Requirement: Embedding model mismatch detection
+
+Before executing a query, `queryLtm` SHALL compare `adapter.modelId` against the stored `embeddingMeta.modelId` of the first record. On mismatch, it SHALL return a `EMBEDDING_MODEL_MISMATCH` error immediately without scoring any records.
+
+#### Scenario: Query fails fast on model mismatch
+
+- **WHEN** records were embedded with model A and the injected adapter has model B
+- **THEN** `query()` returns an `EMBEDDING_MODEL_MISMATCH` error before computing any scores
+
+#### Scenario: Query proceeds when models match
+
+- **WHEN** the injected adapter modelId matches stored embeddingMeta.modelId
+- **THEN** query proceeds normally
+
+### Requirement: Graduated strengthening with graph discount
+
+When `strengthen: true`, the engine SHALL apply full growth factor to the top result, proportional growth to lower results, and 50% of the growth factor of direct semantic hits to records added via graph traversal.
+
+#### Scenario: Graph-traversal records get half growth factor
+
+- **WHEN** a record enters results via associative graph traversal
+- **THEN** its stability growth is 50% of the growth factor applied to the direct semantic hit that led to it
+
+### Requirement: LtmQueryResult includes RRF score and retrieval strategies
+
+`LtmQueryResult` SHALL include `rrfScore: number` (the RRF-merged score) and `retrievalStrategies: ('semantic' | 'temporal' | 'associative')[]` listing which strategies contributed to this result.
+
+#### Scenario: Result from multiple strategies lists all of them
+
+- **WHEN** a record appears in both semantic and temporal strategy outputs
+- **THEN** its `retrievalStrategies` includes both `'semantic'` and `'temporal'`
+
+### Requirement: Confidence promoted to query result
+
+For records with `tier === 'semantic'`, `LtmQueryResult` SHALL include `confidence?: number` promoted from `metadata.confidence`.
+
+#### Scenario: Semantic record result includes confidence
+
+- **WHEN** `query()` returns a semantic record
+- **THEN** the result's `confidence` field equals the value stored in that record's `metadata.confidence`
+
+#### Scenario: Episodic record result has no confidence field
+
+- **WHEN** `query()` returns an episodic record
+- **THEN** the result's `confidence` field is undefined
+
+### Requirement: Lazy decay threshold event emission
+
+`query()` SHALL emit `ltm:record:decayed-below-threshold` lazily when a record's computed retention crosses below `0.2` during score computation. The event SHALL NOT be emitted via a polling loop.
+
+#### Scenario: Event emitted when retention crosses 0.2 during query
+
+- **WHEN** `query()` computes retention for a record and the result is below 0.2 for the first time
+- **THEN** `ltm:record:decayed-below-threshold` is emitted with the record's id, retention, stability, and lastAccessedAt
+
+#### Scenario: Event not emitted for records above threshold
+
+- **WHEN** `query()` runs and a record's retention is 0.5
+- **THEN** no `ltm:record:decayed-below-threshold` event is emitted for that record

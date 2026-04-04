@@ -106,3 +106,110 @@ The hippocampus SHALL NOT compute or set the stability of the consolidated seman
 
 - **WHEN** `ltm.consolidate(sourceIds, summary, options)` is called
 - **THEN** no `stability` field is present in the `options` argument
+
+### Requirement: LLMAdapter injection
+
+The hippocampus SHALL accept an `LLMAdapter` instance at construction time. It SHALL NOT instantiate any specific LLM client internally.
+
+#### Scenario: Hippocampus accepts LLMAdapter at construction
+
+- **WHEN** `new HippocampusProcess({ llmAdapter, ... })` is called
+- **THEN** the hippocampus stores the adapter and uses it for all consolidation LLM calls
+
+### Requirement: Structured LLM output with ConsolidationResult schema
+
+The hippocampus SHALL use `llmAdapter.completeStructured()` with the `ConsolidationResult` schema: `summary: string` (max 3 sentences), `confidence: number` (0.0–1.0), `preservedFacts: string[]` (atomic claims), `uncertainties: string[]` (conflicting or inferred claims).
+
+#### Scenario: completeStructured called with ConsolidationResult schema
+
+- **WHEN** a cluster is submitted for consolidation
+- **THEN** `llmAdapter.completeStructured(prompt, consolidationSchema)` is called once
+
+#### Scenario: Minimum cluster size of 3 is enforced
+
+- **WHEN** `findConsolidationCandidates` returns a cluster of 2 records
+- **THEN** no LLM call is made for that cluster
+
+### Requirement: Confidence forwarded to ltm.consolidate
+
+The hippocampus SHALL pass the `confidence` value from the LLM response directly to `ltm.consolidate()` as `options.confidence`. The hippocampus SHALL NOT interpret, adjust, or act on the confidence value beyond forwarding it.
+
+#### Scenario: confidence from LLM is forwarded unchanged
+
+- **WHEN** the LLM returns `confidence: 0.6`
+- **THEN** `ltm.consolidate(sourceIds, summary, { ..., confidence: 0.6 })` is called with exactly `0.6`
+
+#### Scenario: Low confidence does not cause the cluster to be skipped
+
+- **WHEN** the LLM returns `confidence: 0.2`
+- **THEN** `ltm.consolidate` is still called; the low confidence is handled by the LTM stability formula
+
+### Requirement: Retry contract
+
+On LLM failure, the hippocampus SHALL retry at most 1 time with backoff of 1000ms. On retry exhaustion, it SHALL skip the cluster for this cycle; source records SHALL remain untouched.
+
+#### Scenario: Single retry at 1000ms
+
+- **WHEN** the LLM call fails on first attempt
+- **THEN** the hippocampus waits 1000ms and retries once
+
+#### Scenario: Cluster skipped on second failure
+
+- **WHEN** both the initial call and retry fail
+- **THEN** the cluster is skipped; source episodic records are not modified
+
+### Requirement: process_locks acquisition before consolidation pass
+
+Before beginning the consolidation pass, the hippocampus SHALL acquire its `process_locks` entry via `storage.acquireLock('hippocampus', scheduleMs * 2)`. If acquisition fails, the hippocampus SHALL skip the entire cycle. The lock SHALL always be released in a `finally` block.
+
+#### Scenario: Cycle skipped when lock cannot be acquired
+
+- **WHEN** the amygdala holds the lock
+- **THEN** the hippocampus skips the full consolidation and pruning pass for this cycle
+
+#### Scenario: Lock released after consolidation pass
+
+- **WHEN** the hippocampus consolidation pass completes or throws
+- **THEN** `storage.releaseLock('hippocampus')` has been called
+
+### Requirement: Context file deletion after pruning
+
+After `ltm.prune()` completes, the hippocampus SHALL delete all context files marked `safeToDelete = true`. Deletion errors SHALL be non-fatal and SHALL be counted in the `HippocampusConsolidationEndPayload.contextFilesDeleted` field.
+
+#### Scenario: Context files deleted after prune
+
+- **WHEN** the hippocampus pruning pass completes
+- **THEN** all context files with `safeToDelete = true` are deleted from disk
+
+#### Scenario: Deletion error does not abort the cycle
+
+- **WHEN** a context file cannot be deleted (e.g., permissions error)
+- **THEN** the error is logged, counted in `contextFilesDeleted` failures, and the cycle completes normally
+
+### Requirement: Typed event emission including false memory risk
+
+The hippocampus SHALL emit `hippocampus:consolidation:start` at the start of each cycle and `hippocampus:consolidation:end` (with `runId`, `durationMs`, `clustersConsolidated`, `recordsPruned`, `contextFilesDeleted`) at the end. For each consolidated record with `confidence < 0.5`, it SHALL emit `hippocampus:false-memory-risk` (with `recordId`, `confidence`, `sourceIds`).
+
+#### Scenario: consolidation:start emitted before any LTM writes
+
+- **WHEN** a hippocampus consolidation cycle begins
+- **THEN** `hippocampus:consolidation:start` is emitted before any `ltm.consolidate` call
+
+#### Scenario: consolidation:end emitted with accurate counts
+
+- **WHEN** the hippocampus cycle completes
+- **THEN** `hippocampus:consolidation:end` is emitted with accurate `clustersConsolidated` and `recordsPruned` counts
+
+#### Scenario: false-memory-risk emitted for low-confidence records
+
+- **WHEN** a semantic record is created with `confidence: 0.4`
+- **THEN** `hippocampus:false-memory-risk` is emitted with the new record's id and source ids
+
+### Requirement: Cost guard via maxLLMCallsPerHour
+
+The hippocampus SHALL respect `maxLLMCallsPerHour`. When the budget is exhausted, the hippocampus SHALL defer the entire consolidation cycle to the next scheduled run.
+
+#### Scenario: Entire cycle deferred when budget exhausted
+
+- **WHEN** LLM calls for this hour have reached `maxLLMCallsPerHour`
+- **THEN** the hippocampus defers consolidation; no `ltm.consolidate` or `ltm.prune` calls are made

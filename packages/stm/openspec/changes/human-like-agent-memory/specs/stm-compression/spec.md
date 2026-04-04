@@ -82,3 +82,36 @@ When the session ends, all remaining uncompressed phases SHALL be flushed by cal
 
 - **WHEN** the session-end flush is called
 - **THEN** it completes before the process exits or any shutdown hook returns
+
+### Requirement: Session-scoped context file path
+
+Context files SHALL be stored at `<contextDir>/<sessionId>/<phaseId>.ctx`. `contextDir` SHALL default to `<db-dir>/context/`. The `sessionId` subdirectory isolates files across restarts, enabling orphan detection during startup.
+
+#### Scenario: Context file path includes session subdirectory
+
+- **WHEN** `compress(phase)` is called during session `sess-abc`
+- **THEN** the context file is written to `<contextDir>/sess-abc/<phaseId>.ctx`
+
+#### Scenario: contextDir defaults to db-dir/context
+
+- **WHEN** no explicit `contextDir` is provided at initialization
+- **THEN** context files are written under `<db-dir>/context/`
+
+#### Scenario: Custom contextDir is respected
+
+- **WHEN** `contextDir: '/tmp/ctx'` is configured at initialization
+- **THEN** context files are written under `/tmp/ctx/<sessionId>/`
+
+### Requirement: STM compressor does not delete context files
+
+The STM compressor SHALL NOT delete context files. Context file deletion is owned by: the amygdala (marks `safeToDelete = true` on the context file record after processing), and the hippocampus (performs physical deletion in its pruning pass).
+
+#### Scenario: Context file persists after compress returns
+
+- **WHEN** `compress(phase)` returns successfully
+- **THEN** the file at `insight.contextFile` still exists on disk
+
+#### Scenario: compress does not call fs.unlink or equivalent
+
+- **WHEN** the compress operation completes
+- **THEN** no file deletion call was made for the context file
