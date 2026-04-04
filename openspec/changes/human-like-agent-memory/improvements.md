@@ -62,6 +62,72 @@ export const LtmCategory = {
 
 ---
 
+## Deferred Improvements (from coverage review)
+
+Items surfaced during the three-type memory coverage review, ranked by impact. None are implemented yet.
+
+### High
+
+**Isolated high-importance episodics silently vanish**
+
+The `minClusterSize = 3` gate in `findConsolidationCandidates` means any episodic with fewer than 3 near-neighbors decays and is hard-deleted by `prune()` with no semantic promotion path — even if its importance score is high. A single critical fact stated once (e.g. "user has a nut allergy") will be lost.
+
+Fix is amygdala-side: in `applyAction`, if `importanceScore >= threshold` and no related memory exists in LTM, insert directly as `tier: 'semantic'` rather than `tier: 'episodic'`. Make the threshold configurable in `AmygdalaConfig` (suggested default: `0.7`).
+
+---
+
+### Medium
+
+**Direct semantic seeding path**
+
+`ltm.insert()` and `ltm.bulkInsert()` are hardcoded to `tier: 'episodic'`. There is no way to bootstrap an agent with pre-existing world knowledge (domain facts, project conventions) without routing through the full STM → amygdala pipeline.
+
+Fix: expose `tier?: 'episodic' | 'semantic'` on insert/bulkInsert options. When `tier === 'semantic'`, require `confidence` in metadata (default to `1.0` if omitted). Guard: throw if `tier === 'semantic'` is passed without `confidence`.
+
+---
+
+**Temporal proximity constraint in hippocampus clustering**
+
+`findConsolidationCandidates` clusters by cosine similarity only. Episodics from different time periods (e.g. six months apart) can be consolidated together, destroying their temporal distinctness — which is the primary value of episodic memory.
+
+Fix: add `maxCreatedAtSpreadDays?: number` to `FindConsolidationOptions` (suggested default: `30`). Clusters where `max(createdAt) - min(createdAt)` exceeds the threshold are split at the temporal gap before the LLM consolidation call.
+
+---
+
+**Tags not wired from STM to LTM**
+
+`InsightEntry.tags` (agent-supplied tags like `['behavioral']`) are consumed by amygdala only for internal filtering (`permanently_skipped`, `llm_rate_limited`) and are never written to `LtmRecord`. Agent-supplied tags are silently dropped.
+
+Fix: amygdala writes the original `entry.tags` (minus internal tags) to `LtmRecord.metadata.tags` at insert time. Expose `tags?: string[]` as an array filter in `LtmQueryOptions`.
+
+---
+
+### Low
+
+**Semantic re-consolidation cycle**
+
+When new episodics accumulate that contradict or refine an existing semantic record, there is no mechanism to produce a corrected semantic record linked via `supersedes`. The hippocampus only consolidates episodics; it never re-evaluates existing semantics against newer evidence.
+
+Fix: a second pass in hippocampus that targets semantic records with `elaborates` or `contradicts` incoming edges from episodics created after the semantic record's `createdAt`. Produces a superseding semantic record. Defer until the base consolidation cycle is stable — risk of infinite loop without a visited-set guard.
+
+---
+
+**`expiresAt` on `ConsolidateOptions` for time-sensitive semantic facts**
+
+Semantic records for time-bounded knowledge (e.g. "user is on vacation until Friday") have no explicit expiry mechanism. Standard decay is time/access-driven, not wall-clock-bound.
+
+Fix: add `expiresAt?: Date` to `ConsolidateOptions`. When set, hippocampus tombstones the record at that wall-clock time regardless of stability. Affects only records where the caller explicitly sets it.
+
+---
+
+**Document procedural memory exclusion in the `Memory` interface**
+
+The design excludes procedural memory, but the `Memory` interface gives no guidance to consumers about how to handle behavioral rule injection at startup. Agents using this library must manage that externally and currently have no indication of this.
+
+Fix: add a JSDoc note to `Memory.recall()` and `createMemory()` noting that behavioral/procedural rules must be managed by the consumer and injected into the agent's system prompt externally.
+
+---
+
 ## V2 Deferred (intentionally out of scope for v1)
 
 | Capability                   | Notes                                                                             |
