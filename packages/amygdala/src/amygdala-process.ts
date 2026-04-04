@@ -2,7 +2,12 @@ import type { LLMAdapter } from '@neurokit/llm';
 import type { LtmEngine } from '@neurokit/ltm';
 import type { InsightEntry, InsightLog } from '@neurokit/stm';
 
-import type { LtmWithStorage } from './amygdala-schema.js';
+import type {
+  AmygdalaScoringResult,
+  EntryOutcome,
+  EventBus,
+  LtmWithStorage,
+} from './amygdala-schema.js';
 import {
   amygdalaScoringSchema,
   buildPrompt,
@@ -24,29 +29,13 @@ import {
   THRESHOLD_CHECK_INTERVAL_MS,
 } from './amygdala-schema.js';
 
-export interface AmygdalaScoringResult {
-  action: 'insert' | 'relate' | 'skip';
-  targetId?: string;
-  edgeType?: 'supersedes' | 'elaborates' | 'contradicts';
-  reasoning: string;
-  importanceScore: number;
-}
-
-interface EntryOutcome {
-  processed: number;
-  failures: number;
-  llmCalls: number;
-}
-
-export interface EventBus {
-  emit(event: string, payload?: unknown): unknown;
-  on(event: string, listener: (...arguments_: unknown[]) => void): unknown;
-}
+export type { AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
 
 export interface AmygdalaConfig {
   ltm: LtmEngine;
   stm: InsightLog;
   llmAdapter: LLMAdapter;
+  sessionId: string;
   cadenceMs?: number;
   maxBatchSize?: number;
   maxLLMCallsPerHour?: number;
@@ -59,6 +48,7 @@ export class AmygdalaProcess {
   private ltm: LtmEngine;
   private stm: InsightLog;
   private llmAdapter: LLMAdapter;
+  private sessionId: string;
   private cadenceMs: number;
   private maxBatchSize: number;
   private maxLLMCallsPerHour: number;
@@ -75,6 +65,7 @@ export class AmygdalaProcess {
     this.ltm = config.ltm;
     this.stm = config.stm;
     this.llmAdapter = config.llmAdapter;
+    this.sessionId = config.sessionId;
     this.cadenceMs = config.cadenceMs ?? DEFAULT_CADENCE_MS;
     this.maxBatchSize = config.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE;
     this.maxLLMCallsPerHour = config.maxLLMCallsPerHour ?? DEFAULT_MAX_LLM_CALLS_PER_HOUR;
@@ -249,7 +240,10 @@ export class AmygdalaProcess {
       const newId = await this.ltm.insert(entry.summary, {
         importance: scoringResult.importanceScore,
         metadata: { source: 'amygdala', insightId: entry.id },
+        sessionId: this.sessionId,
+        episodeSummary: entry.summary,
       });
+      entry.safeToDelete = true;
       if (action === 'relate' && scoringResult.targetId) {
         relatedToId = Number.parseInt(scoringResult.targetId, 10);
         const edgeType = scoringResult.edgeType ?? 'elaborates';

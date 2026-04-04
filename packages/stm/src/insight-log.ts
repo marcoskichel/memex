@@ -5,6 +5,7 @@ export interface InsightEntry {
   tags: string[];
   timestamp: Date;
   processed: boolean;
+  safeToDelete?: boolean;
 }
 
 export class InsightLog {
