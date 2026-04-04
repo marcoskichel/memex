@@ -1,0 +1,9 @@
+scopes:
+  - name: ltm
+    path: packages/ltm
+  - name: amygdala
+    path: packages/amygdala
+  - name: hippocampus
+    path: packages/hippocampus
+  - name: memory
+    path: packages/memory
