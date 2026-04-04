@@ -11,8 +11,6 @@ export interface LtmWithStorage {
   storage: StorageWithLock;
 }
 
-import type { AmygdalaScoringResult } from './amygdala-process.js';
-
 const MINUTES_PER_CADENCE = 5;
 const SECONDS_PER_MINUTE = 60;
 export const MS_PER_SECOND = 1000;
@@ -57,6 +55,25 @@ For each observation, you must:
    - contradicts: Conflicts with existing memory
 
 Be conservative with importance scores. Most observations are 0.1-0.4. Reserve 0.7+ for genuinely significant information.`;
+
+export interface AmygdalaScoringResult {
+  action: 'insert' | 'relate' | 'skip';
+  targetId?: string;
+  edgeType?: 'supersedes' | 'elaborates' | 'contradicts';
+  reasoning: string;
+  importanceScore: number;
+}
+
+export interface EntryOutcome {
+  processed: number;
+  failures: number;
+  llmCalls: number;
+}
+
+export interface EventBus {
+  emit(event: string, payload?: unknown): unknown;
+  on(event: string, listener: (...arguments_: unknown[]) => void): unknown;
+}
 
 export const amygdalaScoringSchema: StructuredOutputSchema<AmygdalaScoringResult> = {
   name: 'score_observation',

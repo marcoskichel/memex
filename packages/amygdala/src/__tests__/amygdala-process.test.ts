@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EventBus } from '../amygdala-process.js';
 import { AmygdalaProcess } from '../amygdala-process.js';
 
+const TEST_SESSION_ID = 'test-session-42';
+
 function makeEntry(overrides: Partial<InsightEntry> = {}): InsightEntry {
   return {
     id: crypto.randomUUID(),
@@ -85,7 +87,7 @@ describe('AmygdalaProcess', () => {
     events = makeEventBus();
   });
 
-  it('insert path: LLM returns insert → ltm.insert called, stm.markProcessed called', async () => {
+  it('insert path: LLM returns insert → ltm.insert called with sessionId and episodeSummary', async () => {
     const entry = makeEntry();
     const ltm = makeLtm();
     const stm = makeStm([entry]);
@@ -95,13 +97,21 @@ describe('AmygdalaProcess', () => {
       reasoning: 'novel',
     });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(ltm.insert).toHaveBeenCalledWith(entry.summary, {
       importance: 0.7,
       metadata: { source: 'amygdala', insightId: entry.id },
+      sessionId: TEST_SESSION_ID,
+      episodeSummary: entry.summary,
     });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(stm.markProcessed).toHaveBeenCalledWith([entry.id]);
@@ -119,14 +129,20 @@ describe('AmygdalaProcess', () => {
       reasoning: 'related',
     });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(ltm.insert).toHaveBeenCalledWith(entry.summary, {
-      importance: 0.6,
-      metadata: { source: 'amygdala', insightId: entry.id },
-    });
+    expect(ltm.insert).toHaveBeenCalledWith(
+      entry.summary,
+      expect.objectContaining({ importance: 0.6, sessionId: TEST_SESSION_ID }),
+    );
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(ltm.relate).toHaveBeenCalledWith({ fromId: 42, toId: 10, type: 'elaborates' });
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -143,7 +159,13 @@ describe('AmygdalaProcess', () => {
       reasoning: 'no target',
     });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -160,7 +182,13 @@ describe('AmygdalaProcess', () => {
     const stm = makeStm([entry]);
     const llmAdapter = makeLlmAdapter({ action: 'skip', importanceScore: 0.1, reasoning: 'noise' });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -189,6 +217,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
+      sessionId: TEST_SESSION_ID,
       _sleep: () => Promise.resolve(),
     });
     await proc.run();
@@ -213,6 +242,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
+      sessionId: TEST_SESSION_ID,
       _sleep: () => Promise.resolve(),
     });
     await proc.run();
@@ -230,7 +260,14 @@ describe('AmygdalaProcess', () => {
     const stm = makeStm(entries);
     const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events, maxBatchSize: 10 });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+      maxBatchSize: 10,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -252,7 +289,13 @@ describe('AmygdalaProcess', () => {
     events.on('amygdala:cycle:start', cycleStart);
     events.on('amygdala:cycle:end', cycleEnd);
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     expect(cycleStart).toHaveBeenCalledOnce();
@@ -275,7 +318,13 @@ describe('AmygdalaProcess', () => {
     const scored = vi.fn();
     events.on('amygdala:entry:scored', scored);
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     expect(scored).toHaveBeenCalledOnce();
@@ -296,7 +345,13 @@ describe('AmygdalaProcess', () => {
     const stm = makeStm([entry]);
     const llmAdapter = makeLlmAdapter();
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -314,6 +369,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
+      sessionId: TEST_SESSION_ID,
       maxLLMCallsPerHour: 0,
     });
     await process.run();
@@ -342,6 +398,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
+      sessionId: TEST_SESSION_ID,
       _sleep: () => Promise.resolve(),
     });
 
@@ -362,7 +419,13 @@ describe('AmygdalaProcess', () => {
     const stm = makeStm([entry]);
     const llmAdapter = makeLlmAdapter({ action: 'skip', importanceScore: 0.1, reasoning: 'noise' });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -381,10 +444,96 @@ describe('AmygdalaProcess', () => {
       reasoning: 'supersedes old memory',
     });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events });
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(ltm.relate).toHaveBeenCalledWith({ fromId: 42, toId: 5, type: 'supersedes' });
+  });
+
+  it('3.1 inserted LTM record has sessionId matching AmygdalaConfig.sessionId', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events, sessionId: 'session-xyz' });
+    await process.run();
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(ltm.insert).toHaveBeenCalledWith(
+      entry.summary,
+      expect.objectContaining({ sessionId: 'session-xyz' }),
+    );
+  });
+
+  it('3.2 inserted LTM record has episodeSummary matching InsightEntry.summary', async () => {
+    const entry = makeEntry({ summary: 'User prefers dark mode' });
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.6, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(ltm.insert).toHaveBeenCalledWith(
+      entry.summary,
+      expect.objectContaining({ episodeSummary: 'User prefers dark mode' }),
+    );
+  });
+
+  it('3.3 context file safeToDelete is true after successful insert', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    expect(entry.safeToDelete).toBe(true);
+  });
+
+  it('3.4 context file safeToDelete remains false after failed LTM write', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm({
+      insert: vi.fn().mockRejectedValue(new Error('LTM write failed')),
+    });
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    try {
+      await process.run();
+    } catch {
+      // expected: LTM write failure propagates out of run()
+    }
+
+    expect(entry.safeToDelete).not.toBe(true);
   });
 });
