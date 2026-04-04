@@ -1,10 +1,12 @@
 # Pending Work: Human-Like Agent Memory
 
-All original improvements from the design phase are implemented. This document tracks only what remains.
+All original improvements from the design phase are implemented. This document tracks only what remains, grouped by planned spec and ordered by implementation dependency.
 
 ---
 
-## Pending Implementation
+## Change 1: `ltm-schema-extensions`
+
+_Implement first. One SQLite migration adding 3 columns; all downstream changes write to these fields._
 
 ### 1. `sessionId` as a schema column on `LtmRecord`
 
@@ -58,7 +60,23 @@ export const LtmCategory = {
 - Context files are marked `safeToDelete = true` immediately after amygdala writes `episodeSummary`
 - Hippocampus deletion logic simplified: delete all `safeToDelete = true` files without cross-referencing LTM records
 
-### 4. Importance-gated direct semantic promotion for singleton episodics
+### 4. Direct semantic seeding path
+
+**Rationale:** `ltm.insert()` and `ltm.bulkInsert()` are hardcoded to `tier: 'episodic'`. There is no way to bootstrap an agent with pre-existing world knowledge (domain facts, project conventions) without routing through the full STM → amygdala pipeline.
+
+**Changes required:**
+
+- Expose `tier?: 'episodic' | 'semantic'` on `LtmInsertOptions`
+- When `tier === 'semantic'`, default `confidence` to `1.0` if omitted
+- Throw if `tier === 'semantic'` is used via `bulkInsert` without `confidence`
+
+---
+
+## Change 2: `amygdala-improvements`
+
+_Implement after `ltm-schema-extensions`. Writes to `sessionId`, `episodeSummary`, and `tags` fields added in Change 1._
+
+### 5. Importance-gated direct semantic promotion for singleton episodics
 
 **Rationale:** The `minClusterSize = 3` gate in `findConsolidationCandidates` means any episodic with fewer than 3 near-neighbors decays and is hard-deleted by `prune()` with no semantic promotion path — even if its importance score is high. A single critical fact stated once (e.g. "user has a nut allergy") will be lost.
 
@@ -67,26 +85,7 @@ export const LtmCategory = {
 - In amygdala `applyAction`: if `importanceScore >= singletonPromotionThreshold` and the LTM relatedness check finds no existing related memory, insert directly as `tier: 'semantic'` rather than `tier: 'episodic'`
 - Add `singletonPromotionThreshold?: number` to `AmygdalaConfig` (default: `0.7`)
 
-### 5. Direct semantic seeding path
-
-**Rationale:** `ltm.insert()` and `ltm.bulkInsert()` are hardcoded to `tier: 'episodic'`. There is no way to bootstrap an agent with pre-existing world knowledge (domain facts, project conventions) without routing through the full STM → amygdala pipeline.
-
-**Changes required:**
-
-- Expose `tier?: 'episodic' | 'semantic'` on `LtmInsertOptions`
-- When `tier === 'semantic'`, require `confidence` in metadata (default `1.0` if omitted)
-- Throw if `tier === 'semantic'` is passed without `confidence`
-
-### 6. Temporal proximity constraint in hippocampus clustering
-
-**Rationale:** `findConsolidationCandidates` clusters by cosine similarity only. Episodics from different time periods can be consolidated together, destroying temporal distinctness — which is the primary value of episodic memory.
-
-**Changes required:**
-
-- Add `maxCreatedAtSpreadDays?: number` to `FindConsolidationOptions` (default: `30`)
-- Clusters where `max(createdAt) - min(createdAt)` exceeds the threshold are split at the temporal gap before the LLM consolidation call
-
-### 7. Tags wired from STM to LTM
+### 6. Tags wired from STM to LTM
 
 **Rationale:** `InsightEntry.tags` (agent-supplied tags like `['behavioral']`) are consumed by amygdala only for internal filtering and are never written to `LtmRecord`. Agent-supplied tags are silently dropped.
 
@@ -94,6 +93,21 @@ export const LtmCategory = {
 
 - Amygdala writes the original `entry.tags` (minus internal tags: `permanently_skipped`, `llm_rate_limited`) to `LtmRecord.metadata.tags` at insert time
 - `LtmQueryOptions` gains `tags?: string[]` as an array filter (matches records containing all specified tags)
+
+---
+
+## Change 3: `hippocampus-improvements`
+
+_Independent of Changes 1 and 2. Can be implemented in parallel._
+
+### 7. Temporal proximity constraint in hippocampus clustering
+
+**Rationale:** `findConsolidationCandidates` clusters by cosine similarity only. Episodics from different time periods can be consolidated together, destroying temporal distinctness — which is the primary value of episodic memory.
+
+**Changes required:**
+
+- Add `maxCreatedAtSpreadDays?: number` to `FindConsolidationOptions` (default: `30`)
+- Clusters where `max(createdAt) - min(createdAt)` exceeds the threshold are split at the temporal gap before the LLM consolidation call
 
 ---
 
