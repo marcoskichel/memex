@@ -1,0 +1,15 @@
+scopes:
+  - name: ltm
+    path: packages/ltm
+  - name: stm
+    path: packages/stm
+  - name: amygdala
+    path: packages/amygdala
+  - name: hippocampus
+    path: packages/hippocampus
+  - name: memory
+    path: packages/memory
+  - name: eslint-config
+    path: packages/eslint-config
+  - name: typescript-config
+    path: packages/typescript-config
