@@ -17,6 +17,9 @@ function makeRecord(overrides: Partial<Omit<LtmRecord, 'id'>> = {}): Omit<LtmRec
     createdAt: overrides.createdAt ?? new Date(),
     tombstoned: overrides.tombstoned ?? false,
     tombstonedAt: overrides.tombstonedAt ?? undefined,
+    sessionId: overrides.sessionId ?? 'test-session',
+    ...(overrides.category !== undefined && { category: overrides.category }),
+    ...(overrides.episodeSummary !== undefined && { episodeSummary: overrides.episodeSummary }),
   };
 }
 

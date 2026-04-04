@@ -1,3 +1,5 @@
+import type Database from 'better-sqlite3';
+
 import type { LtmEdge, LtmRecord } from './storage-adapter.js';
 
 export const FLOAT32_BYTES = 4;
@@ -43,6 +45,26 @@ CREATE VIRTUAL TABLE IF NOT EXISTS ltm_records_fts USING fts5(
 );
 `;
 
+const V2_MIGRATION = [
+  `ALTER TABLE records ADD COLUMN session_id TEXT NOT NULL DEFAULT 'legacy'`,
+  `ALTER TABLE records ADD COLUMN category TEXT`,
+  `ALTER TABLE records ADD COLUMN episode_summary TEXT`,
+  `CREATE INDEX IF NOT EXISTS idx_ltm_session_tier_created ON records(session_id, tier, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_ltm_category ON records(category)`,
+];
+
+export function runMigrations(db: Database.Database): void {
+  const version = db.pragma('user_version', { simple: true }) as number;
+  if (version < 2) {
+    db.transaction(() => {
+      for (const sql of V2_MIGRATION) {
+        db.exec(sql);
+      }
+      db.pragma('user_version = 2');
+    })();
+  }
+}
+
 export function rowToRecord(row: Record<string, unknown>): LtmRecord {
   const embeddingBuf = row.embedding as Buffer | undefined;
   return {
@@ -68,6 +90,9 @@ export function rowToRecord(row: Record<string, unknown>): LtmRecord {
     createdAt: new Date(row.created_at as number),
     tombstoned: (row.tombstoned as number) === 1,
     tombstonedAt: row.tombstoned_at ? new Date(row.tombstoned_at as number) : undefined,
+    sessionId: (row.session_id as string | undefined) ?? 'legacy',
+    ...(row.category != undefined && { category: row.category as string }),
+    ...(row.episode_summary != undefined && { episodeSummary: row.episode_summary as string }),
   };
 }
 
