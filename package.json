@@ -28,6 +28,11 @@
     "node": ">=22"
   },
   "packageManager": "pnpm@10.11.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
   "devDependencies": {
     "@exodus/openspec": "^1.2.6",
     "@neurokit/eslint-config": "workspace:*",
