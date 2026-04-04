@@ -1,0 +1,5 @@
+scopes:
+  - name: amygdala
+    path: packages/amygdala
+  - name: ltm
+    path: packages/ltm
