@@ -12,7 +12,35 @@ export interface LtmQueryOptions {
   minStability?: number;
   minAccessCount?: number;
   sort?: 'confidence' | 'recency' | 'stability' | 'importance';
+  sessionId?: string;
+  category?: string;
 }
+
+export interface LtmInsertOptions {
+  importance?: number;
+  metadata?: Record<string, unknown>;
+  tier?: 'episodic' | 'semantic';
+  sessionId?: string;
+  category?: string;
+  episodeSummary?: string;
+}
+
+export interface LtmBulkInsertEntry {
+  data: string;
+  importance?: number;
+  metadata?: Record<string, unknown>;
+  tier?: 'episodic' | 'semantic';
+  sessionId?: string;
+  category?: string;
+  episodeSummary?: string;
+}
+
+export const LtmCategory = {
+  USER_PREFERENCE: 'user_preference',
+  WORLD_FACT: 'world_fact',
+  TASK_CONTEXT: 'task_context',
+  AGENT_BELIEF: 'agent_belief',
+} as const;
 
 export interface LtmQueryResult {
   record: LtmRecord;

@@ -19,6 +19,9 @@ function reembedSequential(state: ReembedState): ResultAsync<{ reembedded: numbe
     return okAsync({ reembedded });
   }
   const record = records[index];
+  if (!record) {
+    return okAsync({ reembedded });
+  }
   return adapter.embed(record.data).andThen((result) => {
     storage.updateEmbedding(record.id, {
       embedding: result.vector,

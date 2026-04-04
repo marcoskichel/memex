@@ -3,6 +3,7 @@ import type { ResultAsync } from 'neverthrow';
 import type { ConsolidateParams } from './core/consolidate-helpers.js';
 import {
   buildEpisodicRecord,
+  buildSemanticRecord,
   loadSources,
   persistConsolidatedRecord,
 } from './core/consolidate-helpers.js';
@@ -23,8 +24,10 @@ import {
 import { initialStability } from './core/stability-manager.js';
 import type {
   ConsolidateRequest,
+  LtmBulkInsertEntry,
   LtmEngineOptions,
   LtmEngineStats,
+  LtmInsertOptions,
   LtmQueryError,
   LtmQueryOptions,
   LtmQueryResult,
@@ -33,13 +36,16 @@ import type {
 export type {
   ConsolidateOptions,
   ConsolidateRequest,
+  LtmBulkInsertEntry,
   LtmEngineOptions,
   LtmEngineStats,
+  LtmInsertOptions,
   LtmQueryError,
   LtmQueryOptions,
   LtmQueryResult,
   RelateParams,
 } from './ltm-engine-types.js';
+export { LtmCategory } from './ltm-engine-types.js';
 export { findLiveRecord } from './core/query-helpers.js';
 import type { LtmRecord, StorageAdapter, TombstonedRecord } from './storage/storage-adapter.js';
 
@@ -56,42 +62,47 @@ export class LtmEngine {
     this.eventTarget = options.eventTarget ?? new EventTarget();
   }
 
-  async insert(
-    data: string,
-    insertOptions?: { importance?: number; metadata?: Record<string, unknown> },
-  ): Promise<number> {
+  async insert(data: string, insertOptions?: LtmInsertOptions): Promise<number> {
     const importance = insertOptions?.importance ?? 0;
     const embedResult = await this.embeddingAdapter.embed(data);
     const embedData = embedResult._unsafeUnwrap();
-    return this.storage.insertRecord(
-      buildEpisodicRecord({
-        data,
-        metadata: insertOptions?.metadata ?? {},
-        embedding: embedData.vector,
-        modelId: embedData.modelId,
-        dimensions: embedData.dimensions,
-        importance,
+    const base = {
+      data,
+      metadata: insertOptions?.metadata ?? {},
+      embedding: embedData.vector,
+      modelId: embedData.modelId,
+      dimensions: embedData.dimensions,
+      importance,
+      ...(insertOptions?.sessionId !== undefined && { sessionId: insertOptions.sessionId }),
+      ...(insertOptions?.category !== undefined && { category: insertOptions.category }),
+      ...(insertOptions?.episodeSummary !== undefined && {
+        episodeSummary: insertOptions.episodeSummary,
       }),
-    );
+    };
+    const record =
+      insertOptions?.tier === 'semantic' ? buildSemanticRecord(base) : buildEpisodicRecord(base);
+    return this.storage.insertRecord(record);
   }
 
-  async bulkInsert(
-    entries: { data: string; importance?: number; metadata?: Record<string, unknown> }[],
-  ): Promise<number[]> {
+  async bulkInsert(entries: LtmBulkInsertEntry[]): Promise<number[]> {
     const records: Omit<LtmRecord, 'id'>[] = [];
     for (const entry of entries) {
       const importance = entry.importance ?? 0;
       const embedResult = await this.embeddingAdapter.embed(entry.data);
       const embedData = embedResult._unsafeUnwrap();
+      const base = {
+        data: entry.data,
+        metadata: entry.metadata ?? {},
+        embedding: embedData.vector,
+        modelId: embedData.modelId,
+        dimensions: embedData.dimensions,
+        importance,
+        ...(entry.sessionId !== undefined && { sessionId: entry.sessionId }),
+        ...(entry.category !== undefined && { category: entry.category }),
+        ...(entry.episodeSummary !== undefined && { episodeSummary: entry.episodeSummary }),
+      };
       records.push(
-        buildEpisodicRecord({
-          data: entry.data,
-          metadata: entry.metadata ?? {},
-          embedding: embedData.vector,
-          modelId: embedData.modelId,
-          dimensions: embedData.dimensions,
-          importance,
-        }),
+        entry.tier === 'semantic' ? buildSemanticRecord(base) : buildEpisodicRecord(base),
       );
     }
     return this.storage.bulkInsertRecords(records);

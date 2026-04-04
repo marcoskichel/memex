@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-import { rowToEdge, rowToRecord, SCHEMA } from './sqlite-schema.js';
+import { rowToEdge, rowToRecord, runMigrations, SCHEMA } from './sqlite-schema.js';
 import type {
   LtmEdge,
   LtmRecord,
@@ -19,6 +19,7 @@ export class SqliteAdapter implements StorageAdapter {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('synchronous = NORMAL');
     this.db.exec(SCHEMA);
+    runMigrations(this.db);
   }
 
   insertRecord(record: Omit<LtmRecord, 'id'>): number {
@@ -28,8 +29,8 @@ export class SqliteAdapter implements StorageAdapter {
       record.embedding.byteLength,
     );
     const stmt = this.db.prepare(`
-      INSERT INTO records (data, metadata, embedding, embedding_model_id, embedding_dimensions, tier, importance, stability, last_accessed_at, access_count, created_at, tombstoned, tombstoned_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO records (data, metadata, embedding, embedding_model_id, embedding_dimensions, tier, importance, stability, last_accessed_at, access_count, created_at, tombstoned, tombstoned_at, session_id, category, episode_summary)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       record.data,
@@ -45,6 +46,9 @@ export class SqliteAdapter implements StorageAdapter {
       record.createdAt.getTime(),
       record.tombstoned ? 1 : 0,
       record.tombstonedAt ? record.tombstonedAt.getTime() : undefined,
+      record.sessionId,
+      record.category ?? undefined,
+      record.episodeSummary ?? undefined,
     );
     const id = result.lastInsertRowid as number;
     this.db.prepare('INSERT INTO ltm_records_fts(rowid, data) VALUES (?, ?)').run(id, record.data);

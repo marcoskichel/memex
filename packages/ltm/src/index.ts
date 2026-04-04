@@ -28,10 +28,12 @@ export { SqliteAdapter } from './storage/sqlite-adapter.js';
 export { TransformersJsAdapter } from './adapters/transformers-js-adapter.js';
 export { OpenAIEmbeddingAdapter } from './adapters/openai-embedding-adapter.js';
 
-export { LtmEngine } from './ltm-engine.js';
+export { LtmCategory, LtmEngine } from './ltm-engine.js';
 export type {
   ConsolidateOptions,
+  LtmBulkInsertEntry,
   LtmEngineStats,
+  LtmInsertOptions,
   LtmQueryError,
   LtmQueryOptions,
   LtmQueryResult,

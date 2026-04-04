@@ -27,6 +27,14 @@ export function filterCandidates(records: LtmRecord[], options: LtmQueryOptions)
     const minAccessCount = options.minAccessCount;
     candidates = candidates.filter((record) => record.accessCount >= minAccessCount);
   }
+  if (options.sessionId !== undefined) {
+    const sessionId = options.sessionId;
+    candidates = candidates.filter((record) => record.sessionId === sessionId);
+  }
+  if (options.category !== undefined) {
+    const category = options.category;
+    candidates = candidates.filter((record) => record.category === category);
+  }
   return candidates;
 }
 

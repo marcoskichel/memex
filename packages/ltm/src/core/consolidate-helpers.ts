@@ -23,10 +23,23 @@ export interface EpisodicRecordParams {
   modelId: string;
   dimensions: number;
   importance: number;
+  sessionId?: string;
+  category?: string;
+  episodeSummary?: string;
 }
 
 export function buildEpisodicRecord(params: EpisodicRecordParams): Omit<LtmRecord, 'id'> {
-  const { data, metadata, embedding, modelId, dimensions, importance } = params;
+  const {
+    data,
+    metadata,
+    embedding,
+    modelId,
+    dimensions,
+    importance,
+    sessionId,
+    category,
+    episodeSummary,
+  } = params;
   const now = new Date();
   return {
     data,
@@ -41,6 +54,43 @@ export function buildEpisodicRecord(params: EpisodicRecordParams): Omit<LtmRecor
     createdAt: now,
     tombstoned: false,
     tombstonedAt: undefined,
+    sessionId: sessionId ?? 'legacy',
+    ...(category !== undefined && { category }),
+    ...(episodeSummary !== undefined && { episodeSummary }),
+  };
+}
+
+export interface SemanticRecordParams {
+  data: string;
+  metadata: Record<string, unknown>;
+  embedding: Float32Array;
+  modelId: string;
+  dimensions: number;
+  importance: number;
+  sessionId?: string;
+  category?: string;
+}
+
+export function buildSemanticRecord(params: SemanticRecordParams): Omit<LtmRecord, 'id'> {
+  const { data, metadata, embedding, modelId, dimensions, importance, sessionId, category } =
+    params;
+  const confidence = (metadata.confidence as number | undefined) ?? 1;
+  const now = new Date();
+  return {
+    data,
+    metadata: { ...metadata, confidence },
+    embedding,
+    embeddingMeta: { modelId, dimensions },
+    tier: 'semantic',
+    importance,
+    stability: initialStability(importance),
+    lastAccessedAt: now,
+    accessCount: 0,
+    createdAt: now,
+    tombstoned: false,
+    tombstonedAt: undefined,
+    sessionId: sessionId ?? 'legacy',
+    ...(category !== undefined && { category }),
   };
 }
 
@@ -95,6 +145,7 @@ function insertConsolidatedRecord(params: InsertConsolidatedParams): number {
     createdAt: now,
     tombstoned: false,
     tombstonedAt: undefined,
+    sessionId: 'legacy',
   });
 }
 
