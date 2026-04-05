@@ -26,7 +26,7 @@ const okResult = (value: unknown) => ({ isOk: () => true, isErr: () => false, va
 
 function makeLtm(overrides: Record<string, unknown> = {}): LtmEngine {
   return {
-    insert: vi.fn().mockResolvedValue(42),
+    insert: vi.fn().mockReturnValue(okAsync(42)),
     relate: vi.fn().mockReturnValue(1),
     query: vi.fn().mockReturnValue(okResult([])),
     storage: {
@@ -518,7 +518,7 @@ describe('AmygdalaProcess', () => {
   it('3.4 context file safeToDelete remains false after failed LTM write', async () => {
     const entry = makeEntry();
     const ltm = makeLtm({
-      insert: vi.fn().mockRejectedValue(new Error('LTM write failed')),
+      insert: vi.fn().mockReturnValue(errAsync({ type: 'EMBED_API_UNAVAILABLE', cause: 'test' })),
     });
     const stm = makeStm([entry]);
     const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
@@ -530,11 +530,7 @@ describe('AmygdalaProcess', () => {
       events,
       sessionId: TEST_SESSION_ID,
     });
-    try {
-      await process.run();
-    } catch {
-      // expected: LTM write failure propagates out of run()
-    }
+    await process.run();
 
     expect(entry.safeToDelete).not.toBe(true);
   });

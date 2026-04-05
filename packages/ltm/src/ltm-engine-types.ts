@@ -89,3 +89,5 @@ export interface ConsolidateRequest {
   data: string;
   options?: ConsolidateOptions;
 }
+
+export type LtmInsertError = EmbedError;
