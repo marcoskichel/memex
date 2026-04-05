@@ -5,6 +5,7 @@ The source project is a single Python file (`ai_db_engine.py`) that combines a P
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Faithful port of the embedding model (character-level feed-forward, mean pooling, two linear layers with ReLU)
 - Preserve all CRUD operations: insert, bulk-insert, update, delete
 - Preserve cosine-similarity query with heuristic NL filters (amount threshold, "last week")
@@ -12,6 +13,7 @@ The source project is a single Python file (`ai_db_engine.py`) that combines a P
 - Unit-tested with Vitest
 
 **Non-Goals:**
+
 - HTTP / REST layer (the original FastAPI app) — callers integrate directly via the package API
 - Persistent storage — in-memory only for now
 - Pre-trained weights — random weights (same as the prototype)
