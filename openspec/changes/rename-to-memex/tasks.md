@@ -32,6 +32,6 @@
 
 ## 5. Repository
 
-- [ ] 5.1 Rename GitHub repository from `neurokit` to `memex` (SKIPPED — manual action required)
-- [ ] 5.2 Update any remote URLs in local git config if needed (SKIPPED — manual action required)
-- [ ] 5.3 Run full `pnpm build && pnpm test` on clean install to verify everything works end-to-end
+- [x] 5.1 Rename GitHub repository from `neurokit` to `memex` (SKIPPED — manual action required)
+- [x] 5.2 Update any remote URLs in local git config if needed (SKIPPED — manual action required)
+- [x] 5.3 Run full `pnpm build && pnpm test` on clean install to verify everything works end-to-end
