@@ -1,12 +1,11 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-
 import type { LLMAdapter } from '@neurokit/llm';
 import type { LtmEngine } from '@neurokit/ltm';
 import type { InsightLog } from '@neurokit/stm';
 
+import { deleteContextFiles } from './context-file-cleanup.js';
 import type { ConsolidationResult } from './hippocampus-schema.js';
 import { consolidationSchema, SYSTEM_PROMPT } from './hippocampus-schema.js';
+import { splitByTemporalProximity } from './temporal-split.js';
 
 export type { ConsolidationResult } from './hippocampus-schema.js';
 
@@ -23,6 +22,7 @@ export interface HippocampusConfig {
   minClusterSize?: number;
   minAccessCount?: number;
   maxLLMCallsPerHour?: number;
+  maxCreatedAtSpreadDays?: number | undefined;
   events?: EventBus;
   contextDir?: string;
   stm?: InsightLog;
@@ -46,6 +46,7 @@ const DEFAULT_SIMILARITY_THRESHOLD = 0.85;
 const DEFAULT_MIN_CLUSTER_SIZE = 3;
 const DEFAULT_MIN_ACCESS_COUNT = 2;
 const DEFAULT_MAX_LLM_CALLS_PER_HOUR = 200;
+const DEFAULT_MAX_CREATED_AT_SPREAD_DAYS = 30;
 const RETRY_DELAY_MS = 1000;
 const MIN_RETENTION_FOR_PRUNE = 0.1;
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
@@ -67,6 +68,7 @@ export class HippocampusProcess {
   private minClusterSize: number;
   private minAccessCount: number;
   private maxLLMCallsPerHour: number;
+  private maxCreatedAtSpreadDays: number | undefined;
   private events: EventBus;
   private contextDir: string | undefined;
   private stm: InsightLog | undefined;
@@ -83,6 +85,10 @@ export class HippocampusProcess {
     this.minClusterSize = config.minClusterSize ?? DEFAULT_MIN_CLUSTER_SIZE;
     this.minAccessCount = config.minAccessCount ?? DEFAULT_MIN_ACCESS_COUNT;
     this.maxLLMCallsPerHour = config.maxLLMCallsPerHour ?? DEFAULT_MAX_LLM_CALLS_PER_HOUR;
+    this.maxCreatedAtSpreadDays =
+      'maxCreatedAtSpreadDays' in config
+        ? config.maxCreatedAtSpreadDays
+        : DEFAULT_MAX_CREATED_AT_SPREAD_DAYS;
     this.events = config.events ?? { emit: () => false, on: () => false };
     this.contextDir = config.contextDir;
     this.stm = config.stm;
@@ -133,7 +139,10 @@ export class HippocampusProcess {
       clustersConsolidated = await this.consolidationPass();
       const pruneResult = this.ltm.prune({ minRetention: MIN_RETENTION_FOR_PRUNE });
       recordsPruned = pruneResult.pruned;
-      contextFilesDeleted = await this.deleteContextFiles();
+      contextFilesDeleted = await deleteContextFiles({
+        stm: this.stm,
+        contextDir: this.contextDir,
+      });
     } finally {
       storage.releaseLock?.('hippocampus');
       this.events.emit('hippocampus:consolidation:end', {
@@ -155,10 +164,14 @@ export class HippocampusProcess {
   }
 
   private async consolidationPass(): Promise<number> {
-    const clusters = this.ltm.findConsolidationCandidates({
+    const rawClusters = this.ltm.findConsolidationCandidates({
       similarityThreshold: this.similarityThreshold,
       minAccessCount: this.minAccessCount,
     });
+
+    const clusters = rawClusters.flatMap((cluster) =>
+      splitByTemporalProximity(cluster, this.maxCreatedAtSpreadDays),
+    );
 
     let consolidated = 0;
 
@@ -233,42 +246,6 @@ export class HippocampusProcess {
     }
     lines.push('Consolidate these episodes into a single semantic memory.');
     return lines.join('\n');
-  }
-
-  private async deleteContextFiles(): Promise<number> {
-    if (this.stm) {
-      const safeEntries = this.stm.allEntries().filter((entry) => entry.safeToDelete === true);
-      let deleted = 0;
-      for (const entry of safeEntries) {
-        const unlinked = await fs
-          .unlink(entry.contextFile)
-          .then(() => true)
-          .catch(() => false);
-        if (unlinked) {
-          deleted++;
-        }
-      }
-      return deleted;
-    }
-    if (!this.contextDir) {
-      return 0;
-    }
-    let deleted = 0;
-    const sessionDirectories = await fs.readdir(this.contextDir).catch(() => [] as string[]);
-    for (const sessionDirectory of sessionDirectories) {
-      const sessionPath = path.join(this.contextDir, sessionDirectory);
-      const files = await fs.readdir(sessionPath).catch(() => [] as string[]);
-      for (const file of files) {
-        const unlinked = await fs
-          .unlink(path.join(sessionPath, file))
-          .then(() => true)
-          .catch(() => false);
-        if (unlinked) {
-          deleted++;
-        }
-      }
-    }
-    return deleted;
   }
 
   private delay(ms: number): Promise<void> {

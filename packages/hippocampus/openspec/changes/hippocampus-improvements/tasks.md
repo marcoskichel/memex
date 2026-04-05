@@ -4,7 +4,7 @@ This change depends on `ltm-schema-extensions` being merged first. Do not begin 
 
 ## Tasks
 
-### Task 1: Add maxCreatedAtSpreadDays to FindConsolidationOptions and HippocampusConfig
+### Task 1: Add maxCreatedAtSpreadDays to FindConsolidationOptions and HippocampusConfig [x]
 
 **File:** `packages/hippocampus/src/hippocampus-schema.ts`
 
@@ -21,7 +21,7 @@ This change depends on `ltm-schema-extensions` being merged first. Do not begin 
 
 ---
 
-### Task 2: Implement temporal cluster splitting in consolidationPass
+### Task 2: Implement temporal cluster splitting in consolidationPass [x]
 
 **File:** `packages/hippocampus/src/hippocampus-process.ts`
 
@@ -47,7 +47,7 @@ This change depends on `ltm-schema-extensions` being merged first. Do not begin 
 
 ---
 
-### Task 3: Wire maxCreatedAtSpreadDays into findConsolidationCandidates call
+### Task 3: Wire maxCreatedAtSpreadDays into findConsolidationCandidates call [x]
 
 **File:** `packages/hippocampus/src/hippocampus-process.ts`
 
