@@ -315,6 +315,34 @@ importers:
 
   packages/typescript-config: {}
 
+  synapses/afferent:
+    dependencies:
+      '@memex/cortex':
+        specifier: workspace:*
+        version: link:../../packages/cortex
+    devDependencies:
+      '@memex/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@memex/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
+
   synapses/claude-hooks:
     dependencies:
       '@memex/cortex':
@@ -326,6 +354,34 @@ importers:
       zod:
         specifier: ^3.0.0
         version: 3.25.76
+    devDependencies:
+      '@memex/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@memex/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
+
+  synapses/memex-observer:
+    dependencies:
+      '@memex/cortex':
+        specifier: workspace:*
+        version: link:../../packages/cortex
     devDependencies:
       '@memex/eslint-config':
         specifier: workspace:*

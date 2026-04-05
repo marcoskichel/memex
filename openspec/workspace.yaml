@@ -19,3 +19,5 @@ scopes:
     path: synapses/claude-hooks
   - name: memex-tui
     path: synapses/memex-tui
+  - name: afferent
+    path: synapses/afferent
