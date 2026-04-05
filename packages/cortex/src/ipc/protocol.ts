@@ -1,6 +1,11 @@
 import type { Memory, MemoryEvents } from '@memex/memory';
 
+const VALID_SESSION_ID = /^[\da-z][\w-]{0,127}$/i;
+
 export function IPC_SOCKET_PATH(sessionId: string): string {
+  if (!VALID_SESSION_ID.test(sessionId)) {
+    throw new Error(`Invalid sessionId: ${sessionId}`);
+  }
   return `/tmp/memex-${sessionId}.sock`;
 }
 
