@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { AmygdalaProcess } from '@neurokit/amygdala';
 import type { HippocampusProcess } from '@neurokit/hippocampus';
 import type { LtmEngine, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@neurokit/ltm';
-import type { InsightLog } from '@neurokit/stm';
+import type { InsightLogLike } from '@neurokit/stm';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';
@@ -27,7 +27,7 @@ export interface MemoryImplDeps {
   sessionId: string;
   events: MemoryEventEmitter;
   ltm: LtmEngine;
-  stm: InsightLog;
+  stm: InsightLogLike;
   amygdala: AmygdalaProcess;
   hippocampus: HippocampusProcess;
   contextDirectory: string;
@@ -38,7 +38,7 @@ export class MemoryImpl implements Memory {
   readonly events: MemoryEventEmitter;
 
   private ltm: LtmEngine;
-  private stm: InsightLog;
+  private stm: InsightLogLike;
   private amygdala: AmygdalaProcess;
   private hippocampus: HippocampusProcess;
   private contextDirectory: string;

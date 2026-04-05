@@ -1,6 +1,7 @@
 import type { LLMAdapter } from '@neurokit/llm';
 import type { EmbeddingAdapter, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@neurokit/ltm';
 import type { LtmEngine } from '@neurokit/ltm';
+import type { InsightLogLike } from '@neurokit/stm';
 import type { ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';
@@ -21,6 +22,7 @@ export interface MemoryConfig {
   contextDirectory?: string;
   llmAdapter: LLMAdapter;
   embeddingAdapter?: EmbeddingAdapter;
+  stm?: InsightLogLike;
   compressionThreshold?: number;
   amygdalaCadenceMs?: number;
   hippocampusScheduleMs?: number;

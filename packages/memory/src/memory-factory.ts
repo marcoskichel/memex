@@ -7,6 +7,7 @@ import { AmygdalaProcess } from '@neurokit/amygdala';
 import { HippocampusProcess } from '@neurokit/hippocampus';
 import type { EmbeddingAdapter } from '@neurokit/ltm';
 import { LtmEngine, SqliteAdapter, TransformersJsAdapter } from '@neurokit/ltm';
+import type { InsightLogLike } from '@neurokit/stm';
 import { InsightLog } from '@neurokit/stm';
 
 import { MemoryEventEmitter } from './memory-events.js';
@@ -16,7 +17,7 @@ import { DEFAULT_MAX_TOKENS } from './memory-types.js';
 
 function buildAmygdala(
   config: MemoryConfig,
-  deps: { ltm: LtmEngine; stm: InsightLog; events: MemoryEventEmitter; sessionId: string },
+  deps: { ltm: LtmEngine; stm: InsightLogLike; events: MemoryEventEmitter; sessionId: string },
 ): AmygdalaProcess {
   return new AmygdalaProcess({
     ltm: deps.ltm,
@@ -54,7 +55,7 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
   const storage = new SqliteAdapter(config.storagePath);
   const embeddingAdapter: EmbeddingAdapter = config.embeddingAdapter ?? new TransformersJsAdapter();
   const ltm = new LtmEngine({ storage, embeddingAdapter });
-  const stm = new InsightLog();
+  const stm = config.stm ?? new InsightLog();
   const sessionId = config.sessionId ?? randomUUID();
   const contextDirectory =
     config.contextDirectory ?? path.join(path.dirname(config.storagePath), 'context');
