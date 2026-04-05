@@ -1,4 +1,4 @@
-import type { ResultAsync } from 'neverthrow';
+import { okAsync, type ResultAsync } from 'neverthrow';
 
 import type { ConsolidateParams } from './core/consolidate-helpers.js';
 import {
@@ -27,6 +27,7 @@ import type {
   LtmBulkInsertEntry,
   LtmEngineOptions,
   LtmEngineStats,
+  LtmInsertError,
   LtmInsertOptions,
   LtmQueryError,
   LtmQueryOptions,
@@ -39,6 +40,7 @@ export type {
   LtmBulkInsertEntry,
   LtmEngineOptions,
   LtmEngineStats,
+  LtmInsertError,
   LtmInsertOptions,
   LtmQueryError,
   LtmQueryOptions,
@@ -62,34 +64,52 @@ export class LtmEngine {
     this.eventTarget = options.eventTarget ?? new EventTarget();
   }
 
-  async insert(data: string, insertOptions?: LtmInsertOptions): Promise<number> {
+  insert(data: string, insertOptions?: LtmInsertOptions): ResultAsync<number, LtmInsertError> {
     const importance = insertOptions?.importance ?? 0;
-    const embedResult = await this.embeddingAdapter.embed(data);
-    const embedData = embedResult._unsafeUnwrap();
-    const base = {
-      data,
-      metadata: insertOptions?.metadata ?? {},
-      embedding: embedData.vector,
-      modelId: embedData.modelId,
-      dimensions: embedData.dimensions,
-      importance,
-      ...(insertOptions?.sessionId !== undefined && { sessionId: insertOptions.sessionId }),
-      ...(insertOptions?.category !== undefined && { category: insertOptions.category }),
-      ...(insertOptions?.episodeSummary !== undefined && {
-        episodeSummary: insertOptions.episodeSummary,
-      }),
-    };
-    const record =
-      insertOptions?.tier === 'semantic' ? buildSemanticRecord(base) : buildEpisodicRecord(base);
-    return this.storage.insertRecord(record);
+    return this.embeddingAdapter.embed(data).map((embedData) => {
+      const base = {
+        data,
+        metadata: insertOptions?.metadata ?? {},
+        embedding: embedData.vector,
+        modelId: embedData.modelId,
+        dimensions: embedData.dimensions,
+        importance,
+        ...(insertOptions?.sessionId !== undefined && { sessionId: insertOptions.sessionId }),
+        ...(insertOptions?.category !== undefined && { category: insertOptions.category }),
+        ...(insertOptions?.episodeSummary !== undefined && {
+          episodeSummary: insertOptions.episodeSummary,
+        }),
+      };
+      const record =
+        insertOptions?.tier === 'semantic' ? buildSemanticRecord(base) : buildEpisodicRecord(base);
+      return this.storage.insertRecord(record);
+    });
   }
 
-  async bulkInsert(entries: LtmBulkInsertEntry[]): Promise<number[]> {
-    const records: Omit<LtmRecord, 'id'>[] = [];
-    for (const entry of entries) {
-      const importance = entry.importance ?? 0;
-      const embedResult = await this.embeddingAdapter.embed(entry.data);
-      const embedData = embedResult._unsafeUnwrap();
+  bulkInsert(entries: LtmBulkInsertEntry[]): ResultAsync<number[], LtmInsertError> {
+    return this.embedAllEntries(entries).map((records) => this.storage.bulkInsertRecords(records));
+  }
+
+  private embedAllEntries(
+    entries: LtmBulkInsertEntry[],
+  ): ResultAsync<Omit<LtmRecord, 'id'>[], LtmInsertError> {
+    if (entries.length === 0) {
+      return okAsync([]);
+    }
+    const [first, ...rest] = entries;
+    if (!first) {
+      return okAsync([]);
+    }
+    return this.embedEntry(first).andThen((record) =>
+      this.embedAllEntries(rest).map((records) => [record, ...records]),
+    );
+  }
+
+  private embedEntry(
+    entry: LtmBulkInsertEntry,
+  ): ResultAsync<Omit<LtmRecord, 'id'>, LtmInsertError> {
+    const importance = entry.importance ?? 0;
+    return this.embeddingAdapter.embed(entry.data).map((embedData) => {
       const base = {
         data: entry.data,
         metadata: entry.metadata ?? {},
@@ -101,11 +121,8 @@ export class LtmEngine {
         ...(entry.category !== undefined && { category: entry.category }),
         ...(entry.episodeSummary !== undefined && { episodeSummary: entry.episodeSummary }),
       };
-      records.push(
-        entry.tier === 'semantic' ? buildSemanticRecord(base) : buildEpisodicRecord(base),
-      );
-    }
-    return this.storage.bulkInsertRecords(records);
+      return entry.tier === 'semantic' ? buildSemanticRecord(base) : buildEpisodicRecord(base);
+    });
   }
 
   update(id: number, patch: { metadata?: Record<string, unknown> }): boolean {
@@ -173,25 +190,28 @@ export class LtmEngine {
     return findConsolidationCandidates(this.storage, options);
   }
 
-  async consolidate(sourceIds: number[], request: ConsolidateRequest): Promise<number> {
+  consolidate(
+    sourceIds: number[],
+    request: ConsolidateRequest,
+  ): ResultAsync<number, LtmInsertError> {
     const { data, options } = request;
     const sources = loadSources(sourceIds, this.storage);
-    const embedResult = await this.embeddingAdapter.embed(data);
-    const embedData = embedResult._unsafeUnwrap();
-    const params: ConsolidateParams = {
-      sources,
-      sourceIds,
-      data,
-      confidence: options?.confidence ?? 1,
-      preservedFacts: options?.preservedFacts ?? [],
-      uncertainties: options?.uncertainties ?? [],
-      deflate: options?.deflateSourceStability ?? true,
-      embedding: embedData.vector,
-      modelId: embedData.modelId,
-      dimensions: embedData.dimensions,
-      ...(options?.category !== undefined && { category: options.category }),
-    };
-    return persistConsolidatedRecord(params, this.storage);
+    return this.embeddingAdapter.embed(data).map((embedData) => {
+      const params: ConsolidateParams = {
+        sources,
+        sourceIds,
+        data,
+        confidence: options?.confidence ?? 1,
+        preservedFacts: options?.preservedFacts ?? [],
+        uncertainties: options?.uncertainties ?? [],
+        deflate: options?.deflateSourceStability ?? true,
+        embedding: embedData.vector,
+        modelId: embedData.modelId,
+        dimensions: embedData.dimensions,
+        ...(options?.category !== undefined && { category: options.category }),
+      };
+      return persistConsolidatedRecord(params, this.storage);
+    });
   }
 
   prune(pruneOptions?: PruneOptions): { pruned: number; remaining: number } {

@@ -13,7 +13,6 @@ import { InsightLog } from '@memex/stm';
 import { MemoryEventEmitter } from './memory-events.js';
 import { MemoryImpl } from './memory-impl.js';
 import type { CreateMemoryResult, MemoryConfig } from './memory-types.js';
-import { DEFAULT_MAX_TOKENS } from './memory-types.js';
 
 function buildAmygdala(
   config: MemoryConfig,
@@ -64,8 +63,6 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
   await mkdir(sessionContextDirectory, { recursive: true });
 
   const events = new MemoryEventEmitter();
-  const maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
-  void maxTokens;
 
   const amygdala = buildAmygdala(config, { ltm, stm, events, sessionId });
   const hippocampus = buildHippocampus(config, { ltm, events, contextDirectory });

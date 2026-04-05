@@ -32,7 +32,7 @@ function makeLtm(clusters: LtmRecord[][] = []) {
       releaseLock: vi.fn(),
     },
     findConsolidationCandidates: vi.fn().mockReturnValue(clusters),
-    consolidate: vi.fn().mockResolvedValue(99),
+    consolidate: vi.fn().mockReturnValue(okAsync(99)),
     prune: vi.fn().mockReturnValue({ pruned: 2, remaining: 10 }),
   };
 }
@@ -218,7 +218,7 @@ describe('HippocampusProcess', () => {
   it('emits false-memory-risk when confidence < 0.5', async () => {
     const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
     const ltm = makeLtm([cluster]);
-    ltm.consolidate.mockResolvedValue(42);
+    ltm.consolidate.mockReturnValue(okAsync(42));
     const llmAdapter = makeLlmAdapter({
       summary: 's',
       confidence: 0.4,
@@ -309,7 +309,7 @@ describe('HippocampusProcess', () => {
     events.on('hippocampus:consolidation:start', () => order.push('start'));
     ltm.consolidate.mockImplementation(() => {
       order.push('consolidate');
-      return Promise.resolve(1);
+      return okAsync(1);
     });
     const process = new HippocampusProcess({
       ltm: ltm as never,
