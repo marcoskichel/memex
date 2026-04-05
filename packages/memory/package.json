@@ -22,11 +22,12 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@neurokit/ltm": "workspace:*",
-    "@neurokit/stm": "workspace:*",
     "@neurokit/amygdala": "workspace:*",
     "@neurokit/hippocampus": "workspace:*",
-    "@neurokit/llm": "workspace:*"
+    "@neurokit/llm": "workspace:*",
+    "@neurokit/ltm": "workspace:*",
+    "@neurokit/stm": "workspace:*",
+    "neverthrow": "^8.2.0"
   },
   "devDependencies": {
     "@neurokit/eslint-config": "workspace:*",

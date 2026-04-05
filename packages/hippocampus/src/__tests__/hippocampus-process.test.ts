@@ -20,6 +20,7 @@ function makeRecord(id: number, overrides: Partial<LtmRecord> = {}): LtmRecord {
     createdAt: new Date('2024-01-01'),
     tombstoned: false,
     tombstonedAt: undefined,
+    sessionId: 'legacy',
     ...overrides,
   };
 }
@@ -350,5 +351,91 @@ describe('HippocampusProcess', () => {
     await process.run();
     expect(ltm.findConsolidationCandidates).not.toHaveBeenCalled();
     expect(ltm.prune).not.toHaveBeenCalled();
+  });
+
+  it('4.1 consolidated record has category matching HippocampusConfig.category', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+      category: 'agent_belief',
+    });
+    await process.run();
+    expect(ltm.consolidate).toHaveBeenCalledWith(
+      [1, 2, 3],
+      expect.objectContaining({
+        options: expect.objectContaining({ category: 'agent_belief' }),
+      }),
+    );
+  });
+
+  it('4.2 consolidated record has no category when config omits it', async () => {
+    const cluster = [makeRecord(1), makeRecord(2), makeRecord(3)];
+    const ltm = makeLtm([cluster]);
+    const llmAdapter = makeLlmAdapter();
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      minClusterSize: 3,
+      events,
+    });
+    await process.run();
+    expect(ltm.consolidate).toHaveBeenCalledWith(
+      [1, 2, 3],
+      expect.objectContaining({
+        options: expect.not.objectContaining({ category: expect.anything() }),
+      }),
+    );
+  });
+
+  it('4.3 safeToDelete=true context files are deleted without LTM query', async () => {
+    const { InsightLog } = await import('@neurokit/stm');
+    const stm = new InsightLog();
+    const ltm = makeLtm([]);
+    const llmAdapter = makeLlmAdapter();
+
+    const temporaryFile = `/tmp/hippocampus-test-${Date.now().toString()}.txt`;
+    const { promises: fs } = await import('node:fs');
+    await fs.writeFile(temporaryFile, 'context');
+
+    stm.append({ summary: 'test', contextFile: temporaryFile, tags: [], safeToDelete: true });
+
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      events,
+      stm,
+    });
+    await process.run();
+
+    await expect(fs.access(temporaryFile)).rejects.toThrow();
+  });
+
+  it('4.4 safeToDelete=false context files are not deleted', async () => {
+    const { InsightLog } = await import('@neurokit/stm');
+    const stm = new InsightLog();
+    const ltm = makeLtm([]);
+    const llmAdapter = makeLlmAdapter();
+
+    const temporaryFile = `/tmp/hippocampus-test-nodelet-${Date.now().toString()}.txt`;
+    const { promises: fs } = await import('node:fs');
+    await fs.writeFile(temporaryFile, 'context');
+
+    stm.append({ summary: 'test', contextFile: temporaryFile, tags: [], safeToDelete: false });
+
+    const process = new HippocampusProcess({
+      ltm: ltm as never,
+      llmAdapter,
+      events,
+      stm,
+    });
+    await process.run();
+
+    await expect(fs.access(temporaryFile)).resolves.toBeUndefined();
+    await fs.unlink(temporaryFile);
   });
 });

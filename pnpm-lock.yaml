@@ -41,6 +41,9 @@ importers:
       '@neurokit/stm':
         specifier: workspace:*
         version: link:../stm
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       '@neurokit/eslint-config':
         specifier: workspace:*
@@ -129,6 +132,9 @@ importers:
       '@neurokit/stm':
         specifier: workspace:*
         version: link:../stm
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       '@neurokit/eslint-config':
         specifier: workspace:*
@@ -157,6 +163,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       '@neurokit/eslint-config':
         specifier: workspace:*
@@ -237,6 +246,9 @@ importers:
       '@neurokit/stm':
         specifier: workspace:*
         version: link:../stm
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       '@neurokit/eslint-config':
         specifier: workspace:*

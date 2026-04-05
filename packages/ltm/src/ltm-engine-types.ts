@@ -60,6 +60,7 @@ export interface ConsolidateOptions {
   confidence?: number;
   preservedFacts?: string[];
   uncertainties?: string[];
+  category?: string;
 }
 
 export interface LtmEngineStats {

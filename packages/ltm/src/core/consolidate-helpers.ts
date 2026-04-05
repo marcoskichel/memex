@@ -14,6 +14,7 @@ export interface ConsolidateParams {
   embedding: Float32Array;
   modelId: string;
   dimensions: number;
+  category?: string;
 }
 
 export interface EpisodicRecordParams {
@@ -125,6 +126,7 @@ function insertConsolidatedRecord(params: InsertConsolidatedParams): number {
     modelId,
     dimensions,
     sourceIds,
+    category,
   } = consolidateParams;
   return storage.insertRecord({
     data,
@@ -146,6 +148,7 @@ function insertConsolidatedRecord(params: InsertConsolidatedParams): number {
     tombstoned: false,
     tombstonedAt: undefined,
     sessionId: 'legacy',
+    ...(category !== undefined && { category }),
   });
 }
 

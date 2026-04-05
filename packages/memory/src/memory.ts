@@ -14,5 +14,5 @@ export type {
   PruneContextFilesReport,
   ShutdownReport,
 } from './memory-types.js';
-export { ShutdownError } from './memory-types.js';
+export { RecordNotFoundError, ShutdownError } from './memory-types.js';
 export { createMemory } from './memory-factory.js';
