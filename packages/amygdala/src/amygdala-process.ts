@@ -109,7 +109,7 @@ export class AmygdalaProcess {
     const hasLock = storage.acquireLock !== undefined;
 
     if (hasLock && !storage.acquireLock?.('amygdala', this.cadenceMs * 2)) {
-      console.warn('[amygdala] Could not acquire lock, deferring cycle');
+      process.stderr.write('[amygdala] Could not acquire lock, deferring cycle\n');
       return;
     }
 
@@ -234,8 +234,8 @@ export class AmygdalaProcess {
     entry.tags.push('importance_scoring_failed');
     if (newFailures >= MAX_CONSECUTIVE_FAILURES) {
       entry.tags.push('permanently_skipped');
-      console.warn(
-        `[amygdala] Entry ${entry.id} permanently skipped after ${newFailures.toString()} consecutive failures`,
+      process.stderr.write(
+        `[amygdala] Entry ${entry.id} permanently skipped after ${newFailures.toString()} consecutive failures\n`,
       );
     }
     return { processed: 0, failures: 1, llmCalls: 0 };

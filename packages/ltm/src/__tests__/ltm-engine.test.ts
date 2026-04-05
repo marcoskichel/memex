@@ -1,10 +1,18 @@
-import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, type Result, type ResultAsync } from 'neverthrow';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EmbeddingAdapter, EmbedError, EmbedResult } from '../core/embedding-adapter.js';
+import type { LtmInsertError } from '../ltm-engine-types.js';
 import { LtmEngine } from '../ltm-engine.js';
 import { InMemoryAdapter } from '../storage/in-memory-adapter.js';
 import type { LtmRecord } from '../storage/storage-adapter.js';
+
+function unwrap<T>(result: Result<T, LtmInsertError>): T {
+  if (result.isErr()) {
+    throw new Error(`Unexpected error in test: ${result.error.type}`);
+  }
+  return result.value;
+}
 
 function createMockAdapter(vector?: Float32Array): EmbeddingAdapter {
   const defaultVector = vector ?? new Float32Array([0.5, 0.5, 0.5]);
@@ -48,31 +56,33 @@ describe('LtmEngine', () => {
 
   describe('insert', () => {
     it('returns a positive integer ID', async () => {
-      const id = await engine.insert('hello world');
+      const id = unwrap(await engine.insert('hello world'));
       expect(id).toBeGreaterThan(0);
     });
 
     it('defaults importance to 0', async () => {
-      const id = await engine.insert('hello');
+      const id = unwrap(await engine.insert('hello'));
       const record = engine.getById(id) as LtmRecord;
       expect(record.importance).toBe(0);
     });
 
     it('stores provided importance and metadata', async () => {
-      const id = await engine.insert('hello', { importance: 0.8, metadata: { tag: 'test' } });
+      const id = unwrap(
+        await engine.insert('hello', { importance: 0.8, metadata: { tag: 'test' } }),
+      );
       const record = engine.getById(id) as LtmRecord;
       expect(record.importance).toBe(0.8);
       expect(record.metadata).toEqual({ tag: 'test' });
     });
 
     it('sets tier to episodic', async () => {
-      const id = await engine.insert('hello');
+      const id = unwrap(await engine.insert('hello'));
       const record = engine.getById(id) as LtmRecord;
       expect(record.tier).toBe('episodic');
     });
 
     it('stores embedding metadata', async () => {
-      const id = await engine.insert('hello');
+      const id = unwrap(await engine.insert('hello'));
       const record = engine.getById(id) as LtmRecord;
       expect(record.embeddingMeta.modelId).toBe('test-model');
     });
@@ -80,7 +90,7 @@ describe('LtmEngine', () => {
 
   describe('bulkInsert', () => {
     it('inserts multiple records', async () => {
-      const ids = await engine.bulkInsert([{ data: 'a' }, { data: 'b' }, { data: 'c' }]);
+      const ids = unwrap(await engine.bulkInsert([{ data: 'a' }, { data: 'b' }, { data: 'c' }]));
       expect(ids).toHaveLength(3);
       for (const id of ids) {
         expect(engine.getById(id)).toBeDefined();
@@ -90,7 +100,7 @@ describe('LtmEngine', () => {
 
   describe('update', () => {
     it('patches metadata only', async () => {
-      const id = await engine.insert('hello', { metadata: { key1: 1 } });
+      const id = unwrap(await engine.insert('hello', { metadata: { key1: 1 } }));
       const success = engine.update(id, { metadata: { key2: 2 } });
       expect(success).toBe(true);
       const record = engine.getById(id) as LtmRecord;
@@ -105,8 +115,8 @@ describe('LtmEngine', () => {
 
   describe('delete', () => {
     it('removes a record and edges', async () => {
-      const id1 = await engine.insert('first');
-      const id2 = await engine.insert('second');
+      const id1 = unwrap(await engine.insert('first'));
+      const id2 = unwrap(await engine.insert('second'));
       engine.relate({ fromId: id1, toId: id2, type: 'elaborates' });
       expect(engine.delete(id1)).toBe(true);
       expect(engine.getById(id1)).toBeUndefined();
@@ -119,8 +129,8 @@ describe('LtmEngine', () => {
 
   describe('relate', () => {
     it('creates an edge between existing records', async () => {
-      const id1 = await engine.insert('first');
-      const id2 = await engine.insert('second');
+      const id1 = unwrap(await engine.insert('first'));
+      const id2 = unwrap(await engine.insert('second'));
       const edgeId = engine.relate({ fromId: id1, toId: id2, type: 'supersedes' });
       expect(edgeId).toBeGreaterThan(0);
       const edges = storage.edgesFrom(id1);
@@ -133,14 +143,14 @@ describe('LtmEngine', () => {
     });
 
     it('returns 0 for unknown record', async () => {
-      const id1 = await engine.insert('first');
+      const id1 = unwrap(await engine.insert('first'));
       expect(engine.relate({ fromId: id1, toId: 999, type: 'elaborates' })).toBe(0);
     });
   });
 
   describe('getById', () => {
     it('returns record for existing ID', async () => {
-      const id = await engine.insert('hello');
+      const id = unwrap(await engine.insert('hello'));
       const record = engine.getById(id);
       expect(record).toBeDefined();
     });
@@ -150,7 +160,7 @@ describe('LtmEngine', () => {
     });
 
     it('returns tombstone marker for tombstoned record', async () => {
-      const id = await engine.insert('hello');
+      const id = unwrap(await engine.insert('hello'));
       storage.tombstoneRecord(id);
       const record = engine.getById(id);
       expect(record).toBeDefined();
@@ -164,7 +174,7 @@ describe('LtmEngine', () => {
 
   describe('query', () => {
     it('returns matching records above threshold', async () => {
-      await engine.insert('matching content', { importance: 0.5 });
+      unwrap(await engine.insert('matching content', { importance: 0.5 }));
       const result = await engine.query('matching content', { threshold: 0, strengthen: false });
       expect(result.isOk()).toBe(true);
       expect(result._unsafeUnwrap()).toHaveLength(1);
@@ -177,7 +187,7 @@ describe('LtmEngine', () => {
     });
 
     it('excludes tombstoned records', async () => {
-      const id = await engine.insert('hello');
+      const id = unwrap(await engine.insert('hello'));
       storage.tombstoneRecord(id);
       const result = await engine.query('hello', { threshold: 0, strengthen: false });
       expect(result.isOk()).toBe(true);
@@ -185,7 +195,7 @@ describe('LtmEngine', () => {
     });
 
     it('detects embedding model mismatch', async () => {
-      await engine.insert('hello');
+      unwrap(await engine.insert('hello'));
       const vec = normalize([1, 0, 0]);
       const mismatchAdapter: EmbeddingAdapter = {
         modelId: 'different-model',
@@ -208,7 +218,7 @@ describe('LtmEngine', () => {
     });
 
     it('respects tier filter', async () => {
-      await engine.insert('episodic record');
+      unwrap(await engine.insert('episodic record'));
       const result = await engine.query('episodic', {
         tier: 'semantic',
         threshold: 0,
@@ -219,16 +229,16 @@ describe('LtmEngine', () => {
     });
 
     it('respects limit option', async () => {
-      await engine.insert('first');
-      await engine.insert('second');
-      await engine.insert('third');
+      unwrap(await engine.insert('first'));
+      unwrap(await engine.insert('second'));
+      unwrap(await engine.insert('third'));
       const result = await engine.query('test', { limit: 1, threshold: 0, strengthen: false });
       expect(result.isOk()).toBe(true);
       expect(result._unsafeUnwrap()).toHaveLength(1);
     });
 
     it('includes retrieval strategies in results', async () => {
-      await engine.insert('hello world');
+      unwrap(await engine.insert('hello world'));
       const result = await engine.query('hello', { threshold: 0, strengthen: false });
       expect(result.isOk()).toBe(true);
       const results = result._unsafeUnwrap();
@@ -242,8 +252,8 @@ describe('LtmEngine', () => {
     });
 
     it('marks superseded records', async () => {
-      const oldId = await engine.insert('old version');
-      const newId = await engine.insert('new version');
+      const oldId = unwrap(await engine.insert('old version'));
+      const newId = unwrap(await engine.insert('new version'));
       engine.relate({ fromId: newId, toId: oldId, type: 'supersedes' });
       const result = await engine.query('version', { threshold: 0, strengthen: false });
       expect(result.isOk()).toBe(true);
@@ -255,7 +265,7 @@ describe('LtmEngine', () => {
     });
 
     it('does not strengthen when strengthen=false', async () => {
-      const id = await engine.insert('test record');
+      const id = unwrap(await engine.insert('test record'));
       const before = (engine.getById(id) as LtmRecord).accessCount;
       await engine.query('test', { threshold: 0, strengthen: false });
       const after = (engine.getById(id) as LtmRecord).accessCount;
@@ -263,7 +273,7 @@ describe('LtmEngine', () => {
     });
 
     it('strengthens top result on query with strengthen=true', async () => {
-      const id = await engine.insert('test record');
+      const id = unwrap(await engine.insert('test record'));
       const before = (engine.getById(id) as LtmRecord).accessCount;
       await engine.query('test', { threshold: 0, strengthen: true });
       const after = (engine.getById(id) as LtmRecord).accessCount;
@@ -271,14 +281,16 @@ describe('LtmEngine', () => {
     });
 
     it('includes confidence for semantic records', async () => {
-      const id1 = await engine.insert('source a', { importance: 0.5 });
-      const id2 = await engine.insert('source b', { importance: 0.5 });
+      const id1 = unwrap(await engine.insert('source a', { importance: 0.5 }));
+      const id2 = unwrap(await engine.insert('source b', { importance: 0.5 }));
       storage.updateStability(id1, { stability: 5, lastAccessedAt: new Date(), accessCount: 3 });
       storage.updateStability(id2, { stability: 5, lastAccessedAt: new Date(), accessCount: 3 });
-      const consolidatedId = await engine.consolidate([id1, id2], {
-        data: 'consolidated record',
-        options: { confidence: 0.8 },
-      });
+      const consolidatedId = unwrap(
+        await engine.consolidate([id1, id2], {
+          data: 'consolidated record',
+          options: { confidence: 0.8 },
+        }),
+      );
       const result = await engine.query('consolidated', { threshold: 0, strengthen: false });
       expect(result.isOk()).toBe(true);
       const results = result._unsafeUnwrap();
@@ -289,8 +301,8 @@ describe('LtmEngine', () => {
     });
 
     it('sorts by recency when requested', async () => {
-      const id1 = await engine.insert('first');
-      const id2 = await engine.insert('second');
+      const id1 = unwrap(await engine.insert('first'));
+      const id2 = unwrap(await engine.insert('second'));
       storage.updateStability(id1, {
         stability: 5,
         lastAccessedAt: new Date(Date.now() - 10_000),
@@ -317,7 +329,7 @@ describe('LtmEngine', () => {
     });
 
     it('emits decay event when retention below 0.2', async () => {
-      const id = await engine.insert('old record');
+      const id = unwrap(await engine.insert('old record'));
       storage.updateStability(id, {
         stability: 1,
         lastAccessedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -336,8 +348,8 @@ describe('LtmEngine', () => {
 
   describe('findConsolidationCandidates', () => {
     it('groups similar episodic records', async () => {
-      const id1 = await engine.insert('topic A detail one', { importance: 0.5 });
-      const id2 = await engine.insert('topic A detail two', { importance: 0.5 });
+      const id1 = unwrap(await engine.insert('topic A detail one', { importance: 0.5 }));
+      const id2 = unwrap(await engine.insert('topic A detail two', { importance: 0.5 }));
       storage.updateStability(id1, { stability: 5, lastAccessedAt: new Date(), accessCount: 3 });
       storage.updateStability(id2, { stability: 5, lastAccessedAt: new Date(), accessCount: 3 });
 
@@ -354,11 +366,11 @@ describe('LtmEngine', () => {
     });
 
     it('excludes semantic records', async () => {
-      const id1 = await engine.insert('source a', { importance: 0.5 });
-      const id2 = await engine.insert('source b', { importance: 0.5 });
+      const id1 = unwrap(await engine.insert('source a', { importance: 0.5 }));
+      const id2 = unwrap(await engine.insert('source b', { importance: 0.5 }));
       storage.updateStability(id1, { stability: 5, lastAccessedAt: new Date(), accessCount: 3 });
       storage.updateStability(id2, { stability: 5, lastAccessedAt: new Date(), accessCount: 3 });
-      await engine.consolidate([id1, id2], { data: 'consolidated' });
+      unwrap(await engine.consolidate([id1, id2], { data: 'consolidated' }));
 
       const clusters = engine.findConsolidationCandidates({
         similarityThreshold: 0,
@@ -372,7 +384,7 @@ describe('LtmEngine', () => {
     });
 
     it('excludes records below minAccessCount', async () => {
-      await engine.insert('topic A');
+      unwrap(await engine.insert('topic A'));
       const clusters = engine.findConsolidationCandidates({ minAccessCount: 5 });
       expect(clusters).toHaveLength(0);
     });
@@ -380,63 +392,73 @@ describe('LtmEngine', () => {
 
   describe('consolidate', () => {
     it('creates a semantic record', async () => {
-      const id1 = await engine.insert('source one', { importance: 0.4 });
-      const id2 = await engine.insert('source two', { importance: 0.7 });
-      const newId = await engine.consolidate([id1, id2], { data: 'merged insight' });
+      const id1 = unwrap(await engine.insert('source one', { importance: 0.4 }));
+      const id2 = unwrap(await engine.insert('source two', { importance: 0.7 }));
+      const newId = unwrap(await engine.consolidate([id1, id2], { data: 'merged insight' }));
       const record = engine.getById(newId) as LtmRecord;
       expect(record.tier).toBe('semantic');
       expect(record.importance).toBe(0.7);
     });
 
     it('uses confidence-adjusted stability', async () => {
-      const id1 = await engine.insert('source one', { importance: 0.5 });
-      const id2 = await engine.insert('source two', { importance: 0.5 });
+      const id1 = unwrap(await engine.insert('source one', { importance: 0.5 }));
+      const id2 = unwrap(await engine.insert('source two', { importance: 0.5 }));
       const maxStabBefore = Math.max(
         (engine.getById(id1) as LtmRecord).stability,
         (engine.getById(id2) as LtmRecord).stability,
       );
-      const newId = await engine.consolidate([id1, id2], {
-        data: 'merged',
-        options: { confidence: 0 },
-      });
+      const newId = unwrap(
+        await engine.consolidate([id1, id2], {
+          data: 'merged',
+          options: { confidence: 0 },
+        }),
+      );
       const record = engine.getById(newId) as LtmRecord;
       expect(record.stability).toBeCloseTo(maxStabBefore * 1, 1);
     });
 
     it('creates consolidates edges', async () => {
-      const id1 = await engine.insert('source one');
-      const id2 = await engine.insert('source two');
-      const newId = await engine.consolidate([id1, id2], { data: 'merged' });
+      const id1 = unwrap(await engine.insert('source one'));
+      const id2 = unwrap(await engine.insert('source two'));
+      const newId = unwrap(await engine.consolidate([id1, id2], { data: 'merged' }));
       const edges = storage.edgesFrom(newId);
       expect(edges).toHaveLength(2);
       expect(edges.every((edge) => edge.type === 'consolidates')).toBe(true);
     });
 
     it('deflates source stability by default', async () => {
-      const id1 = await engine.insert('source', { importance: 0.5 });
+      const id1 = unwrap(await engine.insert('source', { importance: 0.5 }));
       const beforeStability = (engine.getById(id1) as LtmRecord).stability;
-      await engine.consolidate([id1], { data: 'merged' });
+      unwrap(await engine.consolidate([id1], { data: 'merged' }));
       const afterStability = (engine.getById(id1) as LtmRecord).stability;
       expect(afterStability).toBeCloseTo(beforeStability / 2, 2);
     });
 
     it('skips deflation when option is false', async () => {
-      const id1 = await engine.insert('source', { importance: 0.5 });
+      const id1 = unwrap(await engine.insert('source', { importance: 0.5 }));
       const beforeStability = (engine.getById(id1) as LtmRecord).stability;
-      await engine.consolidate([id1], {
-        data: 'merged',
-        options: { deflateSourceStability: false },
-      });
+      unwrap(
+        await engine.consolidate([id1], {
+          data: 'merged',
+          options: { deflateSourceStability: false },
+        }),
+      );
       const afterStability = (engine.getById(id1) as LtmRecord).stability;
       expect(afterStability).toBe(beforeStability);
     });
 
     it('stores confidence metadata', async () => {
-      const id1 = await engine.insert('source');
-      const newId = await engine.consolidate([id1], {
-        data: 'merged',
-        options: { confidence: 0.7, preservedFacts: ['fact A'], uncertainties: ['uncertainty B'] },
-      });
+      const id1 = unwrap(await engine.insert('source'));
+      const newId = unwrap(
+        await engine.consolidate([id1], {
+          data: 'merged',
+          options: {
+            confidence: 0.7,
+            preservedFacts: ['fact A'],
+            uncertainties: ['uncertainty B'],
+          },
+        }),
+      );
       const record = engine.getById(newId) as LtmRecord;
       expect(record.metadata.confidence).toBe(0.7);
       expect(record.metadata.preservedFacts).toEqual(['fact A']);
@@ -444,15 +466,15 @@ describe('LtmEngine', () => {
     });
 
     it('source records remain retrievable', async () => {
-      const id1 = await engine.insert('source');
-      await engine.consolidate([id1], { data: 'merged' });
+      const id1 = unwrap(await engine.insert('source'));
+      unwrap(await engine.consolidate([id1], { data: 'merged' }));
       expect(engine.getById(id1)).toBeDefined();
     });
   });
 
   describe('prune', () => {
     it('removes records below retention threshold', async () => {
-      const id = await engine.insert('old record');
+      const id = unwrap(await engine.insert('old record'));
       storage.updateStability(id, {
         stability: 1,
         lastAccessedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
@@ -464,13 +486,13 @@ describe('LtmEngine', () => {
     });
 
     it('tombstones consolidated episodics instead of deleting', async () => {
-      const id1 = await engine.insert('source');
+      const id1 = unwrap(await engine.insert('source'));
       storage.updateStability(id1, {
         stability: 1,
         lastAccessedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
         accessCount: 0,
       });
-      await engine.consolidate([id1], { data: 'merged' });
+      unwrap(await engine.consolidate([id1], { data: 'merged' }));
 
       engine.prune({ minRetention: 0.5 });
       const record = engine.getById(id1);
@@ -482,7 +504,7 @@ describe('LtmEngine', () => {
     });
 
     it('fully deletes unconsolidated episodics', async () => {
-      const id = await engine.insert('standalone');
+      const id = unwrap(await engine.insert('standalone'));
       storage.updateStability(id, {
         stability: 1,
         lastAccessedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
@@ -494,15 +516,15 @@ describe('LtmEngine', () => {
     });
 
     it('respects tier filter', async () => {
-      const epId = await engine.insert('episodic');
+      const epId = unwrap(await engine.insert('episodic'));
       storage.updateStability(epId, {
         stability: 1,
         lastAccessedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
         accessCount: 0,
       });
 
-      const id1 = await engine.insert('source for semantic');
-      const semId = await engine.consolidate([id1], { data: 'semantic record' });
+      const id1 = unwrap(await engine.insert('source for semantic'));
+      const semId = unwrap(await engine.consolidate([id1], { data: 'semantic record' }));
       storage.updateStability(semId, {
         stability: 1,
         lastAccessedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
@@ -518,10 +540,10 @@ describe('LtmEngine', () => {
 
   describe('stats', () => {
     it('reflects current store state', async () => {
-      await engine.insert('a');
-      await engine.insert('b');
-      const id3 = await engine.insert('c');
-      await engine.consolidate([id3], { data: 'semantic one' });
+      unwrap(await engine.insert('a'));
+      unwrap(await engine.insert('b'));
+      const id3 = unwrap(await engine.insert('c'));
+      unwrap(await engine.consolidate([id3], { data: 'semantic one' }));
 
       const stat = engine.stats();
       expect(stat.total).toBe(4);

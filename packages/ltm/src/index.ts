@@ -33,6 +33,7 @@ export type {
   ConsolidateOptions,
   LtmBulkInsertEntry,
   LtmEngineStats,
+  LtmInsertError,
   LtmInsertOptions,
   LtmQueryError,
   LtmQueryOptions,

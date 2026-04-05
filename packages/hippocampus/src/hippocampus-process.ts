@@ -99,8 +99,9 @@ export class HippocampusProcess {
 
   start(): void {
     this.intervalId = setInterval(() => {
-      this.run().catch(() => {
-        void 0;
+      this.run().catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`[hippocampus] consolidation cycle failed: ${message}\n`);
       });
     }, this.scheduleMs);
   }
@@ -186,16 +187,27 @@ export class HippocampusProcess {
       }
 
       const sourceIds = cluster.map((record) => record.id);
-      const newId = await this.ltm.consolidate(sourceIds, {
-        data: result.summary,
-        options: {
-          deflateSourceStability: true,
-          confidence: result.confidence,
-          preservedFacts: result.preservedFacts,
-          uncertainties: result.uncertainties,
-          ...(this.category !== undefined && { category: this.category }),
-        },
-      });
+      const consolidateOk = await this.ltm
+        .consolidate(sourceIds, {
+          data: result.summary,
+          options: {
+            deflateSourceStability: true,
+            confidence: result.confidence,
+            preservedFacts: result.preservedFacts,
+            uncertainties: result.uncertainties,
+            ...(this.category !== undefined && { category: this.category }),
+          },
+        })
+        .match(
+          (id) => ({ id }),
+          () => false as const,
+        );
+
+      if (!consolidateOk) {
+        continue;
+      }
+
+      const newId = consolidateOk.id;
 
       if (result.confidence < LOW_CONFIDENCE_THRESHOLD) {
         this.events.emit('hippocampus:false-memory-risk', {

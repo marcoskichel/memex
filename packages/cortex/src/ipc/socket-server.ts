@@ -7,6 +7,17 @@ import type { Memory } from '@memex/memory';
 import { handleRequest } from './handlers.js';
 import type { PushMessage, RequestMessage } from './protocol.js';
 
+const MAX_BUFFER_BYTES = 1_048_576;
+const VALID_REQUEST_TYPES = new Set<string>(['logInsight', 'getContext', 'recall', 'getStats']);
+
+function isValidRequest(data: unknown): data is RequestMessage {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+  const record = data as Record<string, unknown>;
+  return typeof record.id === 'string' && VALID_REQUEST_TYPES.has(record.type as string);
+}
+
 export class SocketServer {
   private server: Server | undefined;
   private clients = new Set<Socket>();
@@ -25,6 +36,13 @@ export class SocketServer {
       let buffer = '';
       client.on('data', (chunk) => {
         buffer += chunk.toString();
+
+        if (buffer.length > MAX_BUFFER_BYTES) {
+          buffer = '';
+          client.destroy();
+          return;
+        }
+
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
 
@@ -34,14 +52,18 @@ export class SocketServer {
             continue;
           }
 
-          let message: RequestMessage;
+          let parsed: unknown;
           try {
-            message = JSON.parse(trimmed) as RequestMessage;
+            parsed = JSON.parse(trimmed) as unknown;
           } catch {
             continue;
           }
 
-          void handleRequest(message, memory).then((response) => {
+          if (!isValidRequest(parsed)) {
+            continue;
+          }
+
+          void handleRequest(parsed, memory).then((response) => {
             if (!client.destroyed) {
               client.write(JSON.stringify(response) + '\n');
             }
