@@ -1,127 +1,65 @@
 # Pending Work: Human-Like Agent Memory
 
-All original improvements from the design phase are implemented. This document tracks only what remains, grouped by planned spec and ordered by implementation dependency.
+All items from the original design phase and the three follow-on changes (`ltm-schema-extensions`, `amygdala-improvements`, `hippocampus-improvements`) are implemented. This document tracks what remains.
 
 ---
 
-## Change 1: `ltm-schema-extensions`
+## Planned Specs
 
-_Implement first. One SQLite migration adding 3 columns; all downstream changes write to these fields._
+### A. Persistent Daemon
 
-### 1. `sessionId` as a schema column on `LtmRecord`
+**Decision:** The amygdala and hippocampus processes MUST run as a single long-lived daemon, not be re-instantiated per hook invocation.
 
-**Decision:** Add `session_id TEXT NOT NULL` as a first-class column in the SQLite schema, not in the `metadata` bag.
+**Rationale:**
 
-**Rationale:** `metadata` is untyped and unindexed. Session-scoped recall and hippocampus session-boundary awareness during clustering both need efficient filtering. A dedicated column enables a `(session_id, tier, created_at)` index and makes session queries O(log n).
+- TransformersJS embedding model cold-start is expensive; re-loading per hook call makes it unusable in practice.
+- Amygdala cadence (default: every 5 min) requires continuity across tool calls; a fresh process has no timer state.
+- Hook processes are too short-lived for background daemons to do any meaningful work.
 
-**Changes required:**
+**Scope:**
 
-- `LtmRecord` gains `sessionId: string`
-- SQLite schema: `session_id TEXT NOT NULL` with index on `(session_id, tier, created_at)`
-- Amygdala reads `sessionId` from `AmygdalaConfig` and writes it to every record it inserts
-- `LtmQueryOptions` gains `sessionId?: string` filter
-- `Memory` interface gains `recallSession(sessionId: string, query: string): Promise<LtmQueryResult[]>`
+- A daemon process hosts `AmygdalaProcess`, `HippocampusProcess`, and the `LtmEngine` SQLite connection.
+- Hook scripts communicate with the daemon over IPC or a local socket (mechanism TBD during design).
+- `Memory.shutdown()` drains in-flight work and closes the daemon cleanly.
+- Placement in the workspace is TBD (may be co-located with the hooks adapter — see Item B).
 
-### 2. `category` as a generic string field with exported constants
-
-**Decision:** Add `category?: string` to `LtmRecord` as an open string. Export a `LtmCategory` constants object rather than a closed union.
-
-```typescript
-export const LtmCategory = {
-  USER_PREFERENCE: 'user_preference',
-  WORLD_FACT: 'world_fact',
-  TASK_CONTEXT: 'task_context',
-  AGENT_BELIEF: 'agent_belief',
-} as const;
-```
-
-**Rationale:** A closed union forces a version bump to add new categories. Open string + exported constants allows consumers to extend with domain-specific values (e.g. `'project_convention'`) without waiting for a library release.
-
-**Changes required:**
-
-- `LtmRecord` gains `category?: string`
-- SQLite schema: `category TEXT` (nullable, indexed)
-- `LtmQueryOptions` gains `category?: string` filter
-- Amygdala does not set `category` — caller responsibility via tags or metadata. Document this.
-- `ConsolidateOptions` gains optional `category?: string` for hippocampus-produced semantic records
-
-### 3. `episodeSummary` inline on `LtmRecord` (replaces context file references)
-
-**Decision:** Store the STM-compressed text (`InsightEntry.text`) as `episodeSummary?: string` directly on `LtmRecord` instead of a `contextFile` path pointer.
-
-**Rationale:** The raw context file creates an external file dependency that outlives the STM lifecycle. The STM compression output is already computed and is a high-fidelity (not very lossy) summary — more detail than the amygdala's importance-scored insight, but a fraction of raw context size. Storing it inline eliminates the file dependency and simplifies hippocampus deletion logic.
-
-**Changes required:**
-
-- `LtmRecord` gains `episodeSummary?: string` (populated for episodic; null for semantic)
-- SQLite schema: `episode_summary TEXT` (nullable)
-- Amygdala writes `entry.text` to `episodeSummary` at insert time
-- `Memory` interface gains `recallFull(id: string): Promise<{ record: LtmRecord; episodeSummary: string | null }>`
-- Context files are marked `safeToDelete = true` immediately after amygdala writes `episodeSummary`
-- Hippocampus deletion logic simplified: delete all `safeToDelete = true` files without cross-referencing LTM records
-
-### 4. Direct semantic seeding path
-
-**Rationale:** `ltm.insert()` and `ltm.bulkInsert()` are hardcoded to `tier: 'episodic'`. There is no way to bootstrap an agent with pre-existing world knowledge (domain facts, project conventions) without routing through the full STM → amygdala pipeline.
-
-**Changes required:**
-
-- Expose `tier?: 'episodic' | 'semantic'` on `LtmInsertOptions`
-- When `tier === 'semantic'`, default `confidence` to `1.0` if omitted
-- Throw if `tier === 'semantic'` is used via `bulkInsert` without `confidence`
+**Status:** Design decision made. Implementation not started. Placement TBD pending hooks adapter naming.
 
 ---
 
-## Change 2: `amygdala-improvements`
+### B. Claude Code Hooks Adapter
 
-_Implement after `ltm-schema-extensions`. Writes to `sessionId`, `episodeSummary`, and `tags` fields added in Change 1._
+**Decision:** A runnable integration — not a reusable library package — that bridges Claude Code's hook event system to the neurokit memory API.
 
-### 5. Importance-gated direct semantic promotion for singleton episodics
+**Rationale:**
 
-**Rationale:** The `minClusterSize = 3` gate in `findConsolidationCandidates` means any episodic with fewer than 3 near-neighbors decays and is hard-deleted by `prune()` with no semantic promotion path — even if its importance score is high. A single critical fact stated once (e.g. "user has a nut allergy") will be lost.
+- Claude Code fires lifecycle hooks (`PreToolUse`, `PostToolUse`, `PostSessionEnd`, etc.) as short-lived processes with JSON payloads on stdin. The SDK needs a concrete adapter that speaks this protocol.
+- Packaging it as a library would create a false abstraction; no other runtime is being targeted. It should be a first-class executable workspace member.
 
-**Changes required:**
+**Scope:**
 
-- In amygdala `applyAction`: if `importanceScore >= singletonPromotionThreshold` and the LTM relatedness check finds no existing related memory, insert directly as `tier: 'semantic'` rather than `tier: 'episodic'`
-- Add `singletonPromotionThreshold?: number` to `AmygdalaConfig` (default: `0.7`)
+- Parse hook payloads from stdin (Claude Code hook JSON format).
+- On `PostToolUse`: call `memory.logInsight()` with the tool result context.
+- On hook events that inject context (e.g. before tool calls): call `memory.recall()` and write retrieved memories to a context file or stdout for the agent to consume.
+- On `PostSessionEnd`: call `memory.shutdown()` to drain and close the daemon.
+- Communicates with the persistent daemon (Item A) rather than instantiating its own memory stack.
+- Lives in a new top-level workspace directory — name TBD (naming exercise underway separately).
 
-### 6. Tags wired from STM to LTM
-
-**Rationale:** `InsightEntry.tags` (agent-supplied tags like `['behavioral']`) are consumed by amygdala only for internal filtering and are never written to `LtmRecord`. Agent-supplied tags are silently dropped.
-
-**Changes required:**
-
-- Amygdala writes the original `entry.tags` (minus internal tags: `permanently_skipped`, `llm_rate_limited`) to `LtmRecord.metadata.tags` at insert time
-- `LtmQueryOptions` gains `tags?: string[]` as an array filter (matches records containing all specified tags)
-
----
-
-## Change 3: `hippocampus-improvements`
-
-_Independent of Changes 1 and 2. Can be implemented in parallel._
-
-### 7. Temporal proximity constraint in hippocampus clustering
-
-**Rationale:** `findConsolidationCandidates` clusters by cosine similarity only. Episodics from different time periods can be consolidated together, destroying temporal distinctness — which is the primary value of episodic memory.
-
-**Changes required:**
-
-- Add `maxCreatedAtSpreadDays?: number` to `FindConsolidationOptions` (default: `30`)
-- Clusters where `max(createdAt) - min(createdAt)` exceeds the threshold are split at the temporal gap before the LLM consolidation call
+**Status:** Design decision made. Implementation not started. Directory name TBD.
 
 ---
 
 ## Deferred
 
-### Low priority
+### Low Priority
 
-**Semantic re-consolidation cycle** — a second hippocampus pass targeting semantic records with `elaborates`/`contradicts` incoming edges from newer episodics, producing a superseding semantic record. Defer until the base consolidation cycle is stable; risk of infinite loop without a visited-set guard.
+**Semantic re-consolidation cycle** — A second hippocampus pass targeting semantic records with `elaborates`/`contradicts` incoming edges from newer episodics, producing a superseding semantic record. Defer until the base consolidation cycle is stable; risk of infinite loop without a visited-set guard.
 
-**`expiresAt` on `ConsolidateOptions`** — explicit wall-clock expiry for time-bounded semantic facts. Hippocampus tombstones the record at `expiresAt` regardless of stability.
+**`expiresAt` on `ConsolidateOptions`** — Explicit wall-clock expiry for time-bounded semantic facts. Hippocampus tombstones the record at `expiresAt` regardless of stability.
 
 **Document procedural memory exclusion** — JSDoc on `Memory.recall()` and `createMemory()` noting that behavioral rules must be managed by the consumer and injected into the system prompt externally.
 
-### V2 (intentionally out of scope for v1)
+### V2 (Intentionally Out of Scope for V1)
 
 | Capability                   | Notes                                                                             |
 | ---------------------------- | --------------------------------------------------------------------------------- |
@@ -133,4 +71,4 @@ _Independent of Changes 1 and 2. Can be implemented in parallel._
 
 ## Blocked
 
-**`recall()` default `strengthen: true`** — agreed but blocked on [marcoskichel/memex#1](https://github.com/marcoskichel/memex/issues/1). Do not change the `memory-impl.ts` default until that issue is resolved.
+**`recall()` default `strengthen: true`** — Agreed but blocked on [marcoskichel/memex#1](https://github.com/marcoskichel/memex/issues/1). Do not change the `memory-impl.ts` default until that issue is resolved.
