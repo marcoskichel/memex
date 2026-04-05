@@ -21,7 +21,11 @@
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0"
+  },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
     "@neurokit/eslint-config": "workspace:*",
     "@neurokit/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
