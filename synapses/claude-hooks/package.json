@@ -1,5 +1,5 @@
 {
-  "name": "@neurokit/claude-hooks",
+  "name": "@memex/claude-hooks",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -18,13 +18,13 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@neurokit/stm": "workspace:*",
+    "@memex/stm": "workspace:*",
     "neverthrow": "^8.1.1",
     "zod": "^3.0.0"
   },
   "devDependencies": {
-    "@neurokit/eslint-config": "workspace:*",
-    "@neurokit/typescript-config": "workspace:*",
+    "@memex/eslint-config": "workspace:*",
+    "@memex/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",

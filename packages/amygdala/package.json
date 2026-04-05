@@ -1,5 +1,5 @@
 {
-  "name": "@neurokit/amygdala",
+  "name": "@memex/amygdala",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -22,14 +22,14 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@neurokit/llm": "workspace:*",
-    "@neurokit/ltm": "workspace:*",
-    "@neurokit/stm": "workspace:*",
+    "@memex/llm": "workspace:*",
+    "@memex/ltm": "workspace:*",
+    "@memex/stm": "workspace:*",
     "neverthrow": "^8.2.0"
   },
   "devDependencies": {
-    "@neurokit/eslint-config": "workspace:*",
-    "@neurokit/typescript-config": "workspace:*",
+    "@memex/eslint-config": "workspace:*",
+    "@memex/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",

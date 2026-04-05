@@ -1,5 +1,5 @@
 {
-  "name": "@neurokit/ltm",
+  "name": "@memex/ltm",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -28,8 +28,8 @@
     "openai": "^4.0.0"
   },
   "devDependencies": {
-    "@neurokit/eslint-config": "workspace:*",
-    "@neurokit/typescript-config": "workspace:*",
+    "@memex/eslint-config": "workspace:*",
+    "@memex/typescript-config": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",

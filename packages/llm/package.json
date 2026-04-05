@@ -1,5 +1,5 @@
 {
-  "name": "@neurokit/llm",
+  "name": "@memex/llm",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -26,8 +26,8 @@
     "neverthrow": "^8.2.0"
   },
   "devDependencies": {
-    "@neurokit/eslint-config": "workspace:*",
-    "@neurokit/typescript-config": "workspace:*",
+    "@memex/eslint-config": "workspace:*",
+    "@memex/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",

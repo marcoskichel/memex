@@ -1,5 +1,5 @@
 {
-  "name": "@neurokit/eslint-config",
+  "name": "@memex/eslint-config",
   "version": "0.0.0",
   "private": true,
   "type": "module",

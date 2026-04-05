@@ -1,5 +1,5 @@
 <context>
-TypeScript monorepo (`@neurokit/root`) building neural memory and AI tooling packages.
+TypeScript monorepo (`@memex/root`) building neural memory and AI tooling packages.
 Node >= 22, pnpm workspaces, Turborepo, Vitest, ESLint, strict TypeScript.
 </context>
 
