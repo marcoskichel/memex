@@ -55,7 +55,8 @@ describe('sendLogInsight', () => {
 
     expect(mockCreateConnection).toHaveBeenCalledWith('/tmp/memex-sess-abc.sock');
     expect(socket.write).toHaveBeenCalledOnce();
-    const written = JSON.parse((socket.write.mock.calls[0][0] as string).trim());
+    const [firstCall] = socket.write.mock.calls as [[string]];
+    const written = JSON.parse(firstCall[0].trim());
     expect(written).toMatchObject({ type: 'logInsight' });
   });
 
