@@ -1,5 +1,5 @@
 {
-  "extends": "@neurokit/typescript-config/node",
+  "extends": "@memex/typescript-config/node",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src"

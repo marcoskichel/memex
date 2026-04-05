@@ -1,5 +1,5 @@
 {
-  "name": "@neurokit/cortex",
+  "name": "@memex/cortex",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -17,13 +17,13 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@neurokit/llm": "workspace:*",
-    "@neurokit/memory": "workspace:*",
-    "@neurokit/stm": "workspace:*"
+    "@memex/llm": "workspace:*",
+    "@memex/memory": "workspace:*",
+    "@memex/stm": "workspace:*"
   },
   "devDependencies": {
-    "@neurokit/eslint-config": "workspace:*",
-    "@neurokit/typescript-config": "workspace:*",
+    "@memex/eslint-config": "workspace:*",
+    "@memex/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",

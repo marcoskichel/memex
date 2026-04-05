@@ -1,5 +1,5 @@
 {
-  "name": "@neurokit/memory",
+  "name": "@memex/memory",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -22,16 +22,16 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@neurokit/amygdala": "workspace:*",
-    "@neurokit/hippocampus": "workspace:*",
-    "@neurokit/llm": "workspace:*",
-    "@neurokit/ltm": "workspace:*",
-    "@neurokit/stm": "workspace:*",
+    "@memex/amygdala": "workspace:*",
+    "@memex/hippocampus": "workspace:*",
+    "@memex/llm": "workspace:*",
+    "@memex/ltm": "workspace:*",
+    "@memex/stm": "workspace:*",
     "neverthrow": "^8.2.0"
   },
   "devDependencies": {
-    "@neurokit/eslint-config": "workspace:*",
-    "@neurokit/typescript-config": "workspace:*",
+    "@memex/eslint-config": "workspace:*",
+    "@memex/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",

@@ -1,19 +1,19 @@
 ## 1. Prerequisites
 
-- [ ] 1.1 Merge `human-like-agent-memory` change branch
-- [ ] 1.2 Merge `port-neural-memory-db` change branch
+- [x] 1.1 Merge `human-like-agent-memory` change branch
+- [x] 1.2 Merge `port-neural-memory-db` change branch
 - [ ] 1.3 Verify `main` is green (`pnpm build && pnpm test`)
 
 ## 2. Config and Manifest Files
 
-- [ ] 2.1 Update root `package.json` name from `neurokit` to `memex`
-- [ ] 2.2 Update `packages/eslint-config/package.json` name from `@neurokit/eslint-config` to `@memex/eslint-config`
-- [ ] 2.3 Update `packages/typescript-config/package.json` name from `@neurokit/typescript-config` to `@memex/typescript-config`
-- [ ] 2.4 Update `packages/engram/package.json` name and all `@neurokit/*` devDependency references
-- [ ] 2.5 Update remaining package `package.json` files (amygdala, hippocampus, ltm, stm, memory) names and cross-references
-- [ ] 2.6 Update `packages/engram/tsconfig.json` and any other tsconfig files referencing `@neurokit`
-- [ ] 2.7 Update `packages/engram/eslint.config.mjs` and root `eslint.config.mjs` references
-- [ ] 2.8 Run `pnpm install` to regenerate lockfile with new package names
+- [x] 2.1 Update root `package.json` name from `neurokit` to `memex`
+- [x] 2.2 Update `packages/eslint-config/package.json` name from `@neurokit/eslint-config` to `@memex/eslint-config`
+- [x] 2.3 Update `packages/typescript-config/package.json` name from `@neurokit/typescript-config` to `@memex/typescript-config`
+- [x] 2.4 Update `packages/engram/package.json` name and all `@neurokit/*` devDependency references (skipped — engram deleted)
+- [x] 2.5 Update remaining package `package.json` files (amygdala, hippocampus, ltm, stm, memory, cortex, claude-hooks) names and cross-references
+- [x] 2.6 Update `packages/engram/tsconfig.json` and any other tsconfig files referencing `@neurokit` (engram parts skipped — deleted)
+- [x] 2.7 Update `packages/engram/eslint.config.mjs` and root `eslint.config.mjs` references (engram parts skipped — deleted)
+- [x] 2.8 Run `pnpm install` to regenerate lockfile with new package names
 - [ ] 2.9 Commit: `chore: rename package namespace from @neurokit to @memex`
 
 ## 3. Source and Test Files
