@@ -9,18 +9,17 @@ export default [
     files: ['src/bin/**/*.ts'],
     rules: {
       'unicorn/no-process-exit': 'off',
-      'neverthrow/no-throw': 'off',
-      'neverthrow/no-try-catch': 'off',
     },
   },
   {
-    files: ['src/ipc/**/*.ts'],
+    files: ['src/components/**/*.tsx', 'src/client/**/*.ts'],
     rules: {
       'neverthrow/no-throw': 'off',
       'neverthrow/no-try-catch': 'off',
-      'neverthrow/must-use-result': 'off',
       'neverthrow/no-promise-reject': 'off',
       'no-restricted-syntax': 'off',
+      'max-lines-per-function': 'off',
+      'unicorn/no-process-exit': 'off',
     },
   },
 ];

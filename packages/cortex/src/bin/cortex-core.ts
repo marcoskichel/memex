@@ -1,7 +1,12 @@
+import { existsSync, unlinkSync } from 'node:fs';
+
 import { AnthropicAdapter } from '@memex/llm';
-import type { Memory } from '@memex/memory';
+import type { Memory, MemoryEvents } from '@memex/memory';
 import { createMemory } from '@memex/memory';
 import { SqliteInsightLog } from '@memex/stm';
+
+import { IPC_SOCKET_PATH } from '../ipc/protocol.js';
+import { SocketServer } from '../ipc/socket-server.js';
 
 const FORCE_EXIT_TIMEOUT_MS = 30_000;
 
@@ -37,6 +42,7 @@ export function readConfig(): CortexConfig {
 }
 
 let activeMemory: Memory | undefined;
+let activeServer: SocketServer | undefined;
 let isShuttingDown = false;
 
 export function setActiveMemory(mem: Memory): void {
@@ -46,6 +52,7 @@ export function setActiveMemory(mem: Memory): void {
 export function resetShutdownState(): void {
   isShuttingDown = false;
   activeMemory = undefined;
+  activeServer = undefined;
 }
 
 export function shutdownOnce(): void {
@@ -58,11 +65,27 @@ export function shutdownOnce(): void {
     process.exit(1);
   }, FORCE_EXIT_TIMEOUT_MS);
 
-  void activeMemory?.shutdown().then(() => {
+  const shutdown = async () => {
+    await activeServer?.stop();
+    await activeMemory?.shutdown();
     clearTimeout(forceExitTimer);
     process.exit(0);
-  });
+  };
+
+  void shutdown();
 }
+
+const MEMORY_EVENT_NAMES: (keyof MemoryEvents)[] = [
+  'amygdala:cycle:start',
+  'amygdala:cycle:end',
+  'amygdala:entry:scored',
+  'hippocampus:consolidation:start',
+  'hippocampus:consolidation:end',
+  'hippocampus:false-memory-risk',
+  'ltm:record:decayed-below-threshold',
+  'ltm:prune:executed',
+  'stm:compression:triggered',
+];
 
 export async function main(): Promise<void> {
   let config: CortexConfig;
@@ -88,10 +111,30 @@ export async function main(): Promise<void> {
     ...(config.sessionId !== undefined && { sessionId: config.sessionId }),
   });
 
-  setActiveMemory(result.memory);
+  const { memory } = result;
+  setActiveMemory(memory);
+
+  const socketPath = IPC_SOCKET_PATH(memory.sessionId);
+  const server = new SocketServer(socketPath);
+  activeServer = server;
+
+  await server.start(memory);
+
+  for (const eventName of MEMORY_EVENT_NAMES) {
+    memory.events.on(eventName, (...arguments_) => {
+      server.broadcast({ type: 'event', name: eventName, payload: arguments_[0] });
+    });
+  }
 
   process.on('SIGTERM', shutdownOnce);
   process.on('SIGINT', shutdownOnce);
+  process.on('exit', () => {
+    try {
+      if (existsSync(socketPath)) {
+        unlinkSync(socketPath);
+      }
+    } catch {}
+  });
 
   process.stderr.write('cortex ready\n');
 }

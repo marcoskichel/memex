@@ -1,16 +1,10 @@
 {
-  "name": "@memex/cortex",
+  "name": "@memex/memex-tui",
   "version": "0.0.0",
   "type": "module",
   "private": true,
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
   "bin": {
-    "cortex": "./dist/bin/cortex.js"
+    "memex-tui": "./dist/bin/memex-tui.js"
   },
   "scripts": {
     "build": "tsc",
@@ -23,14 +17,16 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@memex/llm": "workspace:*",
+    "@memex/cortex": "workspace:*",
     "@memex/memory": "workspace:*",
-    "@memex/stm": "workspace:*"
+    "ink": "^5.2.1",
+    "react": "^18.3.1"
   },
   "devDependencies": {
     "@memex/eslint-config": "workspace:*",
     "@memex/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
+    "@types/react": "^18.3.21",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",
     "typescript": "^5.8.3",
