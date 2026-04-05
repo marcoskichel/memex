@@ -42,8 +42,9 @@ export class InsightLog implements InsightLogLike {
   }
 
   markProcessed(ids: string[]): void {
+    const idSet = new Set(ids);
     for (const entry of this.#entries) {
-      if (ids.includes(entry.id)) {
+      if (idSet.has(entry.id)) {
         entry.processed = true;
       }
     }
