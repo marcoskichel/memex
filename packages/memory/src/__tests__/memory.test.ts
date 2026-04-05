@@ -109,6 +109,25 @@ describe('createMemory', () => {
     const { memory } = await createMemory(baseConfig);
     expect(memory.events).toBeInstanceOf(MemoryEventEmitter);
   });
+
+  it('uses custom stm from config when provided', async () => {
+    const customStmAppend = vi.fn();
+    const customStm = {
+      append: customStmAppend,
+      readUnprocessed: vi.fn(() => []),
+      markProcessed: vi.fn(),
+      clear: vi.fn(),
+      allEntries: vi.fn(() => []),
+    };
+    const { memory } = await createMemory({ ...baseConfig, stm: customStm as never });
+    memory.logInsight({ summary: 'test insight', contextFile: '/tmp/test.txt' });
+    expect(customStmAppend).toHaveBeenCalledWith({
+      summary: 'test insight',
+      contextFile: '/tmp/test.txt',
+      tags: [],
+    });
+    expect(mockStmAppend).not.toHaveBeenCalled();
+  });
 });
 
 describe('logInsight', () => {
