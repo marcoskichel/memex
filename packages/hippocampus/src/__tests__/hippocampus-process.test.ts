@@ -79,6 +79,10 @@ function makeEventBus(): EventBus & {
   };
 }
 
+function makeRecordAt(id: number, date: Date): LtmRecord {
+  return makeRecord(id, { createdAt: date });
+}
+
 describe('HippocampusProcess', () => {
   let events: ReturnType<typeof makeEventBus>;
 
@@ -437,5 +441,161 @@ describe('HippocampusProcess', () => {
 
     await expect(fs.access(temporaryFile)).resolves.toBeUndefined();
     await fs.unlink(temporaryFile);
+  });
+
+  describe('temporal proximity splitting', () => {
+    it('cohesive cluster within threshold is not split', async () => {
+      const base = new Date('2024-01-01');
+      const cluster = [
+        makeRecordAt(1, new Date(base.getTime() + 0)),
+        makeRecordAt(2, new Date(base.getTime() + 3 * 86_400_000)),
+        makeRecordAt(3, new Date(base.getTime() + 8 * 86_400_000)),
+        makeRecordAt(4, new Date(base.getTime() + 10 * 86_400_000)),
+      ];
+      const ltm = makeLtm([cluster]);
+      const llmAdapter = makeLlmAdapter();
+      const process = new HippocampusProcess({
+        ltm: ltm as never,
+        llmAdapter,
+        minClusterSize: 3,
+        maxCreatedAtSpreadDays: 30,
+        events,
+      });
+      await process.run();
+      expect(llmAdapter.completeStructured).toHaveBeenCalledOnce();
+    });
+
+    it('dispersed cluster is split at the largest gap', async () => {
+      const jan1 = new Date('2024-01-01').getTime();
+      const jul1 = new Date('2024-07-01').getTime();
+      const cluster = [
+        makeRecordAt(1, new Date(jan1)),
+        makeRecordAt(2, new Date(jan1 + 4 * 86_400_000)),
+        makeRecordAt(3, new Date(jan1 + 7 * 86_400_000)),
+        makeRecordAt(4, new Date(jul1)),
+        makeRecordAt(5, new Date(jul1 + 5 * 86_400_000)),
+        makeRecordAt(6, new Date(jul1 + 10 * 86_400_000)),
+      ];
+      const ltm = makeLtm([cluster]);
+      const llmAdapter = makeLlmAdapter();
+      const process = new HippocampusProcess({
+        ltm: ltm as never,
+        llmAdapter,
+        minClusterSize: 3,
+        maxCreatedAtSpreadDays: 30,
+        events,
+      });
+      await process.run();
+      expect(llmAdapter.completeStructured).toHaveBeenCalledTimes(2);
+      expect(ltm.consolidate).toHaveBeenCalledTimes(2);
+    });
+
+    it('sub-cluster below minClusterSize after split is discarded', async () => {
+      const jan1 = new Date('2024-01-01').getTime();
+      const jul1 = new Date('2024-07-01').getTime();
+      const cluster = [
+        makeRecordAt(1, new Date(jan1)),
+        makeRecordAt(2, new Date(jul1)),
+        makeRecordAt(3, new Date(jul1 + 5 * 86_400_000)),
+        makeRecordAt(4, new Date(jul1 + 10 * 86_400_000)),
+      ];
+      const ltm = makeLtm([cluster]);
+      const llmAdapter = makeLlmAdapter();
+      const process = new HippocampusProcess({
+        ltm: ltm as never,
+        llmAdapter,
+        minClusterSize: 3,
+        maxCreatedAtSpreadDays: 30,
+        events,
+      });
+      await process.run();
+      expect(llmAdapter.completeStructured).toHaveBeenCalledOnce();
+      expect(ltm.consolidate).toHaveBeenCalledOnce();
+    });
+
+    it('maxCreatedAtSpreadDays undefined disables temporal splitting', async () => {
+      const jan1 = new Date('2024-01-01').getTime();
+      const dec31 = new Date('2024-12-31').getTime();
+      const cluster = [
+        makeRecordAt(1, new Date(jan1)),
+        makeRecordAt(2, new Date(jan1 + 7 * 86_400_000)),
+        makeRecordAt(3, new Date(dec31)),
+      ];
+      const ltm = makeLtm([cluster]);
+      const llmAdapter = makeLlmAdapter();
+      const process = new HippocampusProcess({
+        ltm: ltm as never,
+        llmAdapter,
+        minClusterSize: 3,
+        maxCreatedAtSpreadDays: undefined,
+        events,
+      });
+      await process.run();
+      expect(llmAdapter.completeStructured).toHaveBeenCalledOnce();
+    });
+
+    it('split occurs at single largest gap only', async () => {
+      const base = new Date('2024-01-01').getTime();
+      const cluster = [
+        makeRecordAt(1, new Date(base)),
+        makeRecordAt(2, new Date(base + 10 * 86_400_000)),
+        makeRecordAt(3, new Date(base + 100 * 86_400_000)),
+        makeRecordAt(4, new Date(base + 105 * 86_400_000)),
+        makeRecordAt(5, new Date(base + 185 * 86_400_000)),
+      ];
+      const ltm = makeLtm([cluster]);
+      const llmAdapter = makeLlmAdapter();
+      const process = new HippocampusProcess({
+        ltm: ltm as never,
+        llmAdapter,
+        minClusterSize: 2,
+        maxCreatedAtSpreadDays: 30,
+        events,
+      });
+      await process.run();
+      expect(llmAdapter.completeStructured).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses config maxCreatedAtSpreadDays when provided', async () => {
+      const jan1 = new Date('2024-01-01').getTime();
+      const jul1 = new Date('2024-07-01').getTime();
+      const cluster = [
+        makeRecordAt(1, new Date(jan1)),
+        makeRecordAt(2, new Date(jan1 + 5 * 86_400_000)),
+        makeRecordAt(3, new Date(jul1)),
+        makeRecordAt(4, new Date(jul1 + 5 * 86_400_000)),
+      ];
+      const ltm = makeLtm([cluster]);
+      const llmAdapter = makeLlmAdapter();
+      const process = new HippocampusProcess({
+        ltm: ltm as never,
+        llmAdapter,
+        minClusterSize: 2,
+        maxCreatedAtSpreadDays: 60,
+        events,
+      });
+      await process.run();
+      expect(llmAdapter.completeStructured).toHaveBeenCalledTimes(2);
+    });
+
+    it('applies 30-day default when maxCreatedAtSpreadDays is not configured', async () => {
+      const base = new Date('2024-01-01').getTime();
+      const cluster = [
+        makeRecordAt(1, new Date(base)),
+        makeRecordAt(2, new Date(base + 3 * 86_400_000)),
+        makeRecordAt(3, new Date(base + 45 * 86_400_000)),
+        makeRecordAt(4, new Date(base + 48 * 86_400_000)),
+      ];
+      const ltm = makeLtm([cluster]);
+      const llmAdapter = makeLlmAdapter();
+      const process = new HippocampusProcess({
+        ltm: ltm as never,
+        llmAdapter,
+        minClusterSize: 2,
+        events,
+      });
+      await process.run();
+      expect(llmAdapter.completeStructured).toHaveBeenCalledTimes(2);
+    });
   });
 });
