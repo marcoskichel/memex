@@ -1,9 +1,9 @@
 import Database from 'better-sqlite3';
 
-import type { InsightEntry } from '../insight-log.js';
+import type { InsightEntry, InsightLogLike } from '../insight-log.js';
 import { CREATE_INSIGHTS_TABLE, rowToInsightEntry } from './sqlite-insight-schema.js';
 
-export class SqliteInsightLog {
+export class SqliteInsightLog implements InsightLogLike {
   private db: Database.Database;
 
   constructor(dbPath: string) {

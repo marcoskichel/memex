@@ -8,8 +8,16 @@ export interface InsightEntry {
   safeToDelete?: boolean;
 }
 
-export class InsightLog {
-  private entries: InsightEntry[] = [];
+export interface InsightLogLike {
+  append(entry: Omit<InsightEntry, 'id' | 'timestamp' | 'processed'>): InsightEntry;
+  readUnprocessed(): InsightEntry[];
+  allEntries(): InsightEntry[];
+  markProcessed(ids: string[]): void;
+  clear(): void;
+}
+
+export class InsightLog implements InsightLogLike {
+  #entries: InsightEntry[] = [];
 
   append(entry: Omit<InsightEntry, 'id' | 'timestamp' | 'processed'>): InsightEntry {
     const newEntry: InsightEntry = {
@@ -19,22 +27,22 @@ export class InsightLog {
       processed: false,
     };
 
-    this.entries.push(newEntry);
+    this.#entries.push(newEntry);
     return newEntry;
   }
 
   readUnprocessed(): InsightEntry[] {
-    return this.entries
+    return this.#entries
       .filter((entry) => !entry.processed)
       .toSorted((first, second) => first.timestamp.getTime() - second.timestamp.getTime());
   }
 
   allEntries(): InsightEntry[] {
-    return [...this.entries];
+    return [...this.#entries];
   }
 
   markProcessed(ids: string[]): void {
-    for (const entry of this.entries) {
+    for (const entry of this.#entries) {
       if (ids.includes(entry.id)) {
         entry.processed = true;
       }
@@ -42,6 +50,6 @@ export class InsightLog {
   }
 
   clear(): void {
-    this.entries = this.entries.filter((entry) => !entry.processed);
+    this.#entries = this.#entries.filter((entry) => !entry.processed);
   }
 }
