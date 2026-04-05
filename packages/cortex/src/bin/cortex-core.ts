@@ -1,7 +1,7 @@
-import { AnthropicAdapter } from '@neurokit/llm';
-import type { Memory } from '@neurokit/memory';
-import { createMemory } from '@neurokit/memory';
-import { SqliteInsightLog } from '@neurokit/stm';
+import { AnthropicAdapter } from '@memex/llm';
+import type { Memory } from '@memex/memory';
+import { createMemory } from '@memex/memory';
+import { SqliteInsightLog } from '@memex/stm';
 
 const FORCE_EXIT_TIMEOUT_MS = 30_000;
 

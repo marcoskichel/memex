@@ -2,7 +2,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { SqliteInsightLog } from '@neurokit/stm';
+import { SqliteInsightLog } from '@memex/stm';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import { writeInsight } from '../shell/clients/insight-writer.js';

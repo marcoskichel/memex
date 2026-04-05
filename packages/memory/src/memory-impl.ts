@@ -1,10 +1,10 @@
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { AmygdalaProcess } from '@neurokit/amygdala';
-import type { HippocampusProcess } from '@neurokit/hippocampus';
-import type { LtmEngine, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@neurokit/ltm';
-import type { InsightLogLike } from '@neurokit/stm';
+import type { AmygdalaProcess } from '@memex/amygdala';
+import type { HippocampusProcess } from '@memex/hippocampus';
+import type { LtmEngine, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@memex/ltm';
+import type { InsightLogLike } from '@memex/stm';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';

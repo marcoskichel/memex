@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-import type { StructuredOutputSchema } from '@neurokit/llm';
+import type { StructuredOutputSchema } from '@memex/llm';
 
 export interface StorageWithLock {
   acquireLock?: (p: string, ttl: number) => boolean;

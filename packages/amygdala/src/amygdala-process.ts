@@ -1,6 +1,6 @@
-import type { LLMAdapter } from '@neurokit/llm';
-import type { LtmEngine } from '@neurokit/ltm';
-import type { InsightEntry, InsightLogLike } from '@neurokit/stm';
+import type { LLMAdapter } from '@memex/llm';
+import type { LtmEngine } from '@memex/ltm';
+import type { InsightEntry, InsightLogLike } from '@memex/stm';
 
 import type {
   AmygdalaScoringResult,

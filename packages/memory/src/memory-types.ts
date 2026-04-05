@@ -1,7 +1,7 @@
-import type { LLMAdapter } from '@neurokit/llm';
-import type { EmbeddingAdapter, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@neurokit/ltm';
-import type { LtmEngine } from '@neurokit/ltm';
-import type { InsightLogLike } from '@neurokit/stm';
+import type { LLMAdapter } from '@memex/llm';
+import type { EmbeddingAdapter, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@memex/ltm';
+import type { LtmEngine } from '@memex/ltm';
+import type { InsightLogLike } from '@memex/stm';
 import type { ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';
