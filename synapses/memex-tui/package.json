@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "dev:run": "node --env-file=.env.local --watch ./dist/bin/memex-tui.js",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "test": "vitest run",

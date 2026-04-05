@@ -7,6 +7,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:tui": "turbo run dev dev:run --filter=...@memex/memex-tui",
     "test": "turbo test",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",

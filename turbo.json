@@ -9,6 +9,11 @@
       "cache": false,
       "persistent": true
     },
+    "dev:run": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true
+    },
     "test": {},
     "lint": {},
     "lint:fix": {
