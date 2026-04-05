@@ -28,6 +28,8 @@ export const MAX_RELATED_MEMORIES = 3;
 export const LOW_COST_MAX_RELATED = 1;
 export const ESTIMATED_TOKENS_PER_CALL = 500;
 export const THRESHOLD_CHECK_INTERVAL_MS = 5000;
+export const DEFAULT_SINGLETON_PROMOTION_THRESHOLD = 0.7;
+export const INTERNAL_TAGS = ['permanently_skipped', 'llm_rate_limited'];
 const MINUTES_PER_HOUR = 60;
 export const HOUR_MS = SECONDS_PER_MINUTE * MINUTES_PER_HOUR * MS_PER_SECOND;
 

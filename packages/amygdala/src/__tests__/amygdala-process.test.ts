@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EventBus } from '../amygdala-process.js';
 import { AmygdalaProcess } from '../amygdala-process.js';
+import { applyAction } from '../apply-action.js';
 
 const TEST_SESSION_ID = 'test-session-42';
 
@@ -109,9 +110,10 @@ describe('AmygdalaProcess', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(ltm.insert).toHaveBeenCalledWith(entry.summary, {
       importance: 0.7,
-      metadata: { source: 'amygdala', insightId: entry.id },
+      metadata: { source: 'amygdala', insightId: entry.id, tags: [] },
       sessionId: TEST_SESSION_ID,
       episodeSummary: entry.summary,
+      tier: 'semantic',
     });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(stm.markProcessed).toHaveBeenCalledWith([entry.id]);
@@ -535,5 +537,219 @@ describe('AmygdalaProcess', () => {
     }
 
     expect(entry.safeToDelete).not.toBe(true);
+  });
+
+  it('5.1 insert with importanceScore=0.85, no related memories → tier: semantic', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm({ query: vi.fn().mockReturnValue(okResult([])) });
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.85, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(ltm.insert).toHaveBeenCalledWith(
+      entry.summary,
+      expect.objectContaining({ tier: 'semantic' }),
+    );
+  });
+
+  it('5.2 insert with importanceScore=0.85, non-empty related memories → tier: episodic', async () => {
+    const entry = makeEntry();
+    const related = [{ record: { data: 'existing memory', id: 1 } }];
+    const ltm = makeLtm({ query: vi.fn().mockReturnValue(okResult(related)) });
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.85, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(call.tier).toBeUndefined();
+  });
+
+  it('5.3 insert with importanceScore=0.5, no related memories → tier: episodic', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm({ query: vi.fn().mockReturnValue(okResult([])) });
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(call.tier).toBeUndefined();
+  });
+
+  it('5.4 action=relate with importanceScore=0.9, no related memories → tier: episodic', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm({ query: vi.fn().mockReturnValue(okResult([])) });
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({
+      action: 'relate',
+      targetId: '7',
+      edgeType: 'elaborates',
+      importanceScore: 0.9,
+      reasoning: 'ok',
+    });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(call.tier).toBeUndefined();
+  });
+
+  it('5.5 custom singletonPromotionThreshold=0.9 → importanceScore=0.85 stays episodic', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm({ query: vi.fn().mockReturnValue(okResult([])) });
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.85, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+      singletonPromotionThreshold: 0.9,
+    });
+    await process.run();
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(call.tier).toBeUndefined();
+  });
+
+  it('5.6 entry.tags=[behavioral, llm_rate_limited] → metadata.tags=[behavioral]', async () => {
+    const entry = makeEntry({ tags: ['behavioral', 'llm_rate_limited'] });
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect((call.metadata as Record<string, unknown>).tags).toEqual(['behavioral']);
+  });
+
+  it('5.7 entry.tags=[permanently_skipped, llm_rate_limited] → metadata.tags=[]', async () => {
+    const entry = makeEntry({ tags: ['permanently_skipped', 'llm_rate_limited'] });
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const scoringResult = { action: 'insert' as const, importanceScore: 0.5, reasoning: 'ok' };
+
+    await applyAction({
+      entry,
+      scoringResult,
+      relatedMemories: [],
+      ltm,
+      stm,
+      events,
+      sessionId: TEST_SESSION_ID,
+      singletonPromotionThreshold: 0.7,
+    });
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect((call.metadata as Record<string, unknown>).tags).toEqual([]);
+  });
+
+  it('5.8 entry.tags=[] → metadata.tags=[]', async () => {
+    const entry = makeEntry({ tags: [] });
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect((call.metadata as Record<string, unknown>).tags).toEqual([]);
+  });
+
+  it('5.9 relate action: new record carries filtered tags', async () => {
+    const entry = makeEntry({ tags: ['behavioral', 'llm_rate_limited'] });
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({
+      action: 'relate',
+      targetId: '3',
+      edgeType: 'elaborates',
+      importanceScore: 0.6,
+      reasoning: 'ok',
+    });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      sessionId: TEST_SESSION_ID,
+    });
+    await process.run();
+
+    const call = (ltm.insert as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect((call.metadata as Record<string, unknown>).tags).toEqual(['behavioral']);
   });
 });
