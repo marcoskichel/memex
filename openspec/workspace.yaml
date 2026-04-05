@@ -9,7 +9,13 @@ scopes:
     path: packages/hippocampus
   - name: memory
     path: packages/memory
+  - name: cortex
+    path: packages/cortex
   - name: eslint-config
     path: packages/eslint-config
   - name: typescript-config
     path: packages/typescript-config
+  - name: claude-hooks
+    path: synapses/claude-hooks
+  - name: memex-tui
+    path: synapses/memex-tui

@@ -1,0 +1,7 @@
+scopes:
+  - name: cortex
+    path: packages/cortex
+  - name: claude-hooks
+    path: synapses/claude-hooks
+  - name: memex-tui
+    path: synapses/memex-tui
