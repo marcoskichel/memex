@@ -1,6 +1,6 @@
 import type { LLMAdapter } from '@neurokit/llm';
 import type { LtmEngine } from '@neurokit/ltm';
-import type { InsightEntry, InsightLog } from '@neurokit/stm';
+import type { InsightEntry, InsightLogLike } from '@neurokit/stm';
 
 import type {
   AmygdalaScoringResult,
@@ -35,7 +35,7 @@ export type { AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
 
 export interface AmygdalaConfig {
   ltm: LtmEngine;
-  stm: InsightLog;
+  stm: InsightLogLike;
   llmAdapter: LLMAdapter;
   sessionId: string;
   cadenceMs?: number;
@@ -49,7 +49,7 @@ export interface AmygdalaConfig {
 
 export class AmygdalaProcess {
   private ltm: LtmEngine;
-  private stm: InsightLog;
+  private stm: InsightLogLike;
   private llmAdapter: LLMAdapter;
   private sessionId: string;
   private cadenceMs: number;
