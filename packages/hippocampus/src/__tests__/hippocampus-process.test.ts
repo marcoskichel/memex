@@ -1,4 +1,4 @@
-import type { LtmRecord } from '@neurokit/ltm';
+import type { LtmRecord } from '@memex/ltm';
 import { errAsync, okAsync } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -397,7 +397,7 @@ describe('HippocampusProcess', () => {
   });
 
   it('4.3 safeToDelete=true context files are deleted without LTM query', async () => {
-    const { InsightLog } = await import('@neurokit/stm');
+    const { InsightLog } = await import('@memex/stm');
     const stm = new InsightLog();
     const ltm = makeLtm([]);
     const llmAdapter = makeLlmAdapter();
@@ -420,7 +420,7 @@ describe('HippocampusProcess', () => {
   });
 
   it('4.4 safeToDelete=false context files are not deleted', async () => {
-    const { InsightLog } = await import('@neurokit/stm');
+    const { InsightLog } = await import('@memex/stm');
     const stm = new InsightLog();
     const ltm = makeLtm([]);
     const llmAdapter = makeLlmAdapter();

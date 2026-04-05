@@ -2,13 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { EventBus as AmygdalaEventBus } from '@neurokit/amygdala';
-import { AmygdalaProcess } from '@neurokit/amygdala';
-import { HippocampusProcess } from '@neurokit/hippocampus';
-import type { EmbeddingAdapter } from '@neurokit/ltm';
-import { LtmEngine, SqliteAdapter, TransformersJsAdapter } from '@neurokit/ltm';
-import type { InsightLogLike } from '@neurokit/stm';
-import { InsightLog } from '@neurokit/stm';
+import type { EventBus as AmygdalaEventBus } from '@memex/amygdala';
+import { AmygdalaProcess } from '@memex/amygdala';
+import { HippocampusProcess } from '@memex/hippocampus';
+import type { EmbeddingAdapter } from '@memex/ltm';
+import { LtmEngine, SqliteAdapter, TransformersJsAdapter } from '@memex/ltm';
+import type { InsightLogLike } from '@memex/stm';
+import { InsightLog } from '@memex/stm';
 
 import { MemoryEventEmitter } from './memory-events.js';
 import { MemoryImpl } from './memory-impl.js';

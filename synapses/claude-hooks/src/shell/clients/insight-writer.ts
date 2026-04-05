@@ -1,4 +1,4 @@
-import { SqliteInsightLog } from '@neurokit/stm';
+import { SqliteInsightLog } from '@memex/stm';
 
 import type { PostToolUsePayload } from '../../core/parse-hook-payload.js';
 

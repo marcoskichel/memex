@@ -18,10 +18,10 @@
 
 ## 3. Source and Test Files
 
-- [ ] 3.1 Find and replace all `@neurokit/` import paths in `.ts` source files across all packages
-- [ ] 3.2 Find and replace all `@neurokit/` references in `.ts` test files
-- [ ] 3.3 Run `pnpm build` and fix any compilation errors
-- [ ] 3.4 Run `pnpm test` and fix any test failures
+- [x] 3.1 Find and replace all `@neurokit/` import paths in `.ts` source files across all packages
+- [x] 3.2 Find and replace all `@neurokit/` references in `.ts` test files
+- [x] 3.3 Run `pnpm build` and fix any compilation errors
+- [x] 3.4 Run `pnpm test` and fix any test failures
 - [ ] 3.5 Commit: `chore: update @neurokit imports to @memex in source and tests`
 
 ## 4. Documentation and Name Origin

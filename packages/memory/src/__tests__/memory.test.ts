@@ -26,7 +26,7 @@ const mockAmygdalaStop = vi.fn();
 const mockHippocampusStart = vi.fn();
 const mockHippocampusStop = vi.fn();
 
-vi.mock('@neurokit/ltm', () => ({
+vi.mock('@memex/ltm', () => ({
   SqliteAdapter: vi.fn(() => ({})),
   TransformersJsAdapter: vi.fn(() => ({})),
   LtmEngine: vi.fn(() => ({
@@ -36,7 +36,7 @@ vi.mock('@neurokit/ltm', () => ({
   })),
 }));
 
-vi.mock('@neurokit/stm', () => ({
+vi.mock('@memex/stm', () => ({
   InsightLog: vi.fn(() => ({
     append: mockStmAppend,
     readUnprocessed: mockStmReadUnprocessed,
@@ -44,7 +44,7 @@ vi.mock('@neurokit/stm', () => ({
   })),
 }));
 
-vi.mock('@neurokit/amygdala', () => ({
+vi.mock('@memex/amygdala', () => ({
   AmygdalaProcess: vi.fn(() => ({
     run: mockAmygdalaRun,
     start: mockAmygdalaStart,
@@ -52,7 +52,7 @@ vi.mock('@neurokit/amygdala', () => ({
   })),
 }));
 
-vi.mock('@neurokit/hippocampus', () => ({
+vi.mock('@memex/hippocampus', () => ({
   HippocampusProcess: vi.fn(() => ({
     start: mockHippocampusStart,
     stop: mockHippocampusStop,
@@ -443,7 +443,7 @@ describe('4.7 createMemory sessionId wiring', () => {
   makeBaseStatsSetup();
 
   it('wires sessionId to AmygdalaProcess when provided in config', async () => {
-    const { AmygdalaProcess } = await import('@neurokit/amygdala');
+    const { AmygdalaProcess } = await import('@memex/amygdala');
     await createMemory({ ...baseConfig, sessionId: 'explicit-session-id' });
     expect(AmygdalaProcess).toHaveBeenCalledWith(
       expect.objectContaining({ sessionId: 'explicit-session-id' }),
