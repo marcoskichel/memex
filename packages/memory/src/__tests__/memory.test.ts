@@ -410,7 +410,7 @@ describe('recallFull', () => {
   });
 
   it('4.6 returns RecordNotFoundError for unknown ID', async () => {
-    mockLtmGetById.mockReturnValue();
+    mockLtmGetById.mockReset();
     const { memory } = await createMemory(baseConfig);
     const result = await memory.recallFull(999);
     expect(result.isErr()).toBe(true);
