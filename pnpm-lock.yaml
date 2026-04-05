@@ -67,6 +67,40 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
+  packages/cortex:
+    dependencies:
+      '@neurokit/llm':
+        specifier: workspace:*
+        version: link:../llm
+      '@neurokit/memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@neurokit/stm':
+        specifier: workspace:*
+        version: link:../stm
+    devDependencies:
+      '@neurokit/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@neurokit/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
+
   packages/eslint-config:
     dependencies:
       '@typescript-eslint/utils':

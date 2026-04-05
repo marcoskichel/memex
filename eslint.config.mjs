@@ -7,4 +7,12 @@ export default [
   ...baseConfig,
   ...nodeConfig,
   ...neverthrowConfig,
+  {
+    files: ['**/src/bin/**/*.ts', '**/synapses/**/src/bin/**/*.ts'],
+    rules: {
+      'unicorn/no-process-exit': 'off',
+      'neverthrow/no-throw': 'off',
+      'neverthrow/no-try-catch': 'off',
+    },
+  },
 ];
