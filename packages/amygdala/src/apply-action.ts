@@ -1,5 +1,5 @@
 import type { LtmEngine } from '@neurokit/ltm';
-import type { InsightEntry, InsightLog } from '@neurokit/stm';
+import type { InsightEntry, InsightLogLike } from '@neurokit/stm';
 
 import type { AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
 import { INTERNAL_TAGS } from './amygdala-schema.js';
@@ -9,7 +9,7 @@ export interface ApplyActionOptions {
   scoringResult: AmygdalaScoringResult;
   relatedMemories: { data: string; id: number }[];
   ltm: LtmEngine;
-  stm: InsightLog;
+  stm: InsightLogLike;
   events: EventBus;
   sessionId: string;
   singletonPromotionThreshold: number;
