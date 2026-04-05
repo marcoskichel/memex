@@ -35,6 +35,15 @@ export function filterCandidates(records: LtmRecord[], options: LtmQueryOptions)
     const category = options.category;
     candidates = candidates.filter((record) => record.category === category);
   }
+  if (options.tags !== undefined && options.tags.length > 0) {
+    const tags = options.tags;
+    candidates = candidates.filter((record) => {
+      const recordTags = record.metadata.tags;
+      return (
+        Array.isArray(recordTags) && tags.every((tag) => (recordTags as string[]).includes(tag))
+      );
+    });
+  }
   return candidates;
 }
 

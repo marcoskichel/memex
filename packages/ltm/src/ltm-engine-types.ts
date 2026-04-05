@@ -14,6 +14,7 @@ export interface LtmQueryOptions {
   sort?: 'confidence' | 'recency' | 'stability' | 'importance';
   sessionId?: string;
   category?: string;
+  tags?: string[];
 }
 
 export interface LtmInsertOptions {
