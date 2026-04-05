@@ -1,6 +1,7 @@
 import type { LLMAdapter } from '@neurokit/llm';
-import type { EmbeddingAdapter, LtmQueryOptions } from '@neurokit/ltm';
+import type { EmbeddingAdapter, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@neurokit/ltm';
 import type { LtmEngine } from '@neurokit/ltm';
+import type { ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';
 import type { MemoryStats } from './memory-stats.js';
@@ -16,6 +17,7 @@ export type {
 
 export interface MemoryConfig {
   storagePath: string;
+  sessionId?: string;
   contextDirectory?: string;
   llmAdapter: LLMAdapter;
   embeddingAdapter?: EmbeddingAdapter;
@@ -52,6 +54,13 @@ export class ShutdownError extends Error {
   }
 }
 
+export class RecordNotFoundError extends Error {
+  constructor(id: number) {
+    super(`Record ${id.toString()} not found`);
+    this.name = 'RecordNotFoundError';
+  }
+}
+
 export interface LogInsightOptions {
   summary: string;
   contextFile: string;
@@ -63,6 +72,13 @@ export interface Memory {
   readonly events: MemoryEventEmitter;
   logInsight(options: LogInsightOptions): void;
   recall(nlQuery: string, options?: LtmQueryOptions): ReturnType<LtmEngine['query']>;
+  recallSession(
+    query: string,
+    options: { sessionId: string } & Omit<LtmQueryOptions, 'sessionId'>,
+  ): Promise<LtmQueryResult[]>;
+  recallFull(
+    id: number,
+  ): ResultAsync<{ record: LtmRecord; episodeSummary: string | undefined }, RecordNotFoundError>;
   getStats(): Promise<MemoryStats>;
   pruneContextFiles(options: { olderThanDays: number }): Promise<PruneContextFilesReport>;
   shutdown(): Promise<ShutdownReport>;

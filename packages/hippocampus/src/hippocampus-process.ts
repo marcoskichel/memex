@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import type { LLMAdapter } from '@neurokit/llm';
 import type { LtmEngine } from '@neurokit/ltm';
+import type { InsightLog } from '@neurokit/stm';
 
 import type { ConsolidationResult } from './hippocampus-schema.js';
 import { consolidationSchema, SYSTEM_PROMPT } from './hippocampus-schema.js';
@@ -24,6 +25,8 @@ export interface HippocampusConfig {
   maxLLMCallsPerHour?: number;
   events?: EventBus;
   contextDir?: string;
+  stm?: InsightLog;
+  category?: string;
 }
 
 export interface HippocampusConsolidationEndPayload {
@@ -66,6 +69,8 @@ export class HippocampusProcess {
   private maxLLMCallsPerHour: number;
   private events: EventBus;
   private contextDir: string | undefined;
+  private stm: InsightLog | undefined;
+  private category: string | undefined;
   private intervalId: ReturnType<typeof setInterval> | undefined;
   private llmCallsThisHour: number;
   private hourWindowStart: number;
@@ -80,6 +85,8 @@ export class HippocampusProcess {
     this.maxLLMCallsPerHour = config.maxLLMCallsPerHour ?? DEFAULT_MAX_LLM_CALLS_PER_HOUR;
     this.events = config.events ?? { emit: () => false, on: () => false };
     this.contextDir = config.contextDir;
+    this.stm = config.stm;
+    this.category = config.category;
     this.llmCallsThisHour = 0;
     this.hourWindowStart = Date.now();
   }
@@ -173,6 +180,7 @@ export class HippocampusProcess {
           confidence: result.confidence,
           preservedFacts: result.preservedFacts,
           uncertainties: result.uncertainties,
+          ...(this.category !== undefined && { category: this.category }),
         },
       });
 
@@ -228,6 +236,20 @@ export class HippocampusProcess {
   }
 
   private async deleteContextFiles(): Promise<number> {
+    if (this.stm) {
+      const safeEntries = this.stm.allEntries().filter((entry) => entry.safeToDelete === true);
+      let deleted = 0;
+      for (const entry of safeEntries) {
+        const unlinked = await fs
+          .unlink(entry.contextFile)
+          .then(() => true)
+          .catch(() => false);
+        if (unlinked) {
+          deleted++;
+        }
+      }
+      return deleted;
+    }
     if (!this.contextDir) {
       return 0;
     }

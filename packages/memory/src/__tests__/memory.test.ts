@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryEventEmitter } from '../memory-events.js';
+import { RecordNotFoundError } from '../memory-types.js';
 import { createMemory } from '../memory.js';
 
 const mockStmAppend = vi.fn();
@@ -8,6 +9,7 @@ const mockStmReadUnprocessed = vi.fn(() => []);
 const mockStmMarkProcessed = vi.fn();
 
 const mockLtmQuery = vi.fn(() => ({ isOk: () => true, value: [] }));
+const mockLtmGetById = vi.fn();
 const mockLtmStats = vi.fn(() => ({
   total: 0,
   episodic: 0,
@@ -30,6 +32,7 @@ vi.mock('@neurokit/ltm', () => ({
   LtmEngine: vi.fn(() => ({
     query: mockLtmQuery,
     stats: mockLtmStats,
+    getById: mockLtmGetById,
   })),
 }));
 
@@ -304,5 +307,127 @@ describe('getStats', () => {
     expect(stats.hippocampus.lastRunClustersConsolidated).toBe(3);
     expect(stats.hippocampus.lastRunRecordsPruned).toBe(10);
     expect(stats.hippocampus.lastConsolidationAt).toBeInstanceOf(Date);
+  });
+});
+
+function makeBaseStatsSetup() {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockStmReadUnprocessed.mockReturnValue([]);
+    mockLtmStats.mockReturnValue({
+      total: 0,
+      episodic: 0,
+      semantic: 0,
+      tombstoned: 0,
+      avgStability: 0,
+      avgRetention: 0,
+    });
+  });
+}
+
+describe('recallSession', () => {
+  makeBaseStatsSetup();
+
+  it('4.1 returns only records from specified session', async () => {
+    const fakeRecord = {
+      record: { id: 1, data: 'session memory', sessionId: 'sess-abc' },
+      effectiveScore: 0.9,
+      rrfScore: 0.9,
+      retrievalStrategies: ['semantic'],
+      isSuperseded: false,
+    };
+    mockLtmQuery.mockReturnValueOnce({ isOk: () => true, value: [fakeRecord] } as never);
+    const { memory } = await createMemory(baseConfig);
+    const results = await memory.recallSession('what happened?', { sessionId: 'sess-abc' });
+    expect(mockLtmQuery).toHaveBeenCalledWith(
+      'what happened?',
+      expect.objectContaining({ sessionId: 'sess-abc', strengthen: false }),
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]).toBe(fakeRecord);
+  });
+
+  it('4.2 applies additional options alongside sessionId filter', async () => {
+    mockLtmQuery.mockReturnValueOnce({ isOk: () => true, value: [] });
+    const { memory } = await createMemory(baseConfig);
+    await memory.recallSession('query', { sessionId: 'sess-abc', tier: 'episodic', limit: 5 });
+    expect(mockLtmQuery).toHaveBeenCalledWith(
+      'query',
+      expect.objectContaining({
+        sessionId: 'sess-abc',
+        tier: 'episodic',
+        limit: 5,
+        strengthen: false,
+      }),
+    );
+  });
+
+  it('4.3 returns empty array for unknown session', async () => {
+    mockLtmQuery.mockReturnValueOnce({ isOk: () => true, value: [] });
+    const { memory } = await createMemory(baseConfig);
+    const results = await memory.recallSession('query', { sessionId: 'unknown-session' });
+    expect(results).toEqual([]);
+  });
+});
+
+describe('recallFull', () => {
+  makeBaseStatsSetup();
+
+  it('4.4 returns correct episodeSummary for episodic record', async () => {
+    const record = {
+      id: 42,
+      data: 'obs',
+      tier: 'episodic',
+      tombstoned: false,
+      episodeSummary: 'summary text',
+      sessionId: 's',
+    };
+    mockLtmGetById.mockReturnValue(record);
+    const { memory } = await createMemory(baseConfig);
+    const result = await memory.recallFull(42);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.record).toBe(record);
+      expect(result.value.episodeSummary).toBe('summary text');
+    }
+  });
+
+  it('4.5 returns undefined episodeSummary for semantic record without it', async () => {
+    const record = {
+      id: 7,
+      data: 'semantic fact',
+      tier: 'semantic',
+      tombstoned: false,
+      sessionId: 's',
+    };
+    mockLtmGetById.mockReturnValue(record);
+    const { memory } = await createMemory(baseConfig);
+    const result = await memory.recallFull(7);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.episodeSummary).toBeUndefined();
+    }
+  });
+
+  it('4.6 returns RecordNotFoundError for unknown ID', async () => {
+    mockLtmGetById.mockReturnValue();
+    const { memory } = await createMemory(baseConfig);
+    const result = await memory.recallFull(999);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(RecordNotFoundError);
+    }
+  });
+});
+
+describe('4.7 createMemory sessionId wiring', () => {
+  makeBaseStatsSetup();
+
+  it('wires sessionId to AmygdalaProcess when provided in config', async () => {
+    const { AmygdalaProcess } = await import('@neurokit/amygdala');
+    await createMemory({ ...baseConfig, sessionId: 'explicit-session-id' });
+    expect(AmygdalaProcess).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'explicit-session-id' }),
+    );
   });
 });

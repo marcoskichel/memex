@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
+import type { EventBus as AmygdalaEventBus } from '@neurokit/amygdala';
 import { AmygdalaProcess } from '@neurokit/amygdala';
 import { HippocampusProcess } from '@neurokit/hippocampus';
 import type { EmbeddingAdapter } from '@neurokit/ltm';
@@ -15,12 +16,13 @@ import { DEFAULT_MAX_TOKENS } from './memory-types.js';
 
 function buildAmygdala(
   config: MemoryConfig,
-  deps: { ltm: LtmEngine; stm: InsightLog; events: MemoryEventEmitter },
+  deps: { ltm: LtmEngine; stm: InsightLog; events: MemoryEventEmitter; sessionId: string },
 ): AmygdalaProcess {
   return new AmygdalaProcess({
     ltm: deps.ltm,
     stm: deps.stm,
     llmAdapter: config.llmAdapter,
+    sessionId: deps.sessionId,
     ...(config.amygdalaCadenceMs !== undefined && { cadenceMs: config.amygdalaCadenceMs }),
     ...(config.maxLLMCallsPerHour !== undefined && {
       maxLLMCallsPerHour: config.maxLLMCallsPerHour,
@@ -28,7 +30,7 @@ function buildAmygdala(
     ...(config.lowCostModeThreshold !== undefined && {
       lowCostModeThreshold: config.lowCostModeThreshold,
     }),
-    events: deps.events,
+    events: deps.events as unknown as AmygdalaEventBus,
   });
 }
 
@@ -53,7 +55,7 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
   const embeddingAdapter: EmbeddingAdapter = config.embeddingAdapter ?? new TransformersJsAdapter();
   const ltm = new LtmEngine({ storage, embeddingAdapter });
   const stm = new InsightLog();
-  const sessionId = randomUUID();
+  const sessionId = config.sessionId ?? randomUUID();
   const contextDirectory =
     config.contextDirectory ?? path.join(path.dirname(config.storagePath), 'context');
   const sessionContextDirectory = path.join(contextDirectory, sessionId);
@@ -64,7 +66,7 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
   const maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
   void maxTokens;
 
-  const amygdala = buildAmygdala(config, { ltm, stm, events });
+  const amygdala = buildAmygdala(config, { ltm, stm, events, sessionId });
   const hippocampus = buildHippocampus(config, { ltm, events, contextDirectory });
 
   amygdala.start();

@@ -29,6 +29,10 @@ export class InsightLog {
       .toSorted((first, second) => first.timestamp.getTime() - second.timestamp.getTime());
   }
 
+  allEntries(): InsightEntry[] {
+    return [...this.entries];
+  }
+
   markProcessed(ids: string[]): void {
     for (const entry of this.entries) {
       if (ids.includes(entry.id)) {

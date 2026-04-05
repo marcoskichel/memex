@@ -3,8 +3,9 @@ import path from 'node:path';
 
 import type { AmygdalaProcess } from '@neurokit/amygdala';
 import type { HippocampusProcess } from '@neurokit/hippocampus';
-import type { LtmEngine, LtmQueryOptions } from '@neurokit/ltm';
+import type { LtmEngine, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@neurokit/ltm';
 import type { InsightLog } from '@neurokit/stm';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';
 import type { AmygdalaStats, HippocampusStats, MemoryStats } from './memory-stats.js';
@@ -18,6 +19,7 @@ import {
   HOURS_PER_DAY,
   MINUTES_PER_HOUR,
   MS_PER_SECOND,
+  RecordNotFoundError,
   SECONDS_PER_MINUTE,
 } from './memory-types.js';
 
@@ -107,6 +109,26 @@ export class MemoryImpl implements Memory {
 
   recall(nlQuery: string, options?: LtmQueryOptions): ReturnType<LtmEngine['query']> {
     return this.ltm.query(nlQuery, { strengthen: false, ...options });
+  }
+
+  async recallSession(
+    query: string,
+    options: { sessionId: string } & Omit<LtmQueryOptions, 'sessionId'>,
+  ): Promise<LtmQueryResult[]> {
+    const { sessionId, ...rest } = options;
+    const result = await this.ltm.query(query, { strengthen: false, ...rest, sessionId });
+    return result.isOk() ? result.value : [];
+  }
+
+  recallFull(
+    id: number,
+  ): ResultAsync<{ record: LtmRecord; episodeSummary: string | undefined }, RecordNotFoundError> {
+    const raw = this.ltm.getById(id);
+    if (!raw || raw.tombstoned) {
+      return errAsync(new RecordNotFoundError(id));
+    }
+    const record = raw;
+    return okAsync({ record, episodeSummary: record.episodeSummary });
   }
 
   async getStats(): Promise<MemoryStats> {

@@ -189,6 +189,7 @@ export class LtmEngine {
       embedding: embedData.vector,
       modelId: embedData.modelId,
       dimensions: embedData.dimensions,
+      ...(options?.category !== undefined && { category: options.category }),
     };
     return persistConsolidatedRecord(params, this.storage);
   }
