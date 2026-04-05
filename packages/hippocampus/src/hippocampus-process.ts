@@ -99,8 +99,9 @@ export class HippocampusProcess {
 
   start(): void {
     this.intervalId = setInterval(() => {
-      this.run().catch(() => {
-        void 0;
+      this.run().catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`[hippocampus] consolidation cycle failed: ${message}\n`);
       });
     }, this.scheduleMs);
   }
