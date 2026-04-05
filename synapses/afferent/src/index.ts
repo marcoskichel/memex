@@ -3,39 +3,92 @@ import { createConnection } from 'node:net';
 
 import { IPC_SOCKET_PATH } from '@memex/cortex';
 
-export interface AgentEvent {
-  type: string;
+interface StageStartEvent {
+  type: 'STAGE_START';
   agent: string;
-  [key: string]: unknown;
 }
+
+interface StageEndEvent {
+  type: 'STAGE_END';
+  agent: string;
+  durationMs: number;
+}
+
+interface ThoughtEvent {
+  type: 'THOUGHT';
+  agent: string;
+  text: string;
+}
+
+interface ToolCallEvent {
+  type: 'TOOL_CALL';
+  agent: string;
+  toolName: string;
+  input: unknown;
+}
+
+interface ToolResultEvent {
+  type: 'TOOL_RESULT';
+  agent: string;
+  toolName: string;
+  result: unknown;
+}
+
+type KnownAgentEvent =
+  | StageStartEvent
+  | StageEndEvent
+  | ThoughtEvent
+  | ToolCallEvent
+  | ToolResultEvent;
+
+export type AgentEvent = KnownAgentEvent | { type: string; agent: string };
 
 const MAX_RESULT_LENGTH = 500;
 
+const KNOWN_TYPES = new Set<string>([
+  'STAGE_START',
+  'STAGE_END',
+  'THOUGHT',
+  'TOOL_CALL',
+  'TOOL_RESULT',
+]);
+
+function asKnown(event: AgentEvent): KnownAgentEvent | undefined {
+  return KNOWN_TYPES.has(event.type) ? (event as KnownAgentEvent) : undefined;
+}
+
 function summaryFor(event: AgentEvent): string {
-  switch (event.type) {
+  const known = asKnown(event);
+  if (!known) {
+    return `Agent event: ${event.type}`;
+  }
+
+  switch (known.type) {
     case 'STAGE_START': {
-      return `QA agent started: ${event.agent}`;
+      return `QA agent started: ${known.agent}`;
     }
     case 'STAGE_END': {
-      return `QA agent completed: ${event.agent} in ${String(event.durationMs)}ms`;
+      return `QA agent completed: ${known.agent} in ${known.durationMs.toString()}ms`;
     }
     case 'THOUGHT': {
-      return `Agent reasoning: ${String(event.text)}`;
+      return `Agent reasoning: ${known.text}`;
     }
     case 'TOOL_CALL': {
-      return `Tool called: ${String(event.toolName)} — ${JSON.stringify(event.input)}`;
+      return `Tool called: ${known.toolName} — ${JSON.stringify(known.input)}`;
     }
     case 'TOOL_RESULT': {
-      return `Tool result (${String(event.toolName)}): ${String(event.result).slice(0, MAX_RESULT_LENGTH)}`;
-    }
-    default: {
-      return `Agent event: ${event.type}`;
+      return `Tool result (${known.toolName}): ${String(known.result).slice(0, MAX_RESULT_LENGTH)}`;
     }
   }
 }
 
 function extraTagsFor(event: AgentEvent): string[] {
-  switch (event.type) {
+  const known = asKnown(event);
+  if (!known) {
+    return [];
+  }
+
+  switch (known.type) {
     case 'STAGE_START':
     case 'STAGE_END': {
       return ['lifecycle'];
@@ -44,13 +97,10 @@ function extraTagsFor(event: AgentEvent): string[] {
       return ['observation'];
     }
     case 'TOOL_CALL': {
-      return ['navigation', `tool:${String(event.toolName)}`];
+      return ['navigation', `tool:${known.toolName}`];
     }
     case 'TOOL_RESULT': {
-      return ['screen-state', `tool:${String(event.toolName)}`];
-    }
-    default: {
-      return [];
+      return ['screen-state', `tool:${known.toolName}`];
     }
   }
 }
@@ -61,7 +111,14 @@ function buildFrame(event: AgentEvent, runId: string): string {
   return JSON.stringify({ id: randomUUID(), type: 'logInsight', payload }) + '\n';
 }
 
-export function createAfferent(sessionId: string): (event: AgentEvent) => void {
+const MAX_QUEUE_SIZE = 1000;
+
+export interface Afferent {
+  emit(event: AgentEvent): void;
+  disconnect(): void;
+}
+
+export function createAfferent(sessionId: string): Afferent {
   const runId = randomUUID();
   const socket = createConnection(IPC_SOCKET_PATH(sessionId));
   let connected = false;
@@ -79,12 +136,19 @@ export function createAfferent(sessionId: string): (event: AgentEvent) => void {
     connected = false;
   });
 
-  return (event: AgentEvent) => {
-    const frame = buildFrame(event, runId);
-    if (connected) {
-      socket.write(frame);
-    } else {
-      queue.push(frame);
-    }
+  return {
+    emit(event: AgentEvent) {
+      const frame = buildFrame(event, runId);
+      if (connected) {
+        socket.write(frame);
+      } else if (queue.length < MAX_QUEUE_SIZE) {
+        queue.push(frame);
+      }
+    },
+    disconnect() {
+      socket.destroy();
+      queue.length = 0;
+      connected = false;
+    },
   };
 }
