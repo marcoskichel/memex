@@ -26,8 +26,8 @@
 
 ## 4. Documentation and Name Origin
 
-- [ ] 4.1 Create `NAME.md` at repo root documenting the Memex etymology, what Bush's 1945 Memex was, why it fits this project, and alternatives considered
-- [ ] 4.2 Update `README.md` to reflect the new project name
+- [x] 4.1 Create `NAME.md` at repo root documenting the Memex etymology, what Bush's 1945 Memex was, why it fits this project, and alternatives considered
+- [x] 4.2 Update `README.md` to reflect the new project name
 - [ ] 4.3 Commit: `docs: add NAME.md with Memex etymology and update README`
 
 ## 5. Repository
