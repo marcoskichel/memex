@@ -16,6 +16,7 @@ import {
   DEFAULT_LOW_COST_MODE_THRESHOLD,
   DEFAULT_MAX_BATCH_SIZE,
   DEFAULT_MAX_LLM_CALLS_PER_HOUR,
+  DEFAULT_SINGLETON_PROMOTION_THRESHOLD,
   ESTIMATED_TOKENS_PER_CALL,
   HOUR_MS,
   LOW_COST_MAX_RELATED,
@@ -28,6 +29,7 @@ import {
   SYSTEM_PROMPT,
   THRESHOLD_CHECK_INTERVAL_MS,
 } from './amygdala-schema.js';
+import { applyAction } from './apply-action.js';
 
 export type { AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
 
@@ -40,6 +42,7 @@ export interface AmygdalaConfig {
   maxBatchSize?: number;
   maxLLMCallsPerHour?: number;
   lowCostModeThreshold?: number;
+  singletonPromotionThreshold?: number;
   events?: EventBus;
   _sleep?: (ms: number) => Promise<void>;
 }
@@ -53,6 +56,7 @@ export class AmygdalaProcess {
   private maxBatchSize: number;
   private maxLLMCallsPerHour: number;
   private lowCostModeThreshold: number;
+  private singletonPromotionThreshold: number;
   private events: EventBus;
   private intervalId: ReturnType<typeof setInterval> | undefined;
   private thresholdCheckId: ReturnType<typeof setInterval> | undefined;
@@ -70,6 +74,8 @@ export class AmygdalaProcess {
     this.maxBatchSize = config.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE;
     this.maxLLMCallsPerHour = config.maxLLMCallsPerHour ?? DEFAULT_MAX_LLM_CALLS_PER_HOUR;
     this.lowCostModeThreshold = config.lowCostModeThreshold ?? DEFAULT_LOW_COST_MODE_THRESHOLD;
+    this.singletonPromotionThreshold =
+      config.singletonPromotionThreshold ?? DEFAULT_SINGLETON_PROMOTION_THRESHOLD;
     this.events = config.events ?? { emit: () => false, on: () => false };
     this.sleepFn = config._sleep ?? sleep;
   }
@@ -171,7 +177,16 @@ export class AmygdalaProcess {
     }
 
     this.consecutiveFailures.delete(entry.id);
-    await this.applyAction(entry, scoringResult);
+    await applyAction({
+      entry,
+      scoringResult,
+      relatedMemories,
+      ltm: this.ltm,
+      stm: this.stm,
+      events: this.events,
+      sessionId: this.sessionId,
+      singletonPromotionThreshold: this.singletonPromotionThreshold,
+    });
     return { processed: 1, failures: 0, llmCalls };
   }
 
@@ -224,42 +239,6 @@ export class AmygdalaProcess {
       );
     }
     return { processed: 0, failures: 1, llmCalls: 0 };
-  }
-
-  private async applyAction(
-    entry: InsightEntry,
-    scoringResult: AmygdalaScoringResult,
-  ): Promise<void> {
-    const action =
-      scoringResult.action === 'relate' && !scoringResult.targetId
-        ? 'insert'
-        : scoringResult.action;
-    let relatedToId: number | undefined;
-
-    if (action === 'insert' || action === 'relate') {
-      const newId = await this.ltm.insert(entry.summary, {
-        importance: scoringResult.importanceScore,
-        metadata: { source: 'amygdala', insightId: entry.id },
-        sessionId: this.sessionId,
-        episodeSummary: entry.summary,
-      });
-      entry.safeToDelete = true;
-      if (action === 'relate' && scoringResult.targetId) {
-        relatedToId = Number.parseInt(scoringResult.targetId, 10);
-        const edgeType = scoringResult.edgeType ?? 'elaborates';
-        this.ltm.relate({ fromId: newId, toId: relatedToId, type: edgeType });
-      }
-    }
-
-    this.stm.markProcessed([entry.id]);
-    entry.tags = entry.tags.filter((tag) => tag !== 'llm_rate_limited');
-    this.events.emit('amygdala:entry:scored', {
-      insightId: entry.id,
-      action: scoringResult.action,
-      importanceScore: scoringResult.importanceScore,
-      relatedToId,
-      edgeType: scoringResult.edgeType,
-    });
   }
 
   private resetHourWindowIfNeeded(): void {
