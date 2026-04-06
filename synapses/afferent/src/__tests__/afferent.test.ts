@@ -45,8 +45,8 @@ describe('createAfferent — buffering', () => {
     mockCreateConnection.mockReturnValue(socket);
 
     const afferent = createAfferent('sess-1');
-    afferent.emit({ type: 'STAGE_START', agent: 'explorer' });
-    afferent.emit({ type: 'THOUGHT', agent: 'explorer', text: 'hi' });
+    afferent.emit({ agent: 'explorer', text: 'first thought' });
+    afferent.emit({ agent: 'explorer', text: 'second thought' });
 
     expect(socket.write).not.toHaveBeenCalled();
 
@@ -56,8 +56,8 @@ describe('createAfferent — buffering', () => {
     const frames = (socket.write.mock.calls as [string][]).map(([frame]) => {
       return JSON.parse(frame.trim()) as { payload: { summary: string } };
     });
-    expect(frames[0]?.payload.summary).toContain('started');
-    expect(frames[1]?.payload.summary).toContain('hi');
+    expect(frames[0]?.payload.summary).toBe('first thought');
+    expect(frames[1]?.payload.summary).toBe('second thought');
   });
 
   it('writes directly once connected', () => {
@@ -67,54 +67,26 @@ describe('createAfferent — buffering', () => {
     const afferent = createAfferent('sess-2');
     socket.emit('connect');
 
-    afferent.emit({ type: 'STAGE_END', agent: 'explorer', durationMs: 1000 });
+    afferent.emit({ agent: 'explorer', text: 'a thought' });
 
     expect(socket.write).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('createAfferent — event translation', () => {
-  it('translates STAGE_START with lifecycle tag', () => {
+  it('emits logInsight with observation tag and correct summary', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
     const afferent = createAfferent('sess-3');
     socket.emit('connect');
 
-    afferent.emit({ type: 'STAGE_START', agent: 'explorer' });
+    afferent.emit({ agent: 'explorer', text: 'I see the home screen' });
 
     const frame = JSON.parse((socket.write.mock.calls[0] as [string])[0].trim());
     expect(frame.type).toBe('logInsight');
-    expect(frame.payload.summary).toContain('explorer');
-    expect(frame.payload.tags).toContain('lifecycle');
-  });
-
-  it('translates THOUGHT with observation tag', () => {
-    const socket = makeSocket();
-    mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-4');
-    socket.emit('connect');
-
-    afferent.emit({ type: 'THOUGHT', agent: 'explorer', text: 'I see the home screen' });
-
-    const frame = JSON.parse((socket.write.mock.calls[0] as [string])[0].trim());
-    expect(frame.payload.summary).toContain('I see the home screen');
+    expect(frame.payload.summary).toBe('I see the home screen');
     expect(frame.payload.tags).toContain('observation');
-  });
-
-  it('handles unknown event type without throwing', () => {
-    const socket = makeSocket();
-    mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-7');
-    socket.emit('connect');
-
-    expect(() => {
-      afferent.emit({ type: 'UNKNOWN_TYPE', agent: 'explorer' });
-    }).not.toThrow();
-
-    const frame = JSON.parse((socket.write.mock.calls[0] as [string])[0].trim()) as {
-      payload: { summary: string };
-    };
-    expect(frame.payload.summary).toContain('UNKNOWN_TYPE');
+    expect(frame.payload.tags).toContain('agent:explorer');
   });
 });
 
@@ -122,13 +94,13 @@ describe('createAfferent — silent degradation', () => {
   it('does not throw when socket emits error', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-8');
+    const afferent = createAfferent('sess-4');
 
     expect(() => {
       socket.emit('error', new Error('ECONNREFUSED'));
     }).not.toThrow();
     expect(() => {
-      afferent.emit({ type: 'STAGE_START', agent: 'explorer' });
+      afferent.emit({ agent: 'explorer', text: 'a thought' });
     }).not.toThrow();
   });
 });
@@ -137,12 +109,12 @@ describe('createAfferent — runId', () => {
   it('all events from the same observer share the same runId tag', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-9');
+    const afferent = createAfferent('sess-5');
     socket.emit('connect');
 
-    afferent.emit({ type: 'STAGE_START', agent: 'explorer' });
-    afferent.emit({ type: 'THOUGHT', agent: 'explorer', text: 'hi' });
-    afferent.emit({ type: 'STAGE_END', agent: 'explorer', durationMs: 500 });
+    afferent.emit({ agent: 'explorer', text: 'thought one' });
+    afferent.emit({ agent: 'explorer', text: 'thought two' });
+    afferent.emit({ agent: 'explorer', text: 'thought three' });
 
     const runIds = (socket.write.mock.calls as [string][]).map(([frame]) => {
       const parsed = JSON.parse(frame.trim());
@@ -158,9 +130,9 @@ describe('createAfferent — disconnect', () => {
   it('destroys socket and clears queue on disconnect', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-10');
+    const afferent = createAfferent('sess-6');
 
-    afferent.emit({ type: 'STAGE_START', agent: 'explorer' });
+    afferent.emit({ agent: 'explorer', text: 'buffered thought' });
     afferent.disconnect();
 
     expect(socket.destroy).toHaveBeenCalledOnce();
