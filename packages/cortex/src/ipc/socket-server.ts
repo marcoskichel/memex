@@ -2,7 +2,7 @@ import { access, unlink } from 'node:fs/promises';
 import type { Server, Socket } from 'node:net';
 import { createConnection, createServer } from 'node:net';
 
-import type { Memory } from '@memex/memory';
+import type { Memory } from '@neurome/memory';
 
 import { handleRequest } from './handlers.js';
 import type { PushMessage, RequestMessage } from './protocol.js';

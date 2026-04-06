@@ -1,4 +1,4 @@
-import type { LtmEngine } from '@memex/ltm';
+import type { LtmEngine } from '@neurome/ltm';
 import { errAsync, type ResultAsync } from 'neverthrow';
 
 import { InsertMemoryError, type PendingConsolidation } from './memory-types.js';

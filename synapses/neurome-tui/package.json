@@ -1,15 +1,15 @@
 {
-  "name": "@memex/memex-tui",
+  "name": "@neurome/neurome-tui",
   "version": "0.0.0",
   "type": "module",
   "private": true,
   "bin": {
-    "memex-tui": "./dist/bin/memex-tui.js"
+    "neurome-tui": "./dist/bin/neurome-tui.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "dev:run": "node --env-file=.env.local --watch ./dist/bin/memex-tui.js",
+    "dev:run": "node --env-file=.env.local --watch ./dist/bin/neurome-tui.js",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "test": "vitest run",
@@ -18,14 +18,14 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@memex/cortex": "workspace:*",
-    "@memex/memory": "workspace:*",
+    "@neurome/cortex": "workspace:*",
+    "@neurome/memory": "workspace:*",
     "ink": "^5.2.1",
     "react": "^18.3.1"
   },
   "devDependencies": {
-    "@memex/eslint-config": "workspace:*",
-    "@memex/typescript-config": "workspace:*",
+    "@neurome/eslint-config": "workspace:*",
+    "@neurome/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.21",
     "eslint": "^9.39.4",

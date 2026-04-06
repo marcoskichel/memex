@@ -1,10 +1,10 @@
 import { existsSync, unlinkSync } from 'node:fs';
 
-import { AnthropicAdapter } from '@memex/llm';
-import { OpenAIEmbeddingAdapter } from '@memex/ltm';
-import type { Memory, MemoryEvents } from '@memex/memory';
-import { createMemory } from '@memex/memory';
-import { SqliteInsightLog } from '@memex/stm';
+import { AnthropicAdapter } from '@neurome/llm';
+import { OpenAIEmbeddingAdapter } from '@neurome/ltm';
+import type { Memory, MemoryEvents } from '@neurome/memory';
+import { createMemory } from '@neurome/memory';
+import { SqliteInsightLog } from '@neurome/stm';
 
 import { IPC_SOCKET_PATH } from '../ipc/protocol.js';
 import { SocketServer } from '../ipc/socket-server.js';

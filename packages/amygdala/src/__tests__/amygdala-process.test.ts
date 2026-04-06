@@ -1,6 +1,6 @@
-import type { LLMAdapter } from '@memex/llm';
-import type { LtmEngine } from '@memex/ltm';
-import type { InsightEntry, InsightLog } from '@memex/stm';
+import type { LLMAdapter } from '@neurome/llm';
+import type { LtmEngine } from '@neurome/ltm';
+import type { InsightEntry, InsightLog } from '@neurome/stm';
 import { errAsync, okAsync } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

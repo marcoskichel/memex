@@ -1,5 +1,5 @@
-import type { LtmEngine } from '@memex/ltm';
-import type { InsightEntry, InsightLogLike } from '@memex/stm';
+import type { LtmEngine } from '@neurome/ltm';
+import type { InsightEntry, InsightLogLike } from '@neurome/stm';
 
 import type { AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
 import { INTERNAL_TAGS } from './amygdala-schema.js';

@@ -1,14 +1,14 @@
-import type { AgentState, AmygdalaProcess } from '@memex/amygdala';
-import type { HippocampusProcess } from '@memex/hippocampus';
-import type { LLMAdapter } from '@memex/llm';
+import type { AgentState, AmygdalaProcess } from '@neurome/amygdala';
+import type { HippocampusProcess } from '@neurome/hippocampus';
+import type { LLMAdapter } from '@neurome/llm';
 import type {
   LtmEngine,
   LtmInsertOptions,
   LtmQueryOptions,
   LtmQueryResult,
   LtmRecord,
-} from '@memex/ltm';
-import type { InsightLogLike } from '@memex/stm';
+} from '@neurome/ltm';
+import type { InsightLogLike } from '@neurome/stm';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 
 import { collectDiskStats, pruneContextFiles } from './memory-disk.js';

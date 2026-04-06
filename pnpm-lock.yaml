@@ -11,10 +11,10 @@ importers:
       '@exodus/openspec':
         specifier: ^1.2.6
         version: 1.2.6(@types/node@22.19.17)
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:packages/eslint-config
-      '@memex/ltm':
+      '@neurome/ltm':
         specifier: workspace:*
         version: link:packages/ltm
       eslint:
@@ -38,23 +38,23 @@ importers:
 
   packages/amygdala:
     dependencies:
-      '@memex/llm':
+      '@neurome/llm':
         specifier: workspace:*
         version: link:../llm
-      '@memex/ltm':
+      '@neurome/ltm':
         specifier: workspace:*
         version: link:../ltm
-      '@memex/stm':
+      '@neurome/stm':
         specifier: workspace:*
         version: link:../stm
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/node':
@@ -75,23 +75,23 @@ importers:
 
   packages/cortex:
     dependencies:
-      '@memex/llm':
+      '@neurome/llm':
         specifier: workspace:*
         version: link:../llm
-      '@memex/ltm':
+      '@neurome/ltm':
         specifier: workspace:*
         version: link:../ltm
-      '@memex/memory':
+      '@neurome/memory':
         specifier: workspace:*
         version: link:../memory
-      '@memex/stm':
+      '@neurome/stm':
         specifier: workspace:*
         version: link:../stm
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/node':
@@ -142,23 +142,23 @@ importers:
 
   packages/hippocampus:
     dependencies:
-      '@memex/llm':
+      '@neurome/llm':
         specifier: workspace:*
         version: link:../llm
-      '@memex/ltm':
+      '@neurome/ltm':
         specifier: workspace:*
         version: link:../ltm
-      '@memex/stm':
+      '@neurome/stm':
         specifier: workspace:*
         version: link:../stm
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/node':
@@ -186,10 +186,10 @@ importers:
         specifier: ^8.2.0
         version: 8.2.0
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/node':
@@ -223,10 +223,10 @@ importers:
         specifier: ^4.0.0
         version: 4.104.0(ws@8.20.0)(zod@3.25.76)
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/better-sqlite3':
@@ -250,29 +250,29 @@ importers:
 
   packages/memory:
     dependencies:
-      '@memex/amygdala':
+      '@neurome/amygdala':
         specifier: workspace:*
         version: link:../amygdala
-      '@memex/hippocampus':
+      '@neurome/hippocampus':
         specifier: workspace:*
         version: link:../hippocampus
-      '@memex/llm':
+      '@neurome/llm':
         specifier: workspace:*
         version: link:../llm
-      '@memex/ltm':
+      '@neurome/ltm':
         specifier: workspace:*
         version: link:../ltm
-      '@memex/stm':
+      '@neurome/stm':
         specifier: workspace:*
         version: link:../stm
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/node':
@@ -297,10 +297,10 @@ importers:
         specifier: ^12.8.0
         version: 12.8.0
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/better-sqlite3':
@@ -326,14 +326,14 @@ importers:
 
   synapses/afferent:
     dependencies:
-      '@memex/cortex':
+      '@neurome/cortex':
         specifier: workspace:*
         version: link:../../packages/cortex
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       '@types/node':
@@ -354,7 +354,7 @@ importers:
 
   synapses/claude-hooks:
     dependencies:
-      '@memex/cortex':
+      '@neurome/cortex':
         specifier: workspace:*
         version: link:../../packages/cortex
       neverthrow:
@@ -364,10 +364,10 @@ importers:
         specifier: ^3.0.0
         version: 3.25.76
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       '@types/node':
@@ -386,12 +386,12 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  synapses/memex-tui:
+  synapses/neurome-tui:
     dependencies:
-      '@memex/cortex':
+      '@neurome/cortex':
         specifier: workspace:*
         version: link:../../packages/cortex
-      '@memex/memory':
+      '@neurome/memory':
         specifier: workspace:*
         version: link:../../packages/memory
       ink:
@@ -401,10 +401,10 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1
     devDependencies:
-      '@memex/eslint-config':
+      '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@memex/typescript-config':
+      '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       '@types/node':

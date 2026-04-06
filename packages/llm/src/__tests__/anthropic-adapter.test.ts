@@ -50,7 +50,7 @@ describe('AnthropicAdapter', () => {
       );
     });
 
-    it('uses claude-haiku-3-5 as default model', async () => {
+    it('uses claude-haiku-4-5-20251001 as default model', async () => {
       mockCreate.mockResolvedValue({
         content: [{ type: 'text', text: 'response' }],
       });
@@ -59,7 +59,7 @@ describe('AnthropicAdapter', () => {
       await adapter.complete('prompt');
 
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'claude-haiku-3-5' }),
+        expect.objectContaining({ model: 'claude-haiku-4-5-20251001' }),
       );
     });
 

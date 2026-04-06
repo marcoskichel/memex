@@ -1,4 +1,4 @@
-import type { StructuredOutputSchema } from '@memex/llm';
+import type { StructuredOutputSchema } from '@neurome/llm';
 
 export interface ConsolidationResult {
   summary: string;

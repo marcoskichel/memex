@@ -1,4 +1,4 @@
-import type { MemoryStats } from '@memex/memory';
+import type { MemoryStats } from '@neurome/memory';
 import { Box, Text } from 'ink';
 
 interface StatusBarProps {

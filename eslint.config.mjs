@@ -26,7 +26,7 @@ export default [
     },
   },
   {
-    files: ['**/synapses/memex-tui/src/**/*.{ts,tsx}'],
+    files: ['**/synapses/neurome-tui/src/**/*.{ts,tsx}'],
     rules: {
       'neverthrow/no-throw': 'off',
       'neverthrow/no-try-catch': 'off',

@@ -8,8 +8,8 @@ vi.mock('node:net', () => ({
   createConnection: mockCreateConnection,
 }));
 
-vi.mock('@memex/cortex', () => ({
-  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/memex-${sessionId}.sock`,
+vi.mock('@neurome/cortex', () => ({
+  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/neurome-${sessionId}.sock`,
 }));
 
 import { getContext, sendLogInsight } from '../shell/clients/cortex-socket-client.js';
@@ -53,7 +53,7 @@ describe('sendLogInsight', () => {
     socket.emit('connect');
     await promise;
 
-    expect(mockCreateConnection).toHaveBeenCalledWith('/tmp/memex-sess-abc.sock');
+    expect(mockCreateConnection).toHaveBeenCalledWith('/tmp/neurome-sess-abc.sock');
     expect(socket.write).toHaveBeenCalledOnce();
     const [firstCall] = socket.write.mock.calls as [[string]];
     const written = JSON.parse(firstCall[0].trim());

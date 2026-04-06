@@ -1,5 +1,5 @@
 {
-  "extends": "@memex/typescript-config/node",
+  "extends": "@neurome/typescript-config/node",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",

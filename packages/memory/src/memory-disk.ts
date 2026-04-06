@@ -1,7 +1,7 @@
 import { readdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { InsightLogLike } from '@memex/stm';
+import type { InsightLogLike } from '@neurome/stm';
 
 import {
   HOURS_PER_DAY,

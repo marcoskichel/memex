@@ -19,7 +19,7 @@ const mockMemory = {} as never;
 function makeSocketPath(): string {
   return path.join(
     os.tmpdir(),
-    `memex-test-${Date.now().toString()}-${Math.random().toString(36).slice(2)}.sock`,
+    `neurome-test-${Date.now().toString()}-${Math.random().toString(36).slice(2)}.sock`,
   );
 }
 

@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import type { InsightLog } from '@memex/stm';
+import type { InsightLog } from '@neurome/stm';
 
 export async function deleteContextFiles(options: {
   stm?: InsightLog | undefined;

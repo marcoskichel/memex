@@ -17,8 +17,8 @@ scopes:
     path: packages/typescript-config
   - name: claude-hooks
     path: synapses/claude-hooks
-  - name: memex-tui
-    path: synapses/memex-tui
+  - name: neurome-tui
+    path: synapses/neurome-tui
   - name: afferent
     path: synapses/afferent
   - name: axon

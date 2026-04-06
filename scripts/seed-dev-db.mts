@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
-import { OpenAIEmbeddingAdapter, SqliteAdapter } from '@memex/ltm';
-import type { LtmRecord } from '@memex/ltm';
+import { OpenAIEmbeddingAdapter, SqliteAdapter } from '@neurome/ltm';
+import type { LtmRecord } from '@neurome/ltm';
 
 const DB_PATH = process.env.SEED_DB_PATH ?? '.dev/memory.db';
 
