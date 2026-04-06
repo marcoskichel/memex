@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@memex/llm": "workspace:*",
+    "@memex/ltm": "workspace:*",
     "@memex/memory": "workspace:*",
     "@memex/stm": "workspace:*"
   },
