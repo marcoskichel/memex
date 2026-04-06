@@ -14,7 +14,8 @@
     "typecheck": "turbo typecheck",
     "check": "turbo run lint typecheck test --continue=never",
     "check:fix": "turbo run lint:fix typecheck test --continue=never",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:seed": "tsx --env-file=packages/cortex/.env.local scripts/seed-dev-db.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -36,6 +37,8 @@
   },
   "devDependencies": {
     "@exodus/openspec": "^1.2.6",
+    "@memex/ltm": "workspace:*",
+    "tsx": "^4.19.3",
     "@memex/eslint-config": "workspace:*",
     "eslint": "^9.39.4",
     "husky": "^9.1.7",
