@@ -95,7 +95,10 @@ async function recallMemory(
   if (result.isErr()) {
     throw new Error(`recall failed: ${result.error.type}`);
   }
-  return result.value;
+  return result.value.map(({ record: { embedding: _embedding, ...record }, ...rest }) => ({
+    ...rest,
+    record,
+  }));
 }
 
 async function getStats(memory: Memory): Promise<unknown> {
