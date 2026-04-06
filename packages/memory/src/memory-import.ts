@@ -1,5 +1,5 @@
-import type { LLMAdapter } from '@memex/llm';
-import type { LtmEngine } from '@memex/ltm';
+import type { LLMAdapter } from '@neurome/llm';
+import type { LtmEngine } from '@neurome/ltm';
 import { ResultAsync } from 'neverthrow';
 
 import { ImportTextError } from './memory-types.js';

@@ -1,6 +1,6 @@
-import type { LLMAdapter } from '@memex/llm';
-import type { LtmEngine } from '@memex/ltm';
-import type { InsightLog } from '@memex/stm';
+import type { LLMAdapter } from '@neurome/llm';
+import type { LtmEngine } from '@neurome/ltm';
+import type { InsightLog } from '@neurome/stm';
 
 import { deleteContextFiles } from './context-file-cleanup.js';
 import type { ConsolidationResult } from './hippocampus-schema.js';

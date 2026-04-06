@@ -4,15 +4,15 @@ const mockShutdown = vi.fn(() => Promise.resolve({}));
 const mockMemory = { shutdown: mockShutdown };
 const mockCreateMemory = vi.fn(() => Promise.resolve({ memory: mockMemory, startupStats: {} }));
 
-vi.mock('@memex/memory', () => ({
+vi.mock('@neurome/memory', () => ({
   createMemory: mockCreateMemory,
 }));
 
-vi.mock('@memex/llm', () => ({
+vi.mock('@neurome/llm', () => ({
   AnthropicAdapter: vi.fn(() => ({})),
 }));
 
-vi.mock('@memex/stm', () => ({
+vi.mock('@neurome/stm', () => ({
   SqliteInsightLog: vi.fn(() => ({})),
 }));
 

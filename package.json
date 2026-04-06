@@ -1,13 +1,13 @@
 {
-  "name": "@memex/root",
+  "name": "@neurome/root",
   "version": "1.0.0",
   "private": true,
   "description": "Memex monorepo",
   "main": "index.js",
   "scripts": {
     "build": "turbo build",
-    "dev": "turbo run dev dev:run --filter=@memex/cortex...",
-    "dev:tui": "pnpm --filter=@memex/memex-tui run dev:run",
+    "dev": "turbo run dev dev:run --filter=@neurome/cortex...",
+    "dev:tui": "pnpm --filter=@neurome/neurome-tui run dev:run",
     "test": "turbo test",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
@@ -37,9 +37,9 @@
   },
   "devDependencies": {
     "@exodus/openspec": "^1.2.6",
-    "@memex/ltm": "workspace:*",
+    "@neurome/ltm": "workspace:*",
     "tsx": "^4.19.3",
-    "@memex/eslint-config": "workspace:*",
+    "@neurome/eslint-config": "workspace:*",
     "eslint": "^9.39.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",

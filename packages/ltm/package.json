@@ -1,5 +1,5 @@
 {
-  "name": "@memex/ltm",
+  "name": "@neurome/ltm",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -28,8 +28,8 @@
     "openai": "^4.0.0"
   },
   "devDependencies": {
-    "@memex/eslint-config": "workspace:*",
-    "@memex/typescript-config": "workspace:*",
+    "@neurome/eslint-config": "workspace:*",
+    "@neurome/typescript-config": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",

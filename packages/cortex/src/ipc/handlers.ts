@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-import type { Memory } from '@memex/memory';
+import type { Memory } from '@neurome/memory';
 
 import type { RequestMessage, ResponseMessage } from './protocol.js';
 

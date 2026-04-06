@@ -1,20 +1,20 @@
-import type { AgentState } from '@memex/amygdala';
-import type { LLMAdapter } from '@memex/llm';
+import type { AgentState } from '@neurome/amygdala';
+import type { LLMAdapter } from '@neurome/llm';
 import type {
   EmbeddingAdapter,
   LtmInsertOptions,
   LtmQueryOptions,
   LtmQueryResult,
   LtmRecord,
-} from '@memex/ltm';
-import type { LtmEngine } from '@memex/ltm';
-import type { InsightLogLike } from '@memex/stm';
+} from '@neurome/ltm';
+import type { LtmEngine } from '@neurome/ltm';
+import type { InsightLogLike } from '@neurome/stm';
 import type { ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';
 import type { MemoryStats } from './memory-stats.js';
 
-export type { AgentState } from '@memex/amygdala';
+export type { AgentState } from '@neurome/amygdala';
 
 export type {
   AmygdalaStats,

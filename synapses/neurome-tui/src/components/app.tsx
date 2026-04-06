@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-import type { PushMessage } from '@memex/cortex';
-import type { MemoryStats } from '@memex/memory';
+import type { PushMessage } from '@neurome/cortex';
+import type { MemoryStats } from '@neurome/memory';
 import { Box, useInput, useStdout } from 'ink';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

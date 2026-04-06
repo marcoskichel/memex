@@ -1,5 +1,5 @@
 {
-  "name": "@memex/afferent",
+  "name": "@neurome/afferent",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -15,11 +15,11 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@memex/cortex": "workspace:*"
+    "@neurome/cortex": "workspace:*"
   },
   "devDependencies": {
-    "@memex/eslint-config": "workspace:*",
-    "@memex/typescript-config": "workspace:*",
+    "@neurome/eslint-config": "workspace:*",
+    "@neurome/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",

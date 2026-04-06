@@ -1,4 +1,4 @@
-import type { MemoryStats } from '@memex/memory';
+import type { MemoryStats } from '@neurome/memory';
 import { Box, Text, useInput } from 'ink';
 import { useCallback, useEffect, useState } from 'react';
 

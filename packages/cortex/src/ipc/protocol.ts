@@ -1,6 +1,6 @@
-import type { LtmInsertOptions } from '@memex/ltm';
-export type { LtmRecord } from '@memex/ltm';
-import type { Memory, MemoryEvents } from '@memex/memory';
+import type { LtmInsertOptions } from '@neurome/ltm';
+export type { LtmRecord } from '@neurome/ltm';
+import type { Memory, MemoryEvents } from '@neurome/memory';
 
 const VALID_SESSION_ID = /^[\da-z][\w-]{0,127}$/i;
 
@@ -8,7 +8,7 @@ export function IPC_SOCKET_PATH(sessionId: string): string {
   if (!VALID_SESSION_ID.test(sessionId)) {
     throw new Error(`Invalid sessionId: ${sessionId}`);
   }
-  return `/tmp/memex-${sessionId}.sock`;
+  return `/tmp/neurome-${sessionId}.sock`;
 }
 
 export type LogInsightPayload = Parameters<Memory['logInsight']>[0];

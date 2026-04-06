@@ -8,8 +8,8 @@ vi.mock('node:net', () => ({
   createConnection: mockCreateConnection,
 }));
 
-vi.mock('@memex/cortex', () => ({
-  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/memex-${sessionId}.sock`,
+vi.mock('@neurome/cortex', () => ({
+  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/neurome-${sessionId}.sock`,
 }));
 
 import { createAfferent } from '../index.js';

@@ -1,5 +1,5 @@
 {
-  "name": "@memex/typescript-config",
+  "name": "@neurome/typescript-config",
   "version": "0.0.0",
   "private": true,
   "exports": {

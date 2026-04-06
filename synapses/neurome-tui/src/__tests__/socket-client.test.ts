@@ -8,8 +8,8 @@ vi.mock('node:net', () => ({
   createConnection: mockCreateConnection,
 }));
 
-vi.mock('@memex/cortex', () => ({
-  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/memex-${sessionId}.sock`,
+vi.mock('@neurome/cortex', () => ({
+  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/neurome-${sessionId}.sock`,
 }));
 
 import { MemexSocketClient } from '../client/socket-client.js';
@@ -57,7 +57,7 @@ describe('connect / onConnectionChange', () => {
     client.onConnectionChange(onConn);
     client.connect();
 
-    expect(mockCreateConnection).toHaveBeenCalledWith('/tmp/memex-sess-1.sock');
+    expect(mockCreateConnection).toHaveBeenCalledWith('/tmp/neurome-sess-1.sock');
 
     socket.emit('connect');
     expect(onConn).toHaveBeenCalledWith(true);
