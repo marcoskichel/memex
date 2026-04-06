@@ -8,7 +8,7 @@ vi.mock('node:net', () => ({
   createConnection: mockCreateConnection,
 }));
 
-vi.mock('@neurome/cortex', () => ({
+vi.mock('@neurome/cortex-ipc', () => ({
   IPC_SOCKET_PATH: (sessionId: string) => `/tmp/neurome-${sessionId}.sock`,
 }));
 

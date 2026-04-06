@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createConnection } from 'node:net';
 
-import { IPC_SOCKET_PATH } from '@neurome/cortex';
+import { IPC_SOCKET_PATH } from '@neurome/cortex-ipc';
 
 export interface AgentEvent {
   agent: string;

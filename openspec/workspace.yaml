@@ -1,20 +1,22 @@
 scopes:
   - name: ltm
-    path: packages/ltm
+    path: nuclei/ltm
   - name: stm
-    path: packages/stm
+    path: nuclei/stm
   - name: amygdala
-    path: packages/amygdala
+    path: nuclei/amygdala
   - name: hippocampus
-    path: packages/hippocampus
+    path: nuclei/hippocampus
   - name: memory
-    path: packages/memory
+    path: nuclei/memory
   - name: cortex
-    path: packages/cortex
+    path: synapses/cortex
+  - name: cortex-ipc
+    path: nuclei/cortex-ipc
   - name: eslint-config
-    path: packages/eslint-config
+    path: nuclei/eslint-config
   - name: typescript-config
-    path: packages/typescript-config
+    path: nuclei/typescript-config
   - name: claude-hooks
     path: synapses/claude-hooks
   - name: neurome-tui
@@ -22,6 +24,6 @@ scopes:
   - name: afferent
     path: synapses/afferent
   - name: axon
-    path: packages/axon
+    path: nuclei/axon
   - name: dendrite
     path: synapses/dendrite

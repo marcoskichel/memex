@@ -1,4 +1,4 @@
-export { IPC_SOCKET_PATH } from './ipc/protocol.js';
+export { IPC_SOCKET_PATH } from '@neurome/cortex-ipc';
 export type {
   GetContextPayload,
   GetStatsPayload,
@@ -10,4 +10,4 @@ export type {
   RequestMessage,
   RequestType,
   ResponseMessage,
-} from './ipc/protocol.js';
+} from '@neurome/cortex-ipc';

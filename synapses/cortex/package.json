@@ -1,12 +1,21 @@
 {
-  "name": "@neurome/afferent",
+  "name": "@neurome/cortex",
   "version": "0.0.0",
   "type": "module",
   "private": true,
-  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "cortex": "./dist/bin/cortex.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "dev:run": "node --env-file=.env.local --watch ./dist/bin/cortex.js",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "test": "vitest run",
@@ -15,7 +24,11 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@neurome/cortex-ipc": "workspace:*"
+    "@neurome/cortex-ipc": "workspace:*",
+    "@neurome/llm": "workspace:*",
+    "@neurome/ltm": "workspace:*",
+    "@neurome/memory": "workspace:*",
+    "@neurome/stm": "workspace:*"
   },
   "devDependencies": {
     "@neurome/eslint-config": "workspace:*",
