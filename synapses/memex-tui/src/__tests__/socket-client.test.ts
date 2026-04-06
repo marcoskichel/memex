@@ -79,6 +79,25 @@ describe('connect / onConnectionChange', () => {
     expect(onConn).toHaveBeenLastCalledWith(false);
     expect(client.isConnected).toBe(false);
   });
+
+  it('notifies connection listeners on initial connection failure before ever connecting', () => {
+    vi.useFakeTimers();
+
+    const socket = makeSocket();
+    mockCreateConnection.mockReturnValue(socket);
+
+    const client = MemexSocketClient.forSession('sess-2b');
+    const onConn = vi.fn();
+    client.onConnectionChange(onConn);
+    client.connect();
+
+    socket.emit('error', new Error('ECONNREFUSED'));
+
+    expect(onConn).toHaveBeenCalledWith(false);
+    expect(client.reconnectCount).toBe(1);
+
+    vi.useRealTimers();
+  });
 });
 
 describe('recall / getStats — request timeout', () => {
@@ -127,6 +146,137 @@ describe('push events', () => {
     }
 
     expect(onPush).toHaveBeenCalledWith(push);
+  });
+});
+
+describe('insertMemory / importText / getRecent', () => {
+  it('insertMemory sends correct IPC message and resolves', async () => {
+    const socket = makeSocket();
+    mockCreateConnection.mockReturnValue(socket);
+
+    const client = MemexSocketClient.forSession('sess-im');
+    client.connect();
+    socket.emit('connect');
+
+    const dataListeners = (socket.on.mock.calls as [string, (...arguments_: unknown[]) => void][])
+      .filter(([event]) => event === 'data')
+      .map(([, function_]) => function_);
+
+    const promise = client.insertMemory('TypeScript is a superset', { tier: 'semantic' });
+
+    const lastWrite = (socket.write.mock.calls.at(-1) as [string])[0];
+    const { id, type, payload } = JSON.parse(lastWrite) as {
+      id: string;
+      type: string;
+      payload: unknown;
+    };
+    expect(type).toBe('insertMemory');
+    expect(payload).toMatchObject({
+      data: 'TypeScript is a superset',
+      options: { tier: 'semantic' },
+    });
+
+    for (const function_ of dataListeners) {
+      function_(Buffer.from(JSON.stringify({ id, ok: true, result: 42 }) + '\n'));
+    }
+
+    await expect(promise).resolves.toBe(42);
+  });
+
+  it('importText sends correct IPC message and resolves', async () => {
+    const socket = makeSocket();
+    mockCreateConnection.mockReturnValue(socket);
+
+    const client = MemexSocketClient.forSession('sess-it');
+    client.connect();
+    socket.emit('connect');
+
+    const dataListeners = (socket.on.mock.calls as [string, (...arguments_: unknown[]) => void][])
+      .filter(([event]) => event === 'data')
+      .map(([, function_]) => function_);
+
+    const promise = client.importText('some long text');
+
+    const lastWrite = (socket.write.mock.calls.at(-1) as [string])[0];
+    const { id, type, payload } = JSON.parse(lastWrite) as {
+      id: string;
+      type: string;
+      payload: unknown;
+    };
+    expect(type).toBe('importText');
+    expect(payload).toMatchObject({ text: 'some long text' });
+
+    for (const function_ of dataListeners) {
+      function_(Buffer.from(JSON.stringify({ id, ok: true, result: { inserted: 5 } }) + '\n'));
+    }
+
+    await expect(promise).resolves.toMatchObject({ inserted: 5 });
+  });
+
+  it('getRecent sends correct IPC message and resolves with array', async () => {
+    const socket = makeSocket();
+    mockCreateConnection.mockReturnValue(socket);
+
+    const client = MemexSocketClient.forSession('sess-gr');
+    client.connect();
+    socket.emit('connect');
+
+    const dataListeners = (socket.on.mock.calls as [string, (...arguments_: unknown[]) => void][])
+      .filter(([event]) => event === 'data')
+      .map(([, function_]) => function_);
+
+    const fakeRecords = [{ id: 1, data: 'recent' }];
+    const promise = client.getRecent(20);
+
+    const lastWrite = (socket.write.mock.calls.at(-1) as [string])[0];
+    const { id, type, payload } = JSON.parse(lastWrite) as {
+      id: string;
+      type: string;
+      payload: unknown;
+    };
+    expect(type).toBe('getRecent');
+    expect(payload).toMatchObject({ limit: 20 });
+
+    for (const function_ of dataListeners) {
+      function_(Buffer.from(JSON.stringify({ id, ok: true, result: fakeRecords }) + '\n'));
+    }
+
+    await expect(promise).resolves.toEqual(fakeRecords);
+  });
+});
+
+describe('reset', () => {
+  it('clears stopped flag and re-opens socket', () => {
+    const socket1 = makeSocket();
+    const socket2 = makeSocket();
+    mockCreateConnection.mockReturnValueOnce(socket1).mockReturnValueOnce(socket2);
+
+    const client = MemexSocketClient.forSession('sess-reset');
+    client.connect();
+    socket1.emit('connect');
+
+    client.reset();
+    socket2.emit('connect');
+
+    expect(mockCreateConnection).toHaveBeenCalledTimes(2);
+    expect(client.isConnected).toBe(true);
+    expect(client.reconnectCount).toBe(0);
+  });
+});
+
+describe('onError — JSON parse error', () => {
+  it('calls error listeners when a line fails to parse', () => {
+    const socket = makeSocket();
+    mockCreateConnection.mockReturnValue(socket);
+
+    const client = MemexSocketClient.forSession('sess-err');
+    const onError = vi.fn();
+    client.onError(onError);
+    client.connect();
+    socket.emit('connect');
+    socket.emit('data', Buffer.from('not valid json\n'));
+
+    expect(onError).toHaveBeenCalledWith('socket', 'JSON parse error');
   });
 });
 

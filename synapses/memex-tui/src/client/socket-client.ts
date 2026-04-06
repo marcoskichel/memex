@@ -11,6 +11,7 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 
 type PushListener = (message: PushMessage) => void;
 type ConnectionListener = (connected: boolean) => void;
+type ErrorListener = (source: string, message: string) => void;
 
 interface PendingRequest {
   resolve: (result: unknown) => void;
@@ -24,6 +25,7 @@ export class MemexSocketClient {
   private readonly pendingRequests = new Map<string, PendingRequest>();
   private pushListeners: PushListener[] = [];
   private connectionListeners: ConnectionListener[] = [];
+  private errorListeners: ErrorListener[] = [];
   private reconnectAttempts = 0;
   private connected = false;
   private stopped = false;
@@ -53,6 +55,19 @@ export class MemexSocketClient {
     this.openSocket();
   }
 
+  reset(): void {
+    this.stopped = false;
+    this.reconnectAttempts = 0;
+    this.socket?.destroy();
+    this.socket = undefined;
+    for (const { timer, reject } of this.pendingRequests.values()) {
+      clearTimeout(timer);
+      reject(new Error('connection reset'));
+    }
+    this.pendingRequests.clear();
+    this.openSocket();
+  }
+
   disconnect(): void {
     this.stopped = true;
     this.socket?.destroy();
@@ -79,12 +94,31 @@ export class MemexSocketClient {
     };
   }
 
+  onError(listener: ErrorListener): () => void {
+    this.errorListeners.push(listener);
+    return () => {
+      this.errorListeners = this.errorListeners.filter((function_) => function_ !== listener);
+    };
+  }
+
   recall(query: string, options?: unknown): Promise<unknown[]> {
     return this.request('recall', { query, options }) as Promise<unknown[]>;
   }
 
   getStats(): Promise<unknown> {
     return this.request('getStats', {});
+  }
+
+  insertMemory(data: string, options?: unknown): Promise<unknown> {
+    return this.request('insertMemory', { data, options });
+  }
+
+  importText(text: string): Promise<unknown> {
+    return this.request('importText', { text });
+  }
+
+  getRecent(limit: number): Promise<unknown[]> {
+    return this.request('getRecent', { limit }) as Promise<unknown[]>;
   }
 
   private request(type: string, payload: unknown): Promise<unknown> {
@@ -127,7 +161,11 @@ export class MemexSocketClient {
         }
         try {
           this.handleLine(JSON.parse(line) as unknown);
-        } catch {}
+        } catch {
+          for (const listener of this.errorListeners) {
+            listener('socket', 'JSON parse error');
+          }
+        }
       }
     });
 
@@ -166,7 +204,6 @@ export class MemexSocketClient {
   private readonly handleDisconnect = (): void => {
     if (this.connected) {
       this.connected = false;
-      this.notifyConnectionChange(false);
     }
 
     for (const { timer, reject } of this.pendingRequests.values()) {
@@ -177,6 +214,7 @@ export class MemexSocketClient {
 
     if (!this.stopped) {
       this.scheduleReconnect();
+      this.notifyConnectionChange(false);
     }
   };
 
