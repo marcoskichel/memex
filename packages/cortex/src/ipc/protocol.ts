@@ -1,3 +1,5 @@
+import type { LtmInsertOptions } from '@memex/ltm';
+export type { LtmRecord } from '@memex/ltm';
 import type { Memory, MemoryEvents } from '@memex/memory';
 
 const VALID_SESSION_ID = /^[\da-z][\w-]{0,127}$/i;
@@ -25,11 +27,27 @@ export interface RecallPayload {
 
 export type GetStatsPayload = Record<string, never>;
 
+export interface InsertMemoryPayload {
+  data: string;
+  options?: LtmInsertOptions;
+}
+
+export interface ImportTextPayload {
+  text: string;
+}
+
+export interface GetRecentPayload {
+  limit: number;
+}
+
 interface RequestPayloadMap {
   logInsight: LogInsightPayload;
   getContext: GetContextPayload;
   recall: RecallPayload;
   getStats: GetStatsPayload;
+  insertMemory: InsertMemoryPayload;
+  importText: ImportTextPayload;
+  getRecent: GetRecentPayload;
 }
 
 export type RequestType = keyof RequestPayloadMap;
