@@ -29,3 +29,6 @@ dist
 
 # local env files
 .env.local
+
+# dev database
+.dev/
