@@ -1,0 +1,5 @@
+scopes:
+  - name: ltm
+    path: packages/ltm
+  - name: memory
+    path: packages/memory
