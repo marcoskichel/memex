@@ -3,7 +3,7 @@ import { errAsync, fromThrowable, okAsync, ResultAsync } from 'neverthrow';
 
 import type { LLMAdapter, LLMError, LLMRequestOptions, StructuredRequest } from './llm-adapter.js';
 
-const DEFAULT_MODEL = 'claude-haiku-3-5';
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 const DEFAULT_MAX_TOKENS = 1024;
 
 export class AnthropicAdapter implements LLMAdapter {
