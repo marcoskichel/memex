@@ -1,0 +1,5 @@
+scopes:
+  - name: cortex-structured-writes
+    path: packages/cortex
+  - name: cortex-context-fanout
+    path: packages/cortex
