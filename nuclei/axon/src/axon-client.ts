@@ -29,7 +29,7 @@ export interface RecallResult {
   effectiveScore: number;
 }
 
-export interface RecallOptions2 {
+export interface RecallParams {
   options?: RecallOptions;
   timeoutMs?: number;
 }
@@ -52,7 +52,7 @@ export class AxonClient {
     });
   }
 
-  async recall(query: string, recallOptions?: RecallOptions2): Promise<RecallResult[]> {
+  async recall(query: string, recallOptions?: RecallParams): Promise<RecallResult[]> {
     const payload: { query: string; options?: RecallOptions } = { query };
     if (recallOptions?.options !== undefined) {
       payload.options = recallOptions.options;

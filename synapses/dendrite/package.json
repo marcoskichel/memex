@@ -1,0 +1,33 @@
+{
+  "name": "@neurome/dendrite",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "dendrite": "./dist/bin/dendrite.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint . && prettier --check .",
+    "lint:fix": "eslint . --fix && prettier --write .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
+    "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@neurome/axon": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@neurome/eslint-config": "workspace:*",
+    "@neurome/typescript-config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}
