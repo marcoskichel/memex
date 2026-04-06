@@ -1,0 +1,17 @@
+scopes:
+  - name: hippocampus-consolidation-api
+    path: packages/hippocampus
+  - name: hippocampus-consolidation-api
+    path: packages/memory
+  - name: hippocampus-consolidation-api
+    path: packages/cortex
+  - name: false-memory-suppression
+    path: packages/hippocampus
+  - name: false-memory-suppression
+    path: packages/memory
+  - name: amygdala-agent-state
+    path: packages/amygdala
+  - name: amygdala-agent-state
+    path: packages/memory
+  - name: context-dependent-recall
+    path: packages/cortex

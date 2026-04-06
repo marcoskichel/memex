@@ -18,6 +18,7 @@ export interface GetContextPayload {
   sessionId: string;
   toolName: string;
   toolInput: unknown;
+  category?: string;
 }
 
 export interface RecallPayload {
@@ -40,6 +41,8 @@ export interface GetRecentPayload {
   limit: number;
 }
 
+export type ConsolidatePayload = Record<string, never>;
+
 interface RequestPayloadMap {
   logInsight: LogInsightPayload;
   getContext: GetContextPayload;
@@ -48,6 +51,7 @@ interface RequestPayloadMap {
   insertMemory: InsertMemoryPayload;
   importText: ImportTextPayload;
   getRecent: GetRecentPayload;
+  consolidate: ConsolidatePayload;
 }
 
 export const REQUEST_TYPES = [
@@ -58,6 +62,7 @@ export const REQUEST_TYPES = [
   'insertMemory',
   'importText',
   'getRecent',
+  'consolidate',
 ] as const;
 
 export type RequestType = (typeof REQUEST_TYPES)[number];

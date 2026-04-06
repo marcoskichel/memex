@@ -58,6 +58,23 @@ For each observation, you must:
 
 Be conservative with importance scores. Most observations are 0.1-0.4. Reserve 0.7+ for genuinely significant information.`;
 
+export type AgentState = string;
+
+const AGENT_STATE_HINTS: Record<string, string> = {
+  focused: 'Agent is focused on a task — raise bar for routine/distraction observations.',
+  idle: 'Agent is idle — score normally.',
+  stressed: 'Agent is under stress — lower threshold for high-importance items.',
+  learning: 'Agent is in learning mode — raise importance for novel/unexpected observations.',
+};
+
+export function buildSystemPrompt(agentState?: AgentState): string {
+  if (!agentState) {
+    return SYSTEM_PROMPT;
+  }
+  const hint = AGENT_STATE_HINTS[agentState] ?? `Agent state: ${agentState}.`;
+  return `${SYSTEM_PROMPT}\n\nCurrent agent state: ${hint}`;
+}
+
 export interface AmygdalaScoringResult {
   action: 'insert' | 'relate' | 'skip';
   targetId?: string;

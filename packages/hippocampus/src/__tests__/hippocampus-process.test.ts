@@ -237,7 +237,14 @@ describe('HippocampusProcess', () => {
 
     await process.run();
     expect(riskPayloads).toHaveLength(1);
-    expect(riskPayloads[0]).toMatchObject({ recordId: 42, confidence: 0.4, sourceIds: [1, 2, 3] });
+    expect(riskPayloads[0]).toMatchObject({
+      confidence: 0.4,
+      sourceIds: [1, 2, 3],
+      summary: 's',
+      uncertainties: ['u1'],
+    });
+    expect(typeof (riskPayloads[0] as { pendingId: string }).pendingId).toBe('string');
+    expect(ltm.consolidate).not.toHaveBeenCalled();
   });
 
   it('does not emit false-memory-risk when confidence >= 0.5', async () => {

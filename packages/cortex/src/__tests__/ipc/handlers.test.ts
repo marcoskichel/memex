@@ -142,7 +142,7 @@ describe('handleRequest — importText', () => {
 describe('handleRequest — getRecent', () => {
   it('delegates to memory.getRecent and returns records', async () => {
     const fakeRecords = [{ id: 1, data: 'recent memory' }];
-    mockGetRecent.mockResolvedValueOnce(fakeRecords);
+    mockGetRecent.mockReturnValueOnce(fakeRecords);
     const message: RequestMessage = {
       id: '12',
       type: 'getRecent',

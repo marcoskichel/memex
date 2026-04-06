@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "build": "turbo build",
-    "dev": "turbo dev",
-    "dev:tui": "turbo run dev dev:run --filter=...@memex/memex-tui",
+    "dev": "turbo run dev dev:run --filter=@memex/cortex...",
+    "dev:tui": "pnpm --filter=@memex/memex-tui run dev:run",
     "test": "turbo test",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",

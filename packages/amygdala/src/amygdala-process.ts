@@ -3,6 +3,7 @@ import type { LtmEngine } from '@memex/ltm';
 import type { InsightEntry, InsightLogLike } from '@memex/stm';
 
 import type {
+  AgentState,
   AmygdalaScoringResult,
   EntryOutcome,
   EventBus,
@@ -12,6 +13,7 @@ import {
   amygdalaScoringSchema,
   buildPrompt,
   buildPromptWithContext,
+  buildSystemPrompt,
   DEFAULT_CADENCE_MS,
   DEFAULT_LOW_COST_MODE_THRESHOLD,
   DEFAULT_MAX_BATCH_SIZE,
@@ -26,12 +28,11 @@ import {
   RETRY_DELAYS_MS,
   sleep,
   STM_THRESHOLD,
-  SYSTEM_PROMPT,
   THRESHOLD_CHECK_INTERVAL_MS,
 } from './amygdala-schema.js';
 import { applyAction } from './apply-action.js';
 
-export type { AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
+export type { AgentState, AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
 
 export interface AmygdalaConfig {
   ltm: LtmEngine;
@@ -44,6 +45,7 @@ export interface AmygdalaConfig {
   lowCostModeThreshold?: number;
   singletonPromotionThreshold?: number;
   events?: EventBus;
+  agentState?: AgentState;
   _sleep?: (ms: number) => Promise<void>;
 }
 
@@ -64,6 +66,7 @@ export class AmygdalaProcess {
   private hourWindowStart = Date.now();
   private consecutiveFailures = new Map<string, number>();
   private sleepFn: (ms: number) => Promise<void>;
+  private agentState: AgentState | undefined;
 
   constructor(config: AmygdalaConfig) {
     this.ltm = config.ltm;
@@ -78,6 +81,11 @@ export class AmygdalaProcess {
       config.singletonPromotionThreshold ?? DEFAULT_SINGLETON_PROMOTION_THRESHOLD;
     this.events = config.events ?? { emit: () => false, on: () => false };
     this.sleepFn = config._sleep ?? sleep;
+    this.agentState = config.agentState;
+  }
+
+  setAgentState(state: AgentState | undefined): void {
+    this.agentState = state;
   }
 
   start(): void {
@@ -210,7 +218,7 @@ export class AmygdalaProcess {
       const callResult = await this.llmAdapter.completeStructured({
         prompt,
         schema: amygdalaScoringSchema,
-        options: { systemPrompt: SYSTEM_PROMPT },
+        options: { systemPrompt: buildSystemPrompt(this.agentState) },
       });
 
       this.callsThisHour++;

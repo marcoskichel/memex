@@ -43,7 +43,9 @@ export function StatusBar({
         </Text>
       </Box>
       <Box>
-        <Text color="gray">[:]command [r]reset</Text>
+        <Text color="gray">
+          [Tab]switch pane [:]command [r]reset [q]quit :add :import :consolidate :reset
+        </Text>
       </Box>
     </Box>
   );
