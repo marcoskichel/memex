@@ -230,13 +230,20 @@ describe('recall', () => {
   it('delegates to ltm.query with strengthen: false', async () => {
     const { memory } = await createMemory(baseConfig);
     memory.recall('what did I learn about X?');
-    expect(mockLtmQuery).toHaveBeenCalledWith('what did I learn about X?', { strengthen: false });
+    expect(mockLtmQuery).toHaveBeenCalledWith('what did I learn about X?', {
+      minResults: 1,
+      strengthen: false,
+    });
   });
 
   it('passes through additional options including strengthen override', async () => {
     const { memory } = await createMemory(baseConfig);
     memory.recall('some query', { strengthen: true, limit: 5 });
-    expect(mockLtmQuery).toHaveBeenCalledWith('some query', { strengthen: true, limit: 5 });
+    expect(mockLtmQuery).toHaveBeenCalledWith('some query', {
+      minResults: 1,
+      strengthen: true,
+      limit: 5,
+    });
   });
 });
 
