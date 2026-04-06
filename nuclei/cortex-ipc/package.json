@@ -1,5 +1,5 @@
 {
-  "name": "@neurome/cortex",
+  "name": "@neurome/cortex-ipc",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -9,13 +9,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "bin": {
-    "cortex": "./dist/bin/cortex.js"
-  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "dev:run": "node --env-file=.env.local --watch ./dist/bin/cortex.js",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "test": "vitest run",
@@ -24,10 +20,8 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@neurome/llm": "workspace:*",
     "@neurome/ltm": "workspace:*",
-    "@neurome/memory": "workspace:*",
-    "@neurome/stm": "workspace:*"
+    "@neurome/memory": "workspace:*"
   },
   "devDependencies": {
     "@neurome/eslint-config": "workspace:*",

@@ -1,6 +1,6 @@
-import baseConfig from './packages/eslint-config/base.mjs';
-import nodeConfig from './packages/eslint-config/node.mjs';
-import neverthrowConfig from './packages/eslint-config/neverthrow.mjs';
+import baseConfig from './nuclei/eslint-config/base.mjs';
+import nodeConfig from './nuclei/eslint-config/node.mjs';
+import neverthrowConfig from './nuclei/eslint-config/neverthrow.mjs';
 
 export default [
   { ignores: ['**/dist/**', '**/node_modules/**', '**/vitest.config.ts', '**/eslint.config.mjs', 'scripts/**'] },
@@ -17,7 +17,7 @@ export default [
     },
   },
   {
-    files: ['**/packages/cortex/src/ipc/**/*.ts'],
+    files: ['**/synapses/cortex/src/ipc/**/*.ts', '**/nuclei/cortex-ipc/src/**/*.ts'],
     rules: {
       'neverthrow/no-throw': 'off',
       'neverthrow/no-try-catch': 'off',

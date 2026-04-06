@@ -13,10 +13,10 @@ importers:
         version: 1.2.6(@types/node@22.19.17)
       '@neurome/eslint-config':
         specifier: workspace:*
-        version: link:packages/eslint-config
+        version: link:nuclei/eslint-config
       '@neurome/ltm':
         specifier: workspace:*
-        version: link:packages/ltm
+        version: link:nuclei/ltm
       eslint:
         specifier: ^9.39.4
         version: 9.39.4
@@ -36,7 +36,7 @@ importers:
         specifier: ^2.9.3
         version: 2.9.3
 
-  packages/amygdala:
+  nuclei/amygdala:
     dependencies:
       '@neurome/llm':
         specifier: workspace:*
@@ -73,20 +73,14 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/cortex:
+  nuclei/cortex-ipc:
     dependencies:
-      '@neurome/llm':
-        specifier: workspace:*
-        version: link:../llm
       '@neurome/ltm':
         specifier: workspace:*
         version: link:../ltm
       '@neurome/memory':
         specifier: workspace:*
         version: link:../memory
-      '@neurome/stm':
-        specifier: workspace:*
-        version: link:../stm
     devDependencies:
       '@neurome/eslint-config':
         specifier: workspace:*
@@ -110,7 +104,7 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/eslint-config:
+  nuclei/eslint-config:
     dependencies:
       '@typescript-eslint/utils':
         specifier: ^8.57.2
@@ -140,7 +134,7 @@ importers:
         specifier: ^8.57.2
         version: 8.58.0(eslint@9.39.4)(typescript@6.0.2)
 
-  packages/hippocampus:
+  nuclei/hippocampus:
     dependencies:
       '@neurome/llm':
         specifier: workspace:*
@@ -177,7 +171,7 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/llm:
+  nuclei/llm:
     dependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
@@ -208,7 +202,7 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/ltm:
+  nuclei/ltm:
     dependencies:
       '@xenova/transformers':
         specifier: ^2.17.2
@@ -248,7 +242,7 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/memory:
+  nuclei/memory:
     dependencies:
       '@neurome/amygdala':
         specifier: workspace:*
@@ -291,7 +285,7 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/stm:
+  nuclei/stm:
     dependencies:
       better-sqlite3:
         specifier: ^12.8.0
@@ -322,20 +316,20 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/typescript-config: {}
+  nuclei/typescript-config: {}
 
   synapses/afferent:
     dependencies:
-      '@neurome/cortex':
+      '@neurome/cortex-ipc':
         specifier: workspace:*
-        version: link:../../packages/cortex
+        version: link:../../nuclei/cortex-ipc
     devDependencies:
       '@neurome/eslint-config':
         specifier: workspace:*
-        version: link:../../packages/eslint-config
+        version: link:../../nuclei/eslint-config
       '@neurome/typescript-config':
         specifier: workspace:*
-        version: link:../../packages/typescript-config
+        version: link:../../nuclei/typescript-config
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.17
@@ -354,9 +348,9 @@ importers:
 
   synapses/claude-hooks:
     dependencies:
-      '@neurome/cortex':
+      '@neurome/cortex-ipc':
         specifier: workspace:*
-        version: link:../../packages/cortex
+        version: link:../../nuclei/cortex-ipc
       neverthrow:
         specifier: ^8.1.1
         version: 8.2.0
@@ -366,10 +360,50 @@ importers:
     devDependencies:
       '@neurome/eslint-config':
         specifier: workspace:*
-        version: link:../../packages/eslint-config
+        version: link:../../nuclei/eslint-config
       '@neurome/typescript-config':
         specifier: workspace:*
-        version: link:../../packages/typescript-config
+        version: link:../../nuclei/typescript-config
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
+
+  synapses/cortex:
+    dependencies:
+      '@neurome/cortex-ipc':
+        specifier: workspace:*
+        version: link:../../nuclei/cortex-ipc
+      '@neurome/llm':
+        specifier: workspace:*
+        version: link:../../nuclei/llm
+      '@neurome/ltm':
+        specifier: workspace:*
+        version: link:../../nuclei/ltm
+      '@neurome/memory':
+        specifier: workspace:*
+        version: link:../../nuclei/memory
+      '@neurome/stm':
+        specifier: workspace:*
+        version: link:../../nuclei/stm
+    devDependencies:
+      '@neurome/eslint-config':
+        specifier: workspace:*
+        version: link:../../nuclei/eslint-config
+      '@neurome/typescript-config':
+        specifier: workspace:*
+        version: link:../../nuclei/typescript-config
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.17
@@ -388,12 +422,12 @@ importers:
 
   synapses/neurome-tui:
     dependencies:
-      '@neurome/cortex':
+      '@neurome/cortex-ipc':
         specifier: workspace:*
-        version: link:../../packages/cortex
+        version: link:../../nuclei/cortex-ipc
       '@neurome/memory':
         specifier: workspace:*
-        version: link:../../packages/memory
+        version: link:../../nuclei/memory
       ink:
         specifier: ^5.2.1
         version: 5.2.1(@types/react@18.3.28)(react@18.3.1)
@@ -403,10 +437,10 @@ importers:
     devDependencies:
       '@neurome/eslint-config':
         specifier: workspace:*
-        version: link:../../packages/eslint-config
+        version: link:../../nuclei/eslint-config
       '@neurome/typescript-config':
         specifier: workspace:*
-        version: link:../../packages/typescript-config
+        version: link:../../nuclei/typescript-config
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.17

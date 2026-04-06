@@ -16,7 +16,7 @@
     "check": "turbo run lint typecheck test --continue=never",
     "check:fix": "turbo run lint:fix typecheck test --continue=never",
     "prepare": "husky",
-    "db:seed": "tsx --env-file=packages/cortex/.env.local scripts/seed-dev-db.mts"
+    "db:seed": "tsx --env-file=synapses/cortex/.env.local scripts/seed-dev-db.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

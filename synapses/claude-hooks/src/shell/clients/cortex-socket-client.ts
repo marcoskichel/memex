@@ -1,7 +1,7 @@
 import { createConnection } from 'node:net';
 
-import type { GetContextPayload, LogInsightPayload } from '@neurome/cortex';
-import { IPC_SOCKET_PATH } from '@neurome/cortex';
+import type { GetContextPayload, LogInsightPayload } from '@neurome/cortex-ipc';
+import { IPC_SOCKET_PATH } from '@neurome/cortex-ipc';
 
 const LOG_INSIGHT_TIMEOUT_MS = 50;
 const GET_CONTEXT_TIMEOUT_MS = 200;

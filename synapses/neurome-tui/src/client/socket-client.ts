@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { Socket } from 'node:net';
 import { createConnection } from 'node:net';
 
-import type { PushMessage } from '@neurome/cortex';
-import { IPC_SOCKET_PATH } from '@neurome/cortex';
+import type { PushMessage } from '@neurome/cortex-ipc';
+import { IPC_SOCKET_PATH } from '@neurome/cortex-ipc';
 
 const REQUEST_TIMEOUT_MS = 5000;
 const RECONNECT_DELAY_MS = 2000;

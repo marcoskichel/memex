@@ -1,4 +1,4 @@
-import type { PushMessage } from '@neurome/cortex';
+import type { PushMessage } from '@neurome/cortex-ipc';
 import { Box, Text } from 'ink';
 
 interface EventsPaneProps {
