@@ -73,6 +73,34 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
 
+  nuclei/axon:
+    dependencies:
+      '@neurome/cortex-ipc':
+        specifier: workspace:*
+        version: link:../cortex-ipc
+    devDependencies:
+      '@neurome/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@neurome/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
+
   nuclei/cortex-ipc:
     dependencies:
       '@neurome/ltm':

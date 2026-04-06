@@ -20,6 +20,8 @@ import {
 } from './query-helpers.js';
 import { rrfMerge } from './rrf-merge.js';
 import { retention } from './stability-manager.js';
+import type { ExcludedCandidate } from './top-up.js';
+import { applyTopUp } from './top-up.js';
 import type { LtmRecord, StorageAdapter } from '../storage/storage-adapter.js';
 
 export interface QueryContext {
@@ -30,6 +32,7 @@ export interface QueryContext {
   shouldStrengthen: boolean;
   sort: string;
   limit: number | undefined;
+  minResults: number;
   storage: StorageAdapter;
   onDecay: (record: LtmRecord, retentionValue: number) => void;
 }
@@ -94,12 +97,14 @@ export function executeQuery(context: QueryContext): ResultAsync<LtmQueryResult[
     onDecay,
     storage,
   };
-  const results = collectQueryResults(collectContext);
+  const { results, excluded } = collectQueryResults(collectContext);
   sortResults(results, context.sort);
-  const limited = context.limit === undefined ? results : results.slice(0, context.limit);
+  const withTopUp = applyTopUp({ results, excluded, minResults: context.minResults, storage });
+  const limited = context.limit === undefined ? withTopUp : withTopUp.slice(0, context.limit);
   if (context.shouldStrengthen && limited.length > 0) {
+    const thresholdPassingInLimited = results.filter((result) => limited.includes(result));
     strengthenResults({
-      results: limited,
+      results: thresholdPassingInLimited,
       graphTraversalIds: rankedLists.graphTraversalIds,
       storage,
     });
@@ -117,9 +122,15 @@ export interface CollectResultsContext {
   storage: StorageAdapter;
 }
 
-export function collectQueryResults(context: CollectResultsContext): LtmQueryResult[] {
+export interface CollectResultsOutput {
+  results: LtmQueryResult[];
+  excluded: ExcludedCandidate[];
+}
+
+export function collectQueryResults(context: CollectResultsContext): CollectResultsOutput {
   const { rrfScores, maps, strategyMap, threshold, shouldStrengthen, onDecay, storage } = context;
   const results: LtmQueryResult[] = [];
+  const excluded: ExcludedCandidate[] = [];
   for (const [recordId, rrfScore] of rrfScores) {
     const record = maps.recordMap.get(recordId);
     if (!record) {
@@ -132,6 +143,7 @@ export function collectQueryResults(context: CollectResultsContext): LtmQueryRes
       if (retentionValue < DECAY_THRESHOLD) {
         onDecay(record, retentionValue);
       }
+      excluded.push({ record, rrfScore, effectiveScore, sim, strategyMap });
       continue;
     }
     const isSuperseded = applySupersedes({ recordId, storage, shouldStrengthen });
@@ -155,7 +167,7 @@ export function collectQueryResults(context: CollectResultsContext): LtmQueryRes
       onDecay(record, retentionValue);
     }
   }
-  return results;
+  return { results, excluded };
 }
 
 export const DEFAULT_SIMILARITY_THRESHOLD = 0.75;

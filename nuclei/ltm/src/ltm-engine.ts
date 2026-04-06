@@ -181,6 +181,7 @@ export class LtmEngine {
         shouldStrengthen,
         sort: queryOptions?.sort ?? 'confidence',
         limit: queryOptions?.limit,
+        minResults: queryOptions?.minResults ?? 0,
         storage: this.storage,
         onDecay: (record, retentionValue) => {
           emitDecayEvent({

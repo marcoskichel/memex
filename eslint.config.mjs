@@ -17,7 +17,7 @@ export default [
     },
   },
   {
-    files: ['**/synapses/cortex/src/ipc/**/*.ts', '**/nuclei/cortex-ipc/src/**/*.ts'],
+    files: ['**/synapses/cortex/src/ipc/**/*.ts', '**/nuclei/cortex-ipc/src/**/*.ts', '**/nuclei/axon/src/**/*.ts'],
     rules: {
       'neverthrow/no-throw': 'off',
       'neverthrow/no-try-catch': 'off',
