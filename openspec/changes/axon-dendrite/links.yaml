@@ -1,0 +1,9 @@
+scopes:
+  - name: axon
+    path: packages/axon
+  - name: afferent
+    path: synapses/afferent
+  - name: claude-hooks
+    path: synapses/claude-hooks
+  - name: dendrite
+    path: synapses/dendrite
