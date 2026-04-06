@@ -1,0 +1,7 @@
+scopes:
+  - name: memory
+    path: packages/memory
+  - name: cortex
+    path: packages/cortex
+  - name: memex-tui
+    path: synapses/memex-tui
