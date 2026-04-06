@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "build": "turbo build",
-    "dev:packages": "turbo run dev --filter=!@neurome/cortex",
-    "dev:cortex": "turbo run dev dev:run --filter=@neurome/cortex",
+    "dev:packages": "turbo run dev",
+    "dev:cortex": "turbo run dev:run --filter=@neurome/cortex",
     "dev:tui": "pnpm --filter=@neurome/neurome-tui run dev:run",
     "test": "turbo test",
     "lint": "turbo lint",
