@@ -15,6 +15,7 @@ export interface LtmQueryOptions {
   sessionId?: string;
   category?: string;
   tags?: string[];
+  minResults?: number;
 }
 
 export interface LtmInsertOptions {

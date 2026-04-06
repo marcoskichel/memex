@@ -122,7 +122,7 @@ export class MemoryImpl implements Memory {
   }
 
   recall(nlQuery: string, options?: LtmQueryOptions): ReturnType<LtmEngine['query']> {
-    return this.ltm.query(nlQuery, { strengthen: false, ...options });
+    return this.ltm.query(nlQuery, { minResults: 1, strengthen: false, ...options });
   }
 
   async recallSession(
