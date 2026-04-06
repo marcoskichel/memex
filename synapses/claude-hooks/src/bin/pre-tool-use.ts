@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 
+import { buildHookInsight } from '../core/build-hook-insight.js';
 import { parsePreToolUse } from '../core/parse-hook-payload.js';
-import { getContext } from '../shell/clients/cortex-socket-client.js';
+import { getContext, sendLogInsight } from '../shell/clients/cortex-socket-client.js';
 
 function readStdin(): string {
   try {
@@ -23,14 +24,25 @@ if (!payload) {
   process.exit(0);
 }
 
-const context = await getContext(
-  {
-    sessionId,
-    toolName: payload.tool_name,
-    toolInput: payload.tool_input,
-  },
+const agentName = process.env.MEMORY_AGENT_NAME ?? 'claude';
+const insight = buildHookInsight({
+  toolName: payload.tool_name,
+  input: payload.tool_input,
   sessionId,
-);
+  agentName,
+});
+
+const [context] = await Promise.all([
+  getContext(
+    {
+      sessionId,
+      toolName: payload.tool_name,
+      toolInput: payload.tool_input,
+    },
+    sessionId,
+  ),
+  sendLogInsight(insight, sessionId),
+]);
 
 if (context) {
   process.stdout.write(context);
