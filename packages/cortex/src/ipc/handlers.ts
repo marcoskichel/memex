@@ -11,6 +11,9 @@ const RECENT_CONTEXT_FILE_LIMIT = 3;
 const SCORE_PRECISION = 3;
 const IDENTITY_QUERY = 'current user identity, agent goals, session context';
 const PROJECT_QUERY = 'project being built, architectural decisions, codebase overview';
+export const SESSION_MATCH_BOOST = 0.15;
+export const CATEGORY_MATCH_BOOST = 0.1;
+const MAX_EFFECTIVE_SCORE = 1;
 
 export async function handleRequest(
   message: RequestMessage,
@@ -55,7 +58,13 @@ async function dispatch(message: RequestMessage, memory: Memory): Promise<unknow
       return importResult.value;
     }
     case 'getRecent': {
-      return memory.getRecent(message.payload.limit);
+      return memory
+        .getRecent(message.payload.limit)
+        .map(({ embedding: _embedding, ...record }) => record);
+    }
+    case 'consolidate': {
+      await memory.consolidate();
+      return undefined;
     }
     default: {
       const exhaustive: never = message;
@@ -96,6 +105,31 @@ function mergeRecallResults(results: RecallResult[], limit: number) {
     .slice(0, limit);
 }
 
+interface ContextBoostOptions {
+  sessionId: string;
+  category?: string;
+}
+
+function applyContextBoosts<T extends { record: { metadata: unknown }; effectiveScore: number }>(
+  results: T[],
+  { sessionId, category }: ContextBoostOptions,
+): T[] {
+  return results.map((item) => {
+    const meta = item.record.metadata as { sessionId?: string; category?: string };
+    let boost = 0;
+    if (meta.sessionId === sessionId) {
+      boost += SESSION_MATCH_BOOST;
+    }
+    if (category !== undefined && meta.category === category) {
+      boost += CATEGORY_MATCH_BOOST;
+    }
+    if (boost === 0) {
+      return item;
+    }
+    return { ...item, effectiveScore: Math.min(MAX_EFFECTIVE_SCORE, item.effectiveScore + boost) };
+  });
+}
+
 async function getContext(
   payload: Extract<RequestMessage, { type: 'getContext' }>['payload'],
   memory: Memory,
@@ -107,9 +141,12 @@ async function getContext(
     memory.getStats(),
   ]);
 
-  const merged = mergeRecallResults(
-    [primaryResult, identityResult, projectResult],
-    RECALL_LIMIT_FOR_CONTEXT,
+  const merged = applyContextBoosts(
+    mergeRecallResults([primaryResult, identityResult, projectResult], RECALL_LIMIT_FOR_CONTEXT),
+    {
+      sessionId: payload.sessionId,
+      ...(payload.category !== undefined && { category: payload.category }),
+    },
   );
 
   const contextDirectory = stats.disk.contextDirectory;

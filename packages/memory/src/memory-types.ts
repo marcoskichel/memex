@@ -1,3 +1,4 @@
+import type { AgentState } from '@memex/amygdala';
 import type { LLMAdapter } from '@memex/llm';
 import type {
   EmbeddingAdapter,
@@ -13,6 +14,8 @@ import type { ResultAsync } from 'neverthrow';
 import type { MemoryEventEmitter } from './memory-events.js';
 import type { MemoryStats } from './memory-stats.js';
 
+export type { AgentState } from '@memex/amygdala';
+
 export type {
   AmygdalaStats,
   DiskStats,
@@ -21,6 +24,13 @@ export type {
   MemoryStats,
   StmStats,
 } from './memory-stats.js';
+
+const HOURS_IN_DAY = 24;
+const MINUTES_IN_HOUR = 60;
+const SECONDS_IN_MINUTE = 60;
+const MS_IN_SECOND = 1000;
+export const DEFAULT_PENDING_CONSOLIDATION_TTL_MS =
+  HOURS_IN_DAY * MINUTES_IN_HOUR * SECONDS_IN_MINUTE * MS_IN_SECOND;
 
 export interface MemoryConfig {
   storagePath: string;
@@ -35,6 +45,18 @@ export interface MemoryConfig {
   maxTokens?: number;
   maxLLMCallsPerHour?: number;
   lowCostModeThreshold?: number;
+  pendingConsolidationTtlMs?: number;
+  agentState?: AgentState;
+}
+
+export interface PendingConsolidation {
+  pendingId: string;
+  summary: string;
+  confidence: number;
+  sourceIds: number[];
+  preservedFacts: string[];
+  uncertainties: string[];
+  createdAt: Date;
 }
 
 export interface ShutdownReport {
@@ -108,6 +130,11 @@ export interface Memory {
   insertMemory(data: string, options?: LtmInsertOptions): ResultAsync<number, InsertMemoryError>;
   importText(text: string): ResultAsync<{ inserted: number }, ImportTextError>;
   getRecent(limit: number): LtmRecord[];
+  consolidate(): Promise<void>;
+  getPendingConsolidations(): PendingConsolidation[];
+  approveConsolidation(pendingId: string): ResultAsync<number, InsertMemoryError>;
+  discardConsolidation(pendingId: string): void;
+  setAgentState(state: AgentState | undefined): void;
   getStats(): Promise<MemoryStats>;
   pruneContextFiles(options: { olderThanDays: number }): Promise<PruneContextFilesReport>;
   shutdown(): Promise<ShutdownReport>;

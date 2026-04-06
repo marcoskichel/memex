@@ -98,6 +98,9 @@ export class HippocampusProcess {
   }
 
   start(): void {
+    if (this.scheduleMs === 0) {
+      return;
+    }
     this.intervalId = setInterval(() => {
       this.run().catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
@@ -180,47 +183,54 @@ export class HippocampusProcess {
       if (cluster.length < this.minClusterSize) {
         continue;
       }
-
-      const result = await this.consolidateWithRetry(this.buildUserTurn(cluster));
-      if (!result) {
-        continue;
+      const didConsolidate = await this.processCluster(cluster);
+      if (didConsolidate) {
+        consolidated++;
       }
-
-      const sourceIds = cluster.map((record) => record.id);
-      const consolidateOk = await this.ltm
-        .consolidate(sourceIds, {
-          data: result.summary,
-          options: {
-            deflateSourceStability: true,
-            confidence: result.confidence,
-            preservedFacts: result.preservedFacts,
-            uncertainties: result.uncertainties,
-            ...(this.category !== undefined && { category: this.category }),
-          },
-        })
-        .match(
-          (id) => ({ id }),
-          () => false as const,
-        );
-
-      if (!consolidateOk) {
-        continue;
-      }
-
-      const newId = consolidateOk.id;
-
-      if (result.confidence < LOW_CONFIDENCE_THRESHOLD) {
-        this.events.emit('hippocampus:false-memory-risk', {
-          recordId: newId,
-          confidence: result.confidence,
-          sourceIds,
-        });
-      }
-
-      consolidated++;
     }
 
     return consolidated;
+  }
+
+  private async processCluster(
+    cluster: { id: number; data: string; createdAt: Date; stability: number }[],
+  ): Promise<boolean> {
+    const result = await this.consolidateWithRetry(this.buildUserTurn(cluster));
+    if (!result) {
+      return false;
+    }
+
+    const sourceIds = cluster.map((record) => record.id);
+
+    if (result.confidence < LOW_CONFIDENCE_THRESHOLD) {
+      this.events.emit('hippocampus:false-memory-risk', {
+        pendingId: crypto.randomUUID(),
+        summary: result.summary,
+        confidence: result.confidence,
+        sourceIds,
+        preservedFacts: result.preservedFacts,
+        uncertainties: result.uncertainties,
+      });
+      return false;
+    }
+
+    const consolidateOk = await this.ltm
+      .consolidate(sourceIds, {
+        data: result.summary,
+        options: {
+          deflateSourceStability: true,
+          confidence: result.confidence,
+          preservedFacts: result.preservedFacts,
+          uncertainties: result.uncertainties,
+          ...(this.category !== undefined && { category: this.category }),
+        },
+      })
+      .match(
+        (id) => ({ id }),
+        () => false as const,
+      );
+
+    return Boolean(consolidateOk);
   }
 
   private async consolidateWithRetry(userTurn: string): Promise<ConsolidationResult | undefined> {

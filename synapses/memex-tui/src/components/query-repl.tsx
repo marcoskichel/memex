@@ -41,6 +41,7 @@ interface QueryReplProps {
   onExternalModeConsumed?: () => void;
   onSaved?: (id: unknown) => void;
   onImported?: (count: number) => void;
+  onWriteDone?: () => void;
 }
 
 export function QueryRepl({
@@ -53,6 +54,7 @@ export function QueryRepl({
   onExternalModeConsumed,
   onSaved,
   onImported,
+  onWriteDone,
 }: QueryReplProps) {
   const [state, setState] = useState<ReplState>({ mode: 'idle' });
 
@@ -222,9 +224,11 @@ export function QueryRepl({
           onSave={(id) => {
             setState({ mode: 'idle' });
             onSaved?.(id);
+            onWriteDone?.();
           }}
           onCancel={() => {
             setState({ mode: 'idle' });
+            onWriteDone?.();
           }}
           onError={onError}
         />

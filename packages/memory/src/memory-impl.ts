@@ -1,7 +1,4 @@
-import { readdir, stat } from 'node:fs/promises';
-import path from 'node:path';
-
-import type { AmygdalaProcess } from '@memex/amygdala';
+import type { AgentState, AmygdalaProcess } from '@memex/amygdala';
 import type { HippocampusProcess } from '@memex/hippocampus';
 import type { LLMAdapter } from '@memex/llm';
 import type {
@@ -14,22 +11,22 @@ import type {
 import type { InsightLogLike } from '@memex/stm';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 
+import { collectDiskStats, pruneContextFiles } from './memory-disk.js';
 import type { MemoryEventEmitter } from './memory-events.js';
 import { importTextImpl } from './memory-import.js';
 import type { AmygdalaStats, HippocampusStats, MemoryStats } from './memory-stats.js';
 import {
-  HOURS_PER_DAY,
+  DEFAULT_PENDING_CONSOLIDATION_TTL_MS,
   InsertMemoryError,
-  MINUTES_PER_HOUR,
-  MS_PER_SECOND,
   RecordNotFoundError,
-  SECONDS_PER_MINUTE,
   type ImportTextError,
   type LogInsightOptions,
   type Memory,
+  type PendingConsolidation,
   type PruneContextFilesReport,
   type ShutdownReport,
 } from './memory-types.js';
+import { PendingConsolidationStore } from './pending-consolidation-store.js';
 
 export interface MemoryImplDeps {
   sessionId: string;
@@ -40,6 +37,7 @@ export interface MemoryImplDeps {
   hippocampus: HippocampusProcess;
   contextDirectory: string;
   llmAdapter: LLMAdapter;
+  pendingConsolidationTtlMs?: number;
 }
 
 export class MemoryImpl implements Memory {
@@ -53,6 +51,7 @@ export class MemoryImpl implements Memory {
   private contextDirectory: string;
   private llmAdapter: LLMAdapter;
   private isShuttingDown = false;
+  private pendingStore: PendingConsolidationStore;
 
   private amygdalaStats: AmygdalaStats = {
     lastCycleStartedAt: undefined,
@@ -80,6 +79,9 @@ export class MemoryImpl implements Memory {
     this.hippocampus = deps.hippocampus;
     this.contextDirectory = deps.contextDirectory;
     this.llmAdapter = deps.llmAdapter;
+    this.pendingStore = new PendingConsolidationStore(
+      deps.pendingConsolidationTtlMs ?? DEFAULT_PENDING_CONSOLIDATION_TTL_MS,
+    );
 
     this.events.on('amygdala:cycle:start', ({ startedAt }) => {
       this.amygdalaStats.lastCycleStartedAt = startedAt;
@@ -102,8 +104,9 @@ export class MemoryImpl implements Memory {
       this.hippocampusStats.lastRunRecordsPruned = recordsPruned;
     });
 
-    this.events.on('hippocampus:false-memory-risk', () => {
+    this.events.on('hippocampus:false-memory-risk', (payload) => {
       this.hippocampusStats.falseMemoryCandidates += 1;
+      this.pendingStore.add({ ...payload, createdAt: new Date() });
     });
   }
 
@@ -153,6 +156,28 @@ export class MemoryImpl implements Memory {
     return this.ltm.getRecent(limit);
   }
 
+  async consolidate(): Promise<void> {
+    this.pendingStore.purgeStale();
+    await this.amygdala.run();
+    await this.hippocampus.run();
+  }
+
+  getPendingConsolidations(): PendingConsolidation[] {
+    return this.pendingStore.all();
+  }
+
+  approveConsolidation(pendingId: string): ResultAsync<number, InsertMemoryError> {
+    return this.pendingStore.approve(pendingId, this.ltm);
+  }
+
+  discardConsolidation(pendingId: string): void {
+    this.pendingStore.discard(pendingId);
+  }
+
+  setAgentState(state: AgentState | undefined): void {
+    this.amygdala.setAgentState(state);
+  }
+
   async getStats(): Promise<MemoryStats> {
     const ltmRaw = this.ltm.stats();
     const unprocessed = this.stm.readUnprocessed();
@@ -184,53 +209,7 @@ export class MemoryImpl implements Memory {
   }
 
   async pruneContextFiles(options: { olderThanDays: number }): Promise<PruneContextFilesReport> {
-    const cutoffMs =
-      options.olderThanDays * HOURS_PER_DAY * SECONDS_PER_MINUTE * MINUTES_PER_HOUR * MS_PER_SECOND;
-    const now = Date.now();
-    const pendingFiles = new Set(this.stm.readUnprocessed().map((entry) => entry.contextFile));
-    const report: PruneContextFilesReport = {
-      deletedCount: 0,
-      deletedBytes: 0,
-      skippedCount: 0,
-      errors: [],
-    };
-
-    const entries = await readdir(this.contextDirectory).catch(() => [] as string[]);
-
-    const { unlink } = await import('node:fs/promises');
-
-    for (const entry of entries) {
-      const filePath = path.join(this.contextDirectory, entry);
-      if (pendingFiles.has(filePath)) {
-        report.skippedCount++;
-        continue;
-      }
-
-      const fileStat = await stat(filePath).catch((error: unknown) => {
-        report.errors.push({ path: filePath, error: String(error) });
-        return;
-      });
-      if (fileStat === undefined) {
-        continue;
-      }
-
-      if (now - fileStat.mtimeMs < cutoffMs) {
-        report.skippedCount++;
-        continue;
-      }
-
-      await unlink(filePath).then(
-        () => {
-          report.deletedCount++;
-          report.deletedBytes += fileStat.size;
-        },
-        (error: unknown) => {
-          report.errors.push({ path: filePath, error: String(error) });
-        },
-      );
-    }
-
-    return report;
+    return pruneContextFiles(this.contextDirectory, { stm: this.stm, options });
   }
 
   async shutdown(): Promise<ShutdownReport> {
@@ -256,29 +235,6 @@ export class MemoryImpl implements Memory {
   }
 
   private async collectDiskStats() {
-    let contextFilesOnDisk = 0;
-    let contextTotalBytes = 0;
-    let oldestMtimeMs: number | undefined;
-
-    const entries = await readdir(this.contextDirectory).catch(() => [] as string[]);
-    for (const entry of entries) {
-      const fileStat = await stat(path.join(this.contextDirectory, entry)).catch(
-        () => false as const,
-      );
-      if (fileStat && fileStat.isFile()) {
-        contextFilesOnDisk++;
-        contextTotalBytes += fileStat.size;
-        if (oldestMtimeMs === undefined || fileStat.mtimeMs < oldestMtimeMs) {
-          oldestMtimeMs = fileStat.mtimeMs;
-        }
-      }
-    }
-
-    return {
-      contextFilesOnDisk,
-      contextTotalBytes,
-      oldestContextFileAgeMs: oldestMtimeMs === undefined ? undefined : Date.now() - oldestMtimeMs,
-      contextDirectory: this.contextDirectory,
-    };
+    return collectDiskStats(this.contextDirectory);
   }
 }

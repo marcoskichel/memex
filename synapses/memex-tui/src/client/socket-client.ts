@@ -121,6 +121,10 @@ export class MemexSocketClient {
     return this.request('getRecent', { limit }) as Promise<unknown[]>;
   }
 
+  consolidate(): Promise<void> {
+    return this.request('consolidate', {}) as Promise<void>;
+  }
+
   private request(type: string, payload: unknown): Promise<unknown> {
     const socket = this.socket;
     if (!this.connected || !socket) {

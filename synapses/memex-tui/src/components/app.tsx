@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs';
 
 import type { PushMessage } from '@memex/cortex';
 import type { MemoryStats } from '@memex/memory';
-import { Box, Text, useInput, useStdout } from 'ink';
+import { Box, useInput, useStdout } from 'ink';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { CommandPalette } from './command-palette.js';
 import { EventsPane } from './events-pane.js';
 import type { ImportData } from './query-repl.js';
 import { QueryRepl } from './query-repl.js';
@@ -37,7 +38,6 @@ export function App({ sessionId }: AppProps) {
   const [stats, setStats] = useState<MemoryStats | undefined>();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [paletteActive, setPaletteActive] = useState(false);
-  const [paletteInput, setPaletteInput] = useState('');
   const [externalReplMode, setExternalReplMode] = useState<
     'write' | 'import-preview' | undefined
   >();
@@ -112,15 +112,45 @@ export function App({ sessionId }: AppProps) {
   const executePaletteCommand = useCallback(
     (cmd: string) => {
       setPaletteActive(false);
-      setPaletteInput('');
       const trimmed = cmd.trim().replace(/^:/, '');
+      const client = clientReference.current;
 
-      if (trimmed === 'reset') {
-        handleReset();
-      } else if (trimmed === 'add') {
-        setFocused('query');
-        setExternalReplMode('write');
-      } else if (trimmed.startsWith('import ')) {
+      const handlers: Partial<Record<string, () => void>> = {
+        reset: handleReset,
+        add: () => {
+          setFocused('query');
+          setExternalReplMode('write');
+        },
+        consolidate: () => {
+          if (client) {
+            pushToast({ level: 'warn', source: 'consolidate', message: 'consolidating...' });
+            void client.consolidate().then(
+              () => {
+                pushToast({
+                  level: 'warn',
+                  source: 'consolidate',
+                  message: 'consolidation done',
+                });
+              },
+              (error: unknown) => {
+                pushToast({
+                  level: 'error',
+                  source: 'consolidate',
+                  message: error instanceof Error ? error.message : 'consolidation failed',
+                });
+              },
+            );
+          }
+        },
+      };
+
+      const handler = handlers[trimmed];
+      if (handler) {
+        handler();
+        return;
+      }
+
+      if (trimmed.startsWith('import ')) {
         const filePath = trimmed.slice('import '.length).trim();
         try {
           const content = readFileSync(filePath, 'utf8');
@@ -136,31 +166,21 @@ export function App({ sessionId }: AppProps) {
             message: error instanceof Error ? error.message : `cannot read ${filePath}`,
           });
         }
-      } else {
-        pushToast({ level: 'error', source: 'palette', message: `unknown command: ${trimmed}` });
+        return;
       }
+
+      pushToast({ level: 'error', source: 'palette', message: `unknown command: ${trimmed}` });
     },
     [handleReset, pushToast],
   );
 
   useInput((input, key) => {
     if (paletteActive) {
-      if (key.escape) {
-        setPaletteActive(false);
-        setPaletteInput('');
-      } else if (key.return) {
-        executePaletteCommand(paletteInput);
-      } else if (key.backspace || key.delete) {
-        setPaletteInput((previous) => previous.slice(0, -1));
-      } else if (input && !key.ctrl && !key.meta) {
-        setPaletteInput((previous) => previous + input);
-      }
       return;
     }
 
     if (input === ':' && focused !== 'query') {
       setPaletteActive(true);
-      setPaletteInput('');
       return;
     }
 
@@ -232,6 +252,9 @@ export function App({ sessionId }: AppProps) {
           onExternalModeConsumed: () => {
             setExternalReplMode(undefined);
           },
+          onWriteDone: () => {
+            setFocused('events');
+          },
           onSaved: (id: unknown) => {
             pushToast({ level: 'warn', source: 'memory', message: `saved memory ${String(id)}` });
           },
@@ -244,13 +267,13 @@ export function App({ sessionId }: AppProps) {
           },
         }}
       />
-      {paletteActive && (
-        <Box>
-          <Text color="cyan">{'>'} </Text>
-          <Text>{paletteInput}</Text>
-          <Text color="cyan">█</Text>
-        </Box>
-      )}
+      <CommandPalette
+        active={paletteActive}
+        onExecute={executePaletteCommand}
+        onClose={() => {
+          setPaletteActive(false);
+        }}
+      />
     </Box>
   );
 }

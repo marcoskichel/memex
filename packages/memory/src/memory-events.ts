@@ -31,9 +31,12 @@ export interface MemoryEvents {
   ];
   'hippocampus:false-memory-risk': [
     payload: {
-      recordId: number;
+      pendingId: string;
+      summary: string;
       confidence: number;
       sourceIds: number[];
+      preservedFacts: string[];
+      uncertainties: string[];
     },
   ];
   'ltm:record:decayed-below-threshold': [

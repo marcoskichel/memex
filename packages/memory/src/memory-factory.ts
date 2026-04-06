@@ -31,6 +31,7 @@ function buildAmygdala(
       lowCostModeThreshold: config.lowCostModeThreshold,
     }),
     events: deps.events as unknown as AmygdalaEventBus,
+    ...(config.agentState !== undefined && { agentState: config.agentState }),
   });
 }
 
