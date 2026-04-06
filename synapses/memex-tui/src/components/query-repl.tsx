@@ -1,22 +1,20 @@
 import { Box, Text, useInput } from 'ink';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
+import { MemoryForm } from './memory-form.js';
+import {
+  DetailView,
+  IdleView,
+  ImportPreviewView,
+  LoadingView,
+  ResultsView,
+  TypingView,
+  type ImportData,
+  type RecallResult,
+} from './query-repl-views.js';
 import type { MemexSocketClient } from '../client/socket-client.js';
 
-const MAX_RESULTS_DISPLAYED = 10;
-const RESULT_PREVIEW_LENGTH = 60;
-const SCORE_PRECISION = 3;
-
-interface RecallResult {
-  record: {
-    id: number;
-    data: string;
-    tier: 'episodic' | 'semantic';
-    createdAt: string;
-    metadata: Record<string, unknown>;
-  };
-  effectiveScore: number;
-}
+export type { ImportData } from './query-repl-views.js';
 
 type ReplState =
   | { mode: 'idle' }
@@ -29,106 +27,46 @@ type ReplState =
       results: RecallResult[];
       selected: number;
       detail: RecallResult;
-    };
+    }
+  | { mode: 'write' }
+  | { mode: 'import-preview'; data: ImportData; importing: boolean };
 
 interface QueryReplProps {
   focused: boolean;
   height: number;
   client: MemexSocketClient | undefined;
+  onError: (source: string, message: string) => void;
+  externalMode?: 'write' | 'import-preview';
+  importData?: ImportData;
+  onExternalModeConsumed?: () => void;
+  onSaved?: (id: unknown) => void;
+  onImported?: (count: number) => void;
 }
 
-function IdleView() {
-  return <Text color="gray">type to query memory...</Text>;
-}
-
-function TypingView({ input }: { input: string }) {
-  return (
-    <Box>
-      <Text color="cyan">▶ </Text>
-      <Text>{input}</Text>
-      <Text color="cyan">█</Text>
-    </Box>
-  );
-}
-
-function LoadingView({ query }: { query: string }) {
-  return (
-    <Box flexDirection="column">
-      <Box>
-        <Text color="cyan">▶ </Text>
-        <Text>{query}</Text>
-      </Box>
-      <Text color="yellow">searching...</Text>
-    </Box>
-  );
-}
-
-function ResultRow({ result, isSelected }: { result: RecallResult; isSelected: boolean }) {
-  const tags = (result.record.metadata.tags as string[] | undefined) ?? [];
-  const tagString = tags.length > 0 ? `(${tags.join(', ')}) ` : '';
-  const preview = result.record.data.slice(0, RESULT_PREVIEW_LENGTH).replaceAll('\n', ' ');
-  const scoreString = result.effectiveScore.toFixed(SCORE_PRECISION);
-  const content = `${isSelected ? '▶ ' : '  '}${scoreString} [${result.record.tier}] ${tagString}${preview}`;
-
-  return (
-    <Box>
-      {isSelected ? (
-        <Text backgroundColor="cyan" color="black">
-          {content}
-        </Text>
-      ) : (
-        <Text>{content}</Text>
-      )}
-    </Box>
-  );
-}
-
-function ResultsView({
-  query,
-  results,
-  selected,
-}: {
-  query: string;
-  results: RecallResult[];
-  selected: number;
-}) {
-  return (
-    <Box flexDirection="column">
-      <Box>
-        <Text color="cyan">▶ </Text>
-        <Text>{query}</Text>
-        <Text color="gray"> ({results.length.toString()} results)</Text>
-      </Box>
-      {results.length === 0 ? (
-        <Text color="gray">no results</Text>
-      ) : (
-        results
-          .slice(0, MAX_RESULTS_DISPLAYED)
-          .map((result, index) => (
-            <ResultRow key={result.record.id} result={result} isSelected={index === selected} />
-          ))
-      )}
-      <Text color="gray">↑↓ navigate enter expand esc clear</Text>
-    </Box>
-  );
-}
-
-function DetailView({ detail }: { detail: RecallResult }) {
-  const tags = (detail.record.metadata.tags as string[] | undefined) ?? [];
-  return (
-    <Box flexDirection="column">
-      <Text bold>
-        [{detail.record.tier}] score={detail.effectiveScore.toFixed(SCORE_PRECISION)}
-        {tags.length > 0 ? ` tags: ${tags.join(', ')}` : ''}
-      </Text>
-      <Text>{detail.record.data}</Text>
-      <Text color="gray">esc back to results</Text>
-    </Box>
-  );
-}
-
-export function QueryRepl({ focused, height, client }: QueryReplProps) {
+export function QueryRepl({
+  focused,
+  height,
+  client,
+  onError,
+  externalMode,
+  importData,
+  onExternalModeConsumed,
+  onSaved,
+  onImported,
+}: QueryReplProps) {
   const [state, setState] = useState<ReplState>({ mode: 'idle' });
+
+  useEffect(() => {
+    if (!externalMode) {
+      return;
+    }
+    if (externalMode === 'write') {
+      setState({ mode: 'write' });
+    } else if (importData) {
+      setState({ mode: 'import-preview', data: importData, importing: false });
+    }
+    onExternalModeConsumed?.();
+  }, [externalMode, importData, onExternalModeConsumed]);
 
   const submitQuery = useCallback(
     (query: string) => {
@@ -144,11 +82,45 @@ export function QueryRepl({ focused, height, client }: QueryReplProps) {
           const results = raw as RecallResult[];
           setState({ mode: 'results', query, results, selected: 0 });
         })
-        .catch(() => {
+        .catch((error: unknown) => {
+          onError('query', error instanceof Error ? error.message : 'recall failed');
           setState({ mode: 'idle' });
         });
     },
-    [client],
+    [client, onError],
+  );
+
+  const executeImport = useCallback(
+    async (data: ImportData) => {
+      if (!client) {
+        return;
+      }
+
+      setState((previous) =>
+        previous.mode === 'import-preview' ? { ...previous, importing: true } : previous,
+      );
+
+      try {
+        if (data.isStructured) {
+          let count = 0;
+          for (const entry of data.entries) {
+            await client.insertMemory(entry.data, entry.options);
+            count++;
+          }
+          onImported?.(count);
+        } else {
+          const result = (await client.importText(data.rawText)) as { inserted: number };
+          onImported?.(result.inserted);
+        }
+        setState({ mode: 'idle' });
+      } catch (error: unknown) {
+        onError('import', error instanceof Error ? error.message : 'import failed');
+        setState((previous) =>
+          previous.mode === 'import-preview' ? { ...previous, importing: false } : previous,
+        );
+      }
+    },
+    [client, onError, onImported],
   );
 
   useInput(
@@ -212,6 +184,14 @@ export function QueryRepl({ focused, height, client }: QueryReplProps) {
           }
           break;
         }
+        case 'import-preview': {
+          if (key.return && !state.importing) {
+            void executeImport(state.data);
+          } else if (key.escape && !state.importing) {
+            setState({ mode: 'idle' });
+          }
+          break;
+        }
         default: {
           break;
         }
@@ -236,6 +216,22 @@ export function QueryRepl({ focused, height, client }: QueryReplProps) {
         <ResultsView query={state.query} results={state.results} selected={state.selected} />
       )}
       {state.mode === 'detail' && <DetailView detail={state.detail} />}
+      {state.mode === 'write' && (
+        <MemoryForm
+          client={client}
+          onSave={(id) => {
+            setState({ mode: 'idle' });
+            onSaved?.(id);
+          }}
+          onCancel={() => {
+            setState({ mode: 'idle' });
+          }}
+          onError={onError}
+        />
+      )}
+      {state.mode === 'import-preview' && (
+        <ImportPreviewView data={state.data} importing={state.importing} />
+      )}
     </Box>
   );
 }
