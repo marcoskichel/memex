@@ -1,5 +1,11 @@
 import type { LLMAdapter } from '@memex/llm';
-import type { EmbeddingAdapter, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@memex/ltm';
+import type {
+  EmbeddingAdapter,
+  LtmInsertOptions,
+  LtmQueryOptions,
+  LtmQueryResult,
+  LtmRecord,
+} from '@memex/ltm';
 import type { LtmEngine } from '@memex/ltm';
 import type { InsightLogLike } from '@memex/stm';
 import type { ResultAsync } from 'neverthrow';
@@ -63,6 +69,24 @@ export class RecordNotFoundError extends Error {
   }
 }
 
+export class InsertMemoryError extends Error {
+  readonly causeType: string;
+  constructor(causeType: string) {
+    super(`insertMemory failed: ${causeType}`);
+    this.name = 'InsertMemoryError';
+    this.causeType = causeType;
+  }
+}
+
+export class ImportTextError extends Error {
+  readonly causeType: string;
+  constructor(causeType: string) {
+    super(`importText failed: ${causeType}`);
+    this.name = 'ImportTextError';
+    this.causeType = causeType;
+  }
+}
+
 export interface LogInsightOptions {
   summary: string;
   contextFile: string;
@@ -81,6 +105,9 @@ export interface Memory {
   recallFull(
     id: number,
   ): ResultAsync<{ record: LtmRecord; episodeSummary: string | undefined }, RecordNotFoundError>;
+  insertMemory(data: string, options?: LtmInsertOptions): ResultAsync<number, InsertMemoryError>;
+  importText(text: string): ResultAsync<{ inserted: number }, ImportTextError>;
+  getRecent(limit: number): LtmRecord[];
   getStats(): Promise<MemoryStats>;
   pruneContextFiles(options: { olderThanDays: number }): Promise<PruneContextFilesReport>;
   shutdown(): Promise<ShutdownReport>;

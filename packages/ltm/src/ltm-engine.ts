@@ -158,6 +158,14 @@ export class LtmEngine {
     return this.storage.getById(id);
   }
 
+  getRecent(limit: number): LtmRecord[] {
+    return this.storage
+      .getAllRecords()
+      .filter((record) => !record.tombstoned)
+      .toSorted((first, second) => second.createdAt.getTime() - first.createdAt.getTime())
+      .slice(0, limit);
+  }
+
   query(
     nlQuery: string,
     queryOptions?: LtmQueryOptions,

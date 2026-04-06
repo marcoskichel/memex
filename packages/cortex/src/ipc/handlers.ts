@@ -41,10 +41,18 @@ async function dispatch(message: RequestMessage, memory: Memory): Promise<unknow
       return getStats(memory);
     }
     case 'insertMemory': {
-      return memory.insertMemory(message.payload.data, message.payload.options);
+      const insertResult = await memory.insertMemory(message.payload.data, message.payload.options);
+      if (insertResult.isErr()) {
+        throw new Error(insertResult.error.message);
+      }
+      return insertResult.value;
     }
     case 'importText': {
-      return memory.importText(message.payload.text);
+      const importResult = await memory.importText(message.payload.text);
+      if (importResult.isErr()) {
+        throw new Error(importResult.error.message);
+      }
+      return importResult.value;
     }
     case 'getRecent': {
       return memory.getRecent(message.payload.limit);

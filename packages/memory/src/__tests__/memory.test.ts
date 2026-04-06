@@ -1,3 +1,4 @@
+import { errAsync, okAsync } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryEventEmitter } from '../memory-events.js';
@@ -10,6 +11,40 @@ const mockStmMarkProcessed = vi.fn();
 
 const mockLtmQuery = vi.fn(() => ({ isOk: () => true, value: [] }));
 const mockLtmGetById = vi.fn();
+function makeOkResult<T>(value: T) {
+  const result = {
+    isOk: (): boolean => true,
+    isErr: (): boolean => false,
+    value,
+    error: undefined as { type: string } | undefined,
+    mapErr: (_function: unknown) => result,
+    match: (onOk: (v: T) => unknown, _onError: unknown) => onOk(value),
+  };
+  return result;
+}
+
+function makeErrorResult(error: { type: string }) {
+  const result = {
+    isOk: (): boolean => false,
+    isErr: (): boolean => true,
+    value: undefined as number | undefined,
+    error,
+    mapErr: (function_: (error_: { type: string }) => unknown) => {
+      const mapped = function_(error);
+      return {
+        isOk: (): boolean => false,
+        isErr: (): boolean => true,
+        error: mapped,
+        andThen: (_function: unknown) => result,
+      };
+    },
+    match: (_onOk: unknown, onError: (error_: { type: string }) => unknown) => onError(error),
+  };
+  return result;
+}
+
+const mockLtmInsert = vi.fn(() => makeOkResult(1));
+const mockLtmGetRecent = vi.fn(() => [] as unknown[]);
 const mockLtmStats = vi.fn(() => ({
   total: 0,
   episodic: 0,
@@ -33,6 +68,8 @@ vi.mock('@memex/ltm', () => ({
     query: mockLtmQuery,
     stats: mockLtmStats,
     getById: mockLtmGetById,
+    insert: mockLtmInsert,
+    getRecent: mockLtmGetRecent,
   })),
 }));
 
@@ -436,6 +473,84 @@ describe('recallFull', () => {
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(RecordNotFoundError);
     }
+  });
+});
+
+describe('insertMemory', () => {
+  makeBaseStatsSetup();
+
+  it('returns the record id from ltm.insert', async () => {
+    mockLtmInsert.mockReturnValueOnce(makeOkResult(42));
+    const { memory } = await createMemory(baseConfig);
+    const result = await memory.insertMemory('TypeScript is a superset of JavaScript');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(42);
+    }
+  });
+
+  it('passes options to ltm.insert', async () => {
+    mockLtmInsert.mockReturnValueOnce(makeOkResult(7));
+    const { memory } = await createMemory(baseConfig);
+    await memory.insertMemory('some fact', { tier: 'semantic', importance: 0.8 });
+    expect(mockLtmInsert).toHaveBeenCalledWith('some fact', { tier: 'semantic', importance: 0.8 });
+  });
+
+  it('returns Err when ltm.insert fails', async () => {
+    mockLtmInsert.mockReturnValueOnce(makeErrorResult({ type: 'EMBEDDING_ERROR' }) as never);
+    const { memory } = await createMemory(baseConfig);
+    const result = await memory.insertMemory('bad');
+    expect(result.isErr()).toBe(true);
+  });
+});
+
+describe('importText', () => {
+  makeBaseStatsSetup();
+
+  it('calls LLM adapter and inserts each extracted memory', async () => {
+    mockLlmAdapter.completeStructured.mockReturnValueOnce(
+      okAsync(['fact one', 'fact two', 'fact three']),
+    );
+    mockLtmInsert.mockReturnValue(makeOkResult(1));
+    const { memory } = await createMemory(baseConfig);
+    const result = await memory.importText('some long text with multiple facts');
+    expect(mockLlmAdapter.completeStructured).toHaveBeenCalledOnce();
+    expect(mockLtmInsert).toHaveBeenCalledTimes(3);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ inserted: 3 });
+    }
+  });
+
+  it('returns Err when LLM adapter fails', async () => {
+    mockLlmAdapter.completeStructured.mockReturnValueOnce(errAsync({ type: 'NO_CONTENT' }));
+    const { memory } = await createMemory(baseConfig);
+    const result = await memory.importText('some text');
+    expect(result.isErr()).toBe(true);
+  });
+});
+
+describe('getRecent', () => {
+  makeBaseStatsSetup();
+
+  it('returns records from ltm.getRecent with given limit', async () => {
+    const fakeRecords = [
+      { id: 3, data: 'newest', createdAt: new Date('2024-03-01'), tombstoned: false },
+      { id: 2, data: 'older', createdAt: new Date('2024-02-01'), tombstoned: false },
+      { id: 1, data: 'oldest', createdAt: new Date('2024-01-01'), tombstoned: false },
+    ];
+    mockLtmGetRecent.mockReturnValueOnce(fakeRecords);
+    const { memory } = await createMemory(baseConfig);
+    const result = memory.getRecent(3);
+    expect(mockLtmGetRecent).toHaveBeenCalledWith(3);
+    expect(result).toBe(fakeRecords);
+  });
+
+  it('returns empty array when no records exist', async () => {
+    mockLtmGetRecent.mockReturnValueOnce([]);
+    const { memory } = await createMemory(baseConfig);
+    const result = memory.getRecent(10);
+    expect(result).toEqual([]);
   });
 });
 

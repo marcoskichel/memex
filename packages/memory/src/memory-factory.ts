@@ -78,6 +78,7 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
     amygdala,
     hippocampus,
     contextDirectory: sessionContextDirectory,
+    llmAdapter: config.llmAdapter,
   });
   const startupStats = await memory.getStats();
   return { memory, startupStats };
