@@ -50,7 +50,17 @@ interface RequestPayloadMap {
   getRecent: GetRecentPayload;
 }
 
-export type RequestType = keyof RequestPayloadMap;
+export const REQUEST_TYPES = [
+  'logInsight',
+  'getContext',
+  'recall',
+  'getStats',
+  'insertMemory',
+  'importText',
+  'getRecent',
+] as const;
+
+export type RequestType = (typeof REQUEST_TYPES)[number];
 
 export type RequestMessage = {
   [K in RequestType]: { id: string; type: K; payload: RequestPayloadMap[K] };

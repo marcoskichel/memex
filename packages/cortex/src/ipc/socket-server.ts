@@ -6,9 +6,10 @@ import type { Memory } from '@memex/memory';
 
 import { handleRequest } from './handlers.js';
 import type { PushMessage, RequestMessage } from './protocol.js';
+import { REQUEST_TYPES } from './protocol.js';
 
 const MAX_BUFFER_BYTES = 1_048_576;
-const VALID_REQUEST_TYPES = new Set<string>(['logInsight', 'getContext', 'recall', 'getStats']);
+const VALID_REQUEST_TYPES = new Set<string>(REQUEST_TYPES);
 
 function isValidRequest(data: unknown): data is RequestMessage {
   if (!data || typeof data !== 'object') {
