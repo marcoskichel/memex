@@ -110,7 +110,7 @@ describe('handleRequest — unknown type', () => {
 
 describe('handleRequest — insertMemory', () => {
   it('delegates to memory.insertMemory and returns id', async () => {
-    mockInsertMemory.mockResolvedValueOnce(99);
+    mockInsertMemory.mockResolvedValueOnce(okResult(99));
     const message: RequestMessage = {
       id: '10',
       type: 'insertMemory',
@@ -127,7 +127,7 @@ describe('handleRequest — insertMemory', () => {
 
 describe('handleRequest — importText', () => {
   it('delegates to memory.importText and returns inserted count', async () => {
-    mockImportText.mockResolvedValueOnce({ inserted: 5 });
+    mockImportText.mockResolvedValueOnce(okResult({ inserted: 5 }));
     const message: RequestMessage = {
       id: '11',
       type: 'importText',

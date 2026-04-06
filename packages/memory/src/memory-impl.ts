@@ -3,24 +3,32 @@ import path from 'node:path';
 
 import type { AmygdalaProcess } from '@memex/amygdala';
 import type { HippocampusProcess } from '@memex/hippocampus';
-import type { LtmEngine, LtmQueryOptions, LtmQueryResult, LtmRecord } from '@memex/ltm';
+import type { LLMAdapter } from '@memex/llm';
+import type {
+  LtmEngine,
+  LtmInsertOptions,
+  LtmQueryOptions,
+  LtmQueryResult,
+  LtmRecord,
+} from '@memex/ltm';
 import type { InsightLogLike } from '@memex/stm';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 
 import type { MemoryEventEmitter } from './memory-events.js';
+import { importTextImpl } from './memory-import.js';
 import type { AmygdalaStats, HippocampusStats, MemoryStats } from './memory-stats.js';
-import type {
-  LogInsightOptions,
-  Memory,
-  PruneContextFilesReport,
-  ShutdownReport,
-} from './memory-types.js';
 import {
   HOURS_PER_DAY,
+  InsertMemoryError,
   MINUTES_PER_HOUR,
   MS_PER_SECOND,
   RecordNotFoundError,
   SECONDS_PER_MINUTE,
+  type ImportTextError,
+  type LogInsightOptions,
+  type Memory,
+  type PruneContextFilesReport,
+  type ShutdownReport,
 } from './memory-types.js';
 
 export interface MemoryImplDeps {
@@ -31,6 +39,7 @@ export interface MemoryImplDeps {
   amygdala: AmygdalaProcess;
   hippocampus: HippocampusProcess;
   contextDirectory: string;
+  llmAdapter: LLMAdapter;
 }
 
 export class MemoryImpl implements Memory {
@@ -42,6 +51,7 @@ export class MemoryImpl implements Memory {
   private amygdala: AmygdalaProcess;
   private hippocampus: HippocampusProcess;
   private contextDirectory: string;
+  private llmAdapter: LLMAdapter;
   private isShuttingDown = false;
 
   private amygdalaStats: AmygdalaStats = {
@@ -69,6 +79,7 @@ export class MemoryImpl implements Memory {
     this.amygdala = deps.amygdala;
     this.hippocampus = deps.hippocampus;
     this.contextDirectory = deps.contextDirectory;
+    this.llmAdapter = deps.llmAdapter;
 
     this.events.on('amygdala:cycle:start', ({ startedAt }) => {
       this.amygdalaStats.lastCycleStartedAt = startedAt;
@@ -127,8 +138,19 @@ export class MemoryImpl implements Memory {
     if (!raw || raw.tombstoned) {
       return errAsync(new RecordNotFoundError(id));
     }
-    const record = raw;
-    return okAsync({ record, episodeSummary: record.episodeSummary });
+    return okAsync({ record: raw, episodeSummary: raw.episodeSummary });
+  }
+
+  insertMemory(data: string, options?: LtmInsertOptions): ResultAsync<number, InsertMemoryError> {
+    return this.ltm.insert(data, options).mapErr((error) => new InsertMemoryError(error.type));
+  }
+
+  importText(text: string): ResultAsync<{ inserted: number }, ImportTextError> {
+    return importTextImpl({ llmAdapter: this.llmAdapter, ltm: this.ltm }, text);
+  }
+
+  getRecent(limit: number): LtmRecord[] {
+    return this.ltm.getRecent(limit);
   }
 
   async getStats(): Promise<MemoryStats> {
