@@ -72,6 +72,9 @@ importers:
       '@memex/llm':
         specifier: workspace:*
         version: link:../llm
+      '@memex/ltm':
+        specifier: workspace:*
+        version: link:../ltm
       '@memex/memory':
         specifier: workspace:*
         version: link:../memory

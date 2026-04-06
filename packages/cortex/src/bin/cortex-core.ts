@@ -1,6 +1,7 @@
 import { existsSync, unlinkSync } from 'node:fs';
 
 import { AnthropicAdapter } from '@memex/llm';
+import { OpenAIEmbeddingAdapter } from '@memex/ltm';
 import type { Memory, MemoryEvents } from '@memex/memory';
 import { createMemory } from '@memex/memory';
 import { SqliteInsightLog } from '@memex/stm';
@@ -13,6 +14,7 @@ const FORCE_EXIT_TIMEOUT_MS = 30_000;
 export interface CortexConfig {
   dbPath: string;
   apiKey: string;
+  openaiApiKey?: string;
   sessionId?: string;
 }
 
@@ -35,6 +37,9 @@ export function readConfig(): CortexConfig {
   return {
     dbPath,
     apiKey,
+    ...(process.env.OPENAI_API_KEY !== undefined && {
+      openaiApiKey: process.env.OPENAI_API_KEY,
+    }),
     ...(process.env.MEMORY_SESSION_ID !== undefined && {
       sessionId: process.env.MEMORY_SESSION_ID,
     }),
@@ -103,11 +108,15 @@ export async function main(): Promise<void> {
 
   const stm = new SqliteInsightLog(config.dbPath);
   const llmAdapter = new AnthropicAdapter(config.apiKey);
+  const embeddingAdapter = config.openaiApiKey
+    ? new OpenAIEmbeddingAdapter({ apiKey: config.openaiApiKey })
+    : undefined;
 
   const result = await createMemory({
     storagePath: config.dbPath,
     llmAdapter,
     stm,
+    ...(embeddingAdapter !== undefined && { embeddingAdapter }),
     ...(config.sessionId !== undefined && { sessionId: config.sessionId }),
   });
 
