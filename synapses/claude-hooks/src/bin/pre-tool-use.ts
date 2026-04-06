@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
 
+import { AxonClient } from '@neurome/axon';
+
 import { buildHookInsight } from '../core/build-hook-insight.js';
 import { parsePreToolUse } from '../core/parse-hook-payload.js';
-import { getContext, sendLogInsight } from '../shell/clients/cortex-socket-client.js';
+
+const GET_CONTEXT_TIMEOUT_MS = 200;
 
 function readStdin(): string {
   try {
@@ -32,17 +35,23 @@ const insight = buildHookInsight({
   agentName,
 });
 
-const [context] = await Promise.all([
-  getContext(
+const axon = new AxonClient(sessionId);
+
+let context = '';
+
+try {
+  context = await axon.getContext(
     {
       sessionId,
       toolName: payload.tool_name,
       toolInput: payload.tool_input,
     },
-    sessionId,
-  ),
-  sendLogInsight(insight, sessionId),
-]);
+    GET_CONTEXT_TIMEOUT_MS,
+  );
+  axon.logInsight(insight);
+} catch {
+  process.exit(0);
+}
 
 if (context) {
   process.stdout.write(context);

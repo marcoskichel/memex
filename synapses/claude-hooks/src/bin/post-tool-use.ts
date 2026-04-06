@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 
+import { AxonClient } from '@neurome/axon';
+
 import { parsePostToolUse } from '../core/parse-hook-payload.js';
-import { sendLogInsight } from '../shell/clients/cortex-socket-client.js';
 
 const MAX_SUMMARY_RESPONSE_LENGTH = 500;
 
@@ -23,13 +24,20 @@ if (!payload) {
 
 const sessionId = process.env.MEMORY_SESSION_ID ?? payload.session_id;
 
-await sendLogInsight(
-  {
+if (!sessionId) {
+  process.exit(0);
+}
+
+const axon = new AxonClient(sessionId);
+
+try {
+  axon.logInsight({
     summary: `${payload.tool_name}: ${JSON.stringify(payload.tool_response).slice(0, MAX_SUMMARY_RESPONSE_LENGTH)}`,
     contextFile: '',
     tags: [payload.tool_name],
-  },
-  sessionId,
-);
+  });
+} catch {
+  process.exit(0);
+}
 
 process.exit(0);
