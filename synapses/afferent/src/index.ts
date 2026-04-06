@@ -20,38 +20,11 @@ interface ThoughtEvent {
   text: string;
 }
 
-interface ToolCallEvent {
-  type: 'TOOL_CALL';
-  agent: string;
-  toolName: string;
-  input: unknown;
-}
-
-interface ToolResultEvent {
-  type: 'TOOL_RESULT';
-  agent: string;
-  toolName: string;
-  result: unknown;
-}
-
-type KnownAgentEvent =
-  | StageStartEvent
-  | StageEndEvent
-  | ThoughtEvent
-  | ToolCallEvent
-  | ToolResultEvent;
+type KnownAgentEvent = StageStartEvent | StageEndEvent | ThoughtEvent;
 
 export type AgentEvent = KnownAgentEvent | { type: string; agent: string };
 
-const MAX_RESULT_LENGTH = 500;
-
-const KNOWN_TYPES = new Set<string>([
-  'STAGE_START',
-  'STAGE_END',
-  'THOUGHT',
-  'TOOL_CALL',
-  'TOOL_RESULT',
-]);
+const KNOWN_TYPES = new Set<string>(['STAGE_START', 'STAGE_END', 'THOUGHT']);
 
 function asKnown(event: AgentEvent): KnownAgentEvent | undefined {
   return KNOWN_TYPES.has(event.type) ? (event as KnownAgentEvent) : undefined;
@@ -73,12 +46,6 @@ function summaryFor(event: AgentEvent): string {
     case 'THOUGHT': {
       return `Agent reasoning: ${known.text}`;
     }
-    case 'TOOL_CALL': {
-      return `Tool called: ${known.toolName} — ${JSON.stringify(known.input)}`;
-    }
-    case 'TOOL_RESULT': {
-      return `Tool result (${known.toolName}): ${String(known.result).slice(0, MAX_RESULT_LENGTH)}`;
-    }
   }
 }
 
@@ -95,12 +62,6 @@ function extraTagsFor(event: AgentEvent): string[] {
     }
     case 'THOUGHT': {
       return ['observation'];
-    }
-    case 'TOOL_CALL': {
-      return ['navigation', `tool:${known.toolName}`];
-    }
-    case 'TOOL_RESULT': {
-      return ['screen-state', `tool:${known.toolName}`];
     }
   }
 }
