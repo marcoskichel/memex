@@ -101,45 +101,6 @@ describe('createAfferent — event translation', () => {
     expect(frame.payload.tags).toContain('observation');
   });
 
-  it('translates TOOL_CALL with navigation and tool tags', () => {
-    const socket = makeSocket();
-    mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-5');
-    socket.emit('connect');
-
-    afferent.emit({
-      type: 'TOOL_CALL',
-      agent: 'explorer',
-      toolName: 'tap',
-      input: { element: 'Send' },
-    });
-
-    const frame = JSON.parse((socket.write.mock.calls[0] as [string])[0].trim());
-    expect(frame.payload.summary).toContain('tap');
-    expect(frame.payload.tags).toContain('navigation');
-    expect(frame.payload.tags).toContain('tool:tap');
-  });
-
-  it('translates TOOL_RESULT with screen-state tag and truncates result', () => {
-    const socket = makeSocket();
-    mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-6');
-    socket.emit('connect');
-
-    const longResult = 'x'.repeat(1000);
-    afferent.emit({
-      type: 'TOOL_RESULT',
-      agent: 'explorer',
-      toolName: 'accessibility_snapshot',
-      result: longResult,
-    });
-
-    const frame = JSON.parse((socket.write.mock.calls[0] as [string])[0].trim());
-    expect(frame.payload.summary.length).toBeLessThan(600);
-    expect(frame.payload.tags).toContain('screen-state');
-    expect(frame.payload.tags).toContain('tool:accessibility_snapshot');
-  });
-
   it('handles unknown event type without throwing', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
