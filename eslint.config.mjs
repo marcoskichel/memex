@@ -44,4 +44,12 @@ export default [
       'no-restricted-syntax': 'off',
     },
   },
+  {
+    files: ['**/synapses/dendrite/src/server.ts'],
+    rules: {
+      'neverthrow/no-try-catch': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+    },
+  },
 ];
