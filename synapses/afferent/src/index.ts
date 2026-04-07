@@ -15,9 +15,9 @@ export interface Afferent {
   disconnect(): void;
 }
 
-export function createAfferent(sessionId: string): Afferent {
+export function createAfferent(engramId: string): Afferent {
   const runId = randomUUID();
-  const socket = createConnection(IPC_SOCKET_PATH(sessionId));
+  const socket = createConnection(IPC_SOCKET_PATH(engramId));
   let connected = false;
   const queue: string[] = [];
 

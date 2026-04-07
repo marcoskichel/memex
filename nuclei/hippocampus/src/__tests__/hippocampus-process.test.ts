@@ -20,7 +20,7 @@ function makeRecord(id: number, overrides: Partial<LtmRecord> = {}): LtmRecord {
     createdAt: new Date('2024-01-01'),
     tombstoned: false,
     tombstonedAt: undefined,
-    sessionId: 'legacy',
+    engramId: 'legacy',
     ...overrides,
   };
 }

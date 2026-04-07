@@ -1,3 +1,4 @@
+export { main } from './bin/cortex-core.js';
 export { IPC_SOCKET_PATH } from '@neurome/cortex-ipc';
 export type {
   GetContextPayload,

@@ -46,7 +46,7 @@ export class SqliteAdapter implements StorageAdapter {
       record.createdAt.getTime(),
       record.tombstoned ? 1 : 0,
       record.tombstonedAt ? record.tombstonedAt.getTime() : undefined,
-      record.sessionId,
+      record.engramId,
       record.category ?? undefined,
       record.episodeSummary ?? undefined,
     );
@@ -232,5 +232,10 @@ export class SqliteAdapter implements StorageAdapter {
 
   releaseLock(process: string): void {
     this.db.prepare('DELETE FROM process_locks WHERE process = ?').run(process);
+  }
+
+  async fork(outputPath: string): Promise<string> {
+    await this.db.backup(outputPath);
+    return outputPath;
   }
 }

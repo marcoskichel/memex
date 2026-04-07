@@ -39,7 +39,7 @@ describe('ContextManager', () => {
     overrides: Partial<{ maxTokens: number; compressionThreshold: number }> = {},
   ) {
     const options: ContextManagerOptions = {
-      sessionId: 'sess-test',
+      engramId: 'engram-test',
       contextDir: contextDirectory,
       maxTokens: overrides.maxTokens ?? 100,
       compressFn: compressFunction,
@@ -84,7 +84,7 @@ describe('ContextManager', () => {
     });
 
     const manager = new ContextManager({
-      sessionId: 'sess-file-check',
+      engramId: 'engram-file-check',
       contextDir: contextDirectory,
       maxTokens: 100,
       compressFn: checkingCompressFunction,
@@ -106,7 +106,7 @@ describe('ContextManager', () => {
     expect(unprocessed[0]?.summary).toBe('compressed-summary');
   });
 
-  it('context file path follows <contextDir>/<sessionId>/<phaseId>.ctx pattern', async () => {
+  it('context file path follows <contextDir>/<engramId>/<phaseId>.ctx pattern', async () => {
     const manager = makeManager({ maxTokens: 100 });
 
     await manager.addPhase(bigPhase(300));
@@ -116,7 +116,7 @@ describe('ContextManager', () => {
 
     const contextFile = unprocessed[0]?.contextFile;
     expect(contextFile).toMatch(
-      new RegExp(String.raw`^${contextDirectory}/sess-test/[\w-]+\.ctx$`),
+      new RegExp(String.raw`^${contextDirectory}/engram-test/[\w-]+\.ctx$`),
     );
   });
 

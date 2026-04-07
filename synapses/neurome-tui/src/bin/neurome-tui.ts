@@ -3,11 +3,11 @@ import React from 'react';
 
 import { App } from '../components/app.js';
 
-const sessionId = process.env.MEMORY_SESSION_ID;
+const engramId = process.env.NEUROME_ENGRAM_ID;
 
-if (!sessionId) {
-  process.stderr.write('neurome-tui: MEMORY_SESSION_ID is required\n');
+if (!engramId) {
+  process.stderr.write('neurome-tui: NEUROME_ENGRAM_ID is required\n');
   process.exit(1);
 }
 
-render(React.createElement(App, { sessionId }));
+render(React.createElement(App, { engramId }));

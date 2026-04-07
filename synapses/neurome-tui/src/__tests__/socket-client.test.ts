@@ -9,7 +9,7 @@ vi.mock('node:net', () => ({
 }));
 
 vi.mock('@neurome/cortex-ipc', () => ({
-  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/neurome-${sessionId}.sock`,
+  IPC_SOCKET_PATH: (engramId: string) => `/tmp/neurome-${engramId}.sock`,
 }));
 
 import { MemexSocketClient } from '../client/socket-client.js';
@@ -42,7 +42,7 @@ beforeEach(() => {
 
 describe('MemexSocketClient.forSession', () => {
   it('creates client with correct socket path', () => {
-    const client = MemexSocketClient.forSession('my-session');
+    const client = MemexSocketClient.forSession('my-engram');
     expect(client).toBeInstanceOf(MemexSocketClient);
   });
 });
@@ -52,12 +52,12 @@ describe('connect / onConnectionChange', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-1');
+    const client = MemexSocketClient.forSession('engram-1');
     const onConn = vi.fn();
     client.onConnectionChange(onConn);
     client.connect();
 
-    expect(mockCreateConnection).toHaveBeenCalledWith('/tmp/neurome-sess-1.sock');
+    expect(mockCreateConnection).toHaveBeenCalledWith('/tmp/neurome-engram-1.sock');
 
     socket.emit('connect');
     expect(onConn).toHaveBeenCalledWith(true);
@@ -68,7 +68,7 @@ describe('connect / onConnectionChange', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-2');
+    const client = MemexSocketClient.forSession('engram-2');
     const onConn = vi.fn();
     client.onConnectionChange(onConn);
     client.connect();
@@ -86,7 +86,7 @@ describe('connect / onConnectionChange', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-2b');
+    const client = MemexSocketClient.forSession('engram-2b');
     const onConn = vi.fn();
     client.onConnectionChange(onConn);
     client.connect();
@@ -107,7 +107,7 @@ describe('recall / getStats — request timeout', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-3');
+    const client = MemexSocketClient.forSession('engram-3');
     client.connect();
     socket.emit('connect');
 
@@ -126,7 +126,7 @@ describe('push events', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-4');
+    const client = MemexSocketClient.forSession('engram-4');
     const onPush = vi.fn();
     client.onPush(onPush);
     client.connect();
@@ -154,7 +154,7 @@ describe('insertMemory / importText / getRecent', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-im');
+    const client = MemexSocketClient.forSession('engram-im');
     client.connect();
     socket.emit('connect');
 
@@ -187,7 +187,7 @@ describe('insertMemory / importText / getRecent', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-it');
+    const client = MemexSocketClient.forSession('engram-it');
     client.connect();
     socket.emit('connect');
 
@@ -217,7 +217,7 @@ describe('insertMemory / importText / getRecent', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-gr');
+    const client = MemexSocketClient.forSession('engram-gr');
     client.connect();
     socket.emit('connect');
 
@@ -251,7 +251,7 @@ describe('reset', () => {
     const socket2 = makeSocket();
     mockCreateConnection.mockReturnValueOnce(socket1).mockReturnValueOnce(socket2);
 
-    const client = MemexSocketClient.forSession('sess-reset');
+    const client = MemexSocketClient.forSession('engram-reset');
     client.connect();
     socket1.emit('connect');
 
@@ -269,7 +269,7 @@ describe('onError — JSON parse error', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = MemexSocketClient.forSession('sess-err');
+    const client = MemexSocketClient.forSession('engram-err');
     const onError = vi.fn();
     client.onError(onError);
     client.connect();
@@ -288,7 +288,7 @@ describe('reconnect logic', () => {
     const socket2 = makeSocket();
     mockCreateConnection.mockReturnValueOnce(socket1).mockReturnValueOnce(socket2);
 
-    const client = MemexSocketClient.forSession('sess-5');
+    const client = MemexSocketClient.forSession('engram-5');
     client.connect();
     socket1.emit('connect');
     socket1.emit('close');
@@ -307,7 +307,7 @@ describe('reconnect logic', () => {
     let callIndex = 0;
     mockCreateConnection.mockImplementation(() => sockets[callIndex++]);
 
-    const client = MemexSocketClient.forSession('sess-6');
+    const client = MemexSocketClient.forSession('engram-6');
     client.connect();
 
     for (let index = 0; index < 10; index++) {

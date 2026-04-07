@@ -38,7 +38,7 @@ export interface AmygdalaConfig {
   ltm: LtmEngine;
   stm: InsightLogLike;
   llmAdapter: LLMAdapter;
-  sessionId: string;
+  engramId: string;
   cadenceMs?: number;
   maxBatchSize?: number;
   maxLLMCallsPerHour?: number;
@@ -53,7 +53,7 @@ export class AmygdalaProcess {
   private ltm: LtmEngine;
   private stm: InsightLogLike;
   private llmAdapter: LLMAdapter;
-  private sessionId: string;
+  private engramId: string;
   private cadenceMs: number;
   private maxBatchSize: number;
   private maxLLMCallsPerHour: number;
@@ -72,7 +72,7 @@ export class AmygdalaProcess {
     this.ltm = config.ltm;
     this.stm = config.stm;
     this.llmAdapter = config.llmAdapter;
-    this.sessionId = config.sessionId;
+    this.engramId = config.engramId;
     this.cadenceMs = config.cadenceMs ?? DEFAULT_CADENCE_MS;
     this.maxBatchSize = config.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE;
     this.maxLLMCallsPerHour = config.maxLLMCallsPerHour ?? DEFAULT_MAX_LLM_CALLS_PER_HOUR;
@@ -192,7 +192,7 @@ export class AmygdalaProcess {
       ltm: this.ltm,
       stm: this.stm,
       events: this.events,
-      sessionId: this.sessionId,
+      engramId: this.engramId,
       singletonPromotionThreshold: this.singletonPromotionThreshold,
     });
     return { processed: 1, failures: 0, llmCalls };

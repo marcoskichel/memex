@@ -41,7 +41,7 @@ export interface DiskStats {
 
 export interface MemoryStats {
   capturedAt: Date;
-  sessionId: string;
+  engramId: string;
   ltm: LtmStats;
   stm: StmStats;
   amygdala: AmygdalaStats;

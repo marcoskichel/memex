@@ -90,7 +90,7 @@ export function rowToRecord(row: Record<string, unknown>): LtmRecord {
     createdAt: new Date(row.created_at as number),
     tombstoned: (row.tombstoned as number) === 1,
     tombstonedAt: row.tombstoned_at ? new Date(row.tombstoned_at as number) : undefined,
-    sessionId: (row.session_id as string | undefined) ?? 'legacy',
+    engramId: (row.session_id as string | undefined) ?? 'legacy',
     ...(row.category != undefined && { category: row.category as string }),
     ...(row.episode_summary != undefined && { episodeSummary: row.episode_summary as string }),
   };

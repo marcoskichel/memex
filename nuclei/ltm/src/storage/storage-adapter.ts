@@ -14,7 +14,7 @@ export interface LtmRecord {
   createdAt: Date;
   tombstoned: boolean;
   tombstonedAt: Date | undefined;
-  sessionId: string;
+  engramId: string;
   category?: string;
   episodeSummary?: string;
 }

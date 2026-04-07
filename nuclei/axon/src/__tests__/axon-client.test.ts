@@ -9,12 +9,12 @@ vi.mock('node:net', () => ({
 }));
 
 vi.mock('@neurome/cortex', () => ({
-  IPC_SOCKET_PATH: (sessionId: string) => {
+  IPC_SOCKET_PATH: (engramId: string) => {
     const valid = /^[\da-z][\w-]{0,127}$/i;
-    if (!valid.test(sessionId)) {
-      throw new Error(`Invalid sessionId: ${sessionId}`);
+    if (!valid.test(engramId)) {
+      throw new Error(`Invalid engramId: ${engramId}`);
     }
-    return `/tmp/neurome-${sessionId}.sock`;
+    return `/tmp/neurome-${engramId}.sock`;
   },
 }));
 
@@ -89,12 +89,12 @@ beforeEach(() => {
 });
 
 describe('AxonClient — construction', () => {
-  it('throws synchronously for an invalid session ID', () => {
-    expect(() => new AxonClient('../../etc/passwd')).toThrow('Invalid sessionId');
+  it('throws synchronously for an invalid engram ID', () => {
+    expect(() => new AxonClient('../../etc/passwd')).toThrow('Invalid engramId');
   });
 
-  it('does not throw for a valid session ID', () => {
-    expect(() => new AxonClient('valid-session-1')).not.toThrow();
+  it('does not throw for a valid engram ID', () => {
+    expect(() => new AxonClient('valid-engram-1')).not.toThrow();
   });
 });
 
@@ -103,7 +103,7 @@ describe('AxonClient — concurrent requests', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = new AxonClient('session-1');
+    const client = new AxonClient('engram-1');
 
     const promise1 = client.recall('query one');
     const promise2 = client.recall('query two');
@@ -133,7 +133,7 @@ describe('AxonClient — timeout', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = new AxonClient('session-2');
+    const client = new AxonClient('engram-2');
     const promise = client.recall('slow query', { timeoutMs: 100 });
 
     socket.emit('connect');
@@ -152,7 +152,7 @@ describe('AxonClient — timeout', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = new AxonClient('session-3');
+    const client = new AxonClient('engram-3');
     const slowPromise = client.recall('slow', { timeoutMs: 50 });
 
     socket.emit('connect');
@@ -179,7 +179,7 @@ describe('AxonClient — disconnect', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = new AxonClient('session-4');
+    const client = new AxonClient('engram-4');
     const inflightPromise = client.recall('in-flight query');
 
     socket.emit('connect');
@@ -193,7 +193,7 @@ describe('AxonClient — disconnect', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = new AxonClient('session-5');
+    const client = new AxonClient('engram-5');
     const warmupPromise = client.recall('warmup');
     socket.emit('connect');
 
@@ -214,7 +214,7 @@ describe('AxonClient — error response', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const client = new AxonClient('session-6');
+    const client = new AxonClient('engram-6');
     const statsPromise = client.getStats();
 
     socket.emit('connect');

@@ -18,7 +18,7 @@ function makeRecord(overrides: Partial<Omit<LtmRecord, 'id'>> = {}): Omit<LtmRec
     createdAt: overrides.createdAt ?? new Date(),
     tombstoned: overrides.tombstoned ?? false,
     tombstonedAt: overrides.tombstonedAt ?? undefined,
-    sessionId: overrides.sessionId ?? 'test-session',
+    engramId: overrides.engramId ?? 'test-engram',
     ...(overrides.category !== undefined && { category: overrides.category }),
     ...(overrides.episodeSummary !== undefined && { episodeSummary: overrides.episodeSummary }),
   };
@@ -31,22 +31,22 @@ describe('ltm-schema-extensions', () => {
     adapter = new InMemoryAdapter();
   });
 
-  it('6.1 insert with sessionId → retrieved record has correct sessionId', () => {
-    const id = adapter.insertRecord(makeRecord({ sessionId: 'session-42' }));
+  it('6.1 insert with engramId → retrieved record has correct engramId', () => {
+    const id = adapter.insertRecord(makeRecord({ engramId: 'engram-42' }));
     const record = adapter.getById(id) as LtmRecord;
-    expect(record.sessionId).toBe('session-42');
+    expect(record.engramId).toBe('engram-42');
   });
 
-  it('6.2 query with sessionId filter → only matching session records returned', () => {
-    adapter.insertRecord(makeRecord({ data: 'a', sessionId: 'session-1' }));
-    adapter.insertRecord(makeRecord({ data: 'b', sessionId: 'session-2' }));
-    adapter.insertRecord(makeRecord({ data: 'c', sessionId: 'session-1' }));
+  it('6.2 query with engramId filter → only matching engram records returned', () => {
+    adapter.insertRecord(makeRecord({ data: 'a', engramId: 'engram-1' }));
+    adapter.insertRecord(makeRecord({ data: 'b', engramId: 'engram-2' }));
+    adapter.insertRecord(makeRecord({ data: 'c', engramId: 'engram-1' }));
 
     const all = adapter.getAllRecords();
-    const session1 = all.filter((record) => record.sessionId === 'session-1');
-    const session2 = all.filter((record) => record.sessionId === 'session-2');
-    expect(session1).toHaveLength(2);
-    expect(session2).toHaveLength(1);
+    const engram1 = all.filter((record) => record.engramId === 'engram-1');
+    const engram2 = all.filter((record) => record.engramId === 'engram-2');
+    expect(engram1).toHaveLength(2);
+    expect(engram2).toHaveLength(1);
   });
 
   it('6.3 insert with category → retrieved record has correct category', () => {
@@ -104,10 +104,10 @@ describe('ltm-schema-extensions', () => {
     expect(second.tier).toBe('semantic');
   });
 
-  it('6.9 records with no sessionId return legacy sentinel', () => {
-    const id = adapter.insertRecord(makeRecord({ sessionId: 'legacy' }));
+  it('6.9 records with no engramId return legacy sentinel', () => {
+    const id = adapter.insertRecord(makeRecord({ engramId: 'legacy' }));
     const record = adapter.getById(id) as LtmRecord;
-    expect(record.sessionId).toBe('legacy');
+    expect(record.engramId).toBe('legacy');
   });
 
   it('6.10 all new fields are optional at the record level (category, episodeSummary)', () => {
