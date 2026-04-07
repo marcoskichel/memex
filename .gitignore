@@ -32,3 +32,6 @@ dist
 
 # dev database
 .dev/
+
+# worktrees
+.claude/worktrees/
