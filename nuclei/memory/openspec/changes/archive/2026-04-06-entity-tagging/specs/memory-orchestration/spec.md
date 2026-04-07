@@ -13,7 +13,6 @@
 
 - **WHEN** `createMemory({})` is called without `sessionId`
 - **THEN** TypeScript reports a type error at compile time
-- **THEN** TypeScript reports a type error at compile time
 
 ### Requirement: recall() defaults minResults to 1
 
