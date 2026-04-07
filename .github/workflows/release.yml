@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,6 +13,7 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.actor == 'marcoskichel'
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
     steps:
