@@ -27,6 +27,9 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.releases_created == 'true'
     environment: release
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -44,6 +47,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Publish
-        run: pnpm --filter @neurome/sdk publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm --filter @neurome/sdk publish --access public --no-git-checks --provenance
