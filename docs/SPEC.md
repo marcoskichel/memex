@@ -36,7 +36,7 @@ graph TD
     end
 
     subgraph CortexProcess ["@neurome/cortex (server process)"]
-        SS["SocketServer\n/tmp/neurome-{sessionId}.sock"]
+        SS["SocketServer\n/tmp/neurome-{engramId}.sock"]
         MEM["@neurome/memory\nMemory"]
         STM["@neurome/stm\nInsightLog"]
         AMY["@neurome/amygdala\nAmygdalaProcess"]
@@ -66,28 +66,28 @@ graph TD
 
 ### Glossary
 
-| Term                    | Definition                                                                               |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| Working Memory          | Transient in-process state before `logInsight` is called                                 |
-| STM (Short-Term Memory) | Volatile `InsightLog` buffer; entries await amygdala processing                          |
-| LTM (Long-Term Memory)  | Durable vector-augmented SQLite store in `LtmEngine`                                     |
-| Insight Entry           | Raw observation with `summary`, `contextFile`, `tags`, `timestamp`, `processed` flag     |
-| LTM Record              | Persisted memory unit with embedding, importance, stability, tier, sessionId             |
-| Episodic                | LTM tier for concrete time-anchored observations, subject to consolidation               |
-| Semantic                | LTM tier for abstract generalised knowledge, produced by consolidation or direct insert  |
-| Procedural              | Out of scope; behavioural rules managed externally                                       |
-| Amygdala                | Background process scoring STM entries via LLM                                           |
-| Hippocampus             | Background consolidation process; episodic records are grouped into semantic memories    |
-| Memory                  | Public orchestration façade over all subsystems                                          |
-| Session                 | Named scope partitioning LTM records; matches `/^[\da-z][\w-]{0,127}$/i`                 |
-| Stability               | Per-record scalar in days; initial value = `1 + importance × 9`                          |
-| Retention               | `exp(-ageDays / stability)`; records with retention below 0.1 are pruned                 |
-| Effective Score         | `cosine_similarity × retention`; governs recall ranking                                  |
-| RRF                     | Reciprocal Rank Fusion — rank merge across semantic/temporal/associative lists with k=60 |
-| Cortex                  | Server process that hosts `Memory` and handles IPC                                       |
-| Axon                    | Unix socket IPC client (`@neurome/axon`)                                                 |
-| Dendrite                | MCP server wrapping `AxonClient` (`@neurome/dendrite`)                                   |
-| Afferent                | Fire-and-forget event emitter for agents (`@neurome/afferent`)                           |
+| Term                    | Definition                                                                                                                  |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Working Memory          | Transient in-process state before `logInsight` is called                                                                    |
+| STM (Short-Term Memory) | Volatile `InsightLog` buffer; entries await amygdala processing                                                             |
+| LTM (Long-Term Memory)  | Durable vector-augmented SQLite store in `LtmEngine`                                                                        |
+| Insight Entry           | Raw observation with `summary`, `contextFile`, `tags`, `timestamp`, `processed` flag                                        |
+| LTM Record              | Persisted memory unit with embedding, importance, stability, tier, engramId                                                 |
+| Episodic                | LTM tier for concrete time-anchored observations, subject to consolidation                                                  |
+| Semantic                | LTM tier for abstract generalised knowledge, produced by consolidation or direct insert                                     |
+| Procedural              | Out of scope; behavioural rules managed externally                                                                          |
+| Amygdala                | Background process scoring STM entries via LLM                                                                              |
+| Hippocampus             | Background consolidation process; episodic records are grouped into semantic memories                                       |
+| Memory                  | Public orchestration façade over all subsystems                                                                             |
+| Engram                  | Named scope partitioning LTM records (neuroscience: physical memory trace in the brain); matches `/^[\da-z][\w-]{0,127}$/i` |
+| Stability               | Per-record scalar in days; initial value = `1 + importance × 9`                                                             |
+| Retention               | `exp(-ageDays / stability)`; records with retention below 0.1 are pruned                                                    |
+| Effective Score         | `cosine_similarity × retention`; governs recall ranking                                                                     |
+| RRF                     | Reciprocal Rank Fusion — rank merge across semantic/temporal/associative lists with k=60                                    |
+| Cortex                  | Server process that hosts `Memory` and handles IPC                                                                          |
+| Axon                    | Unix socket IPC client (`@neurome/axon`)                                                                                    |
+| Dendrite                | MCP server wrapping `AxonClient` (`@neurome/dendrite`)                                                                      |
+| Afferent                | Fire-and-forget event emitter for agents (`@neurome/afferent`)                                                              |
 
 ### Biological Analogy Table
 
@@ -122,7 +122,7 @@ graph LR
     end
 
     subgraph Cortex ["@neurome/cortex"]
-        SOCK["/tmp/neurome-{sessionId}.sock\nSocketServer"]
+        SOCK["/tmp/neurome-{engramId}.sock\nSocketServer"]
         MEM["Memory\n@neurome/memory"]
 
         subgraph Background
@@ -201,7 +201,7 @@ sequenceDiagram
     participant Socket as SocketServer
     participant Memory
 
-    Client->>Socket: connect to /tmp/neurome-{sessionId}.sock
+    Client->>Socket: connect to /tmp/neurome-{engramId}.sock
     Socket-->>Client: connection accepted
 
     Client->>Socket: {"id":"req-1","type":"recall","payload":{...}}\n
@@ -264,7 +264,7 @@ When an agent calls `Memory.recall(nlQuery, options)`, the query string is embed
 
 RRF (k=60) merges these three lists into a single ranked result. Each candidate's effective score (`cosine × retention`) is computed, and candidates below the threshold (default 0.5) are dropped. If `minResults` is set and fewer results survive the threshold filter, the top-up mechanism supplements the result set with the next-best candidates regardless of threshold. Records that appear in the final result set have their stability strengthened proportional to their RRF rank and their retention at retrieval time.
 
-Context boosting applies additional score bumps: +0.15 for records in the same session, +0.10 for records with a matching category, capped at 1.0 total.
+Context boosting applies additional score bumps: +0.15 for records in the same engram, +0.10 for records with a matching category, capped at 1.0 total.
 
 ### End-to-End Sequence
 
@@ -305,41 +305,45 @@ sequenceDiagram
 
 > **Audience:** SDK consumers
 
-This section walks through the most common integration patterns. All examples assume `@neurome/cortex` is already running and accessible at the default socket path for the given session.
+`@neurome/sdk` is the single published entry point. It spawns cortex as a managed child process, connects an IPC client, and returns an `Engram` handle for all memory operations.
 
 ### Installation
 
 ```bash
-npm install @neurome/memory @neurome/llm @neurome/axon
+npm install @neurome/sdk
 ```
 
-### Creating a Memory Instance
+### Starting an Engram
 
-`createMemory` is the primary entry point. It opens the SQLite database, runs any pending migrations, initialises the embedding adapter, and starts background processes.
+`startEngram` is the primary entry point. It opens (or forks) the SQLite database, spawns cortex, and connects automatically.
 
 ```typescript
-import { createMemory } from '@neurome/memory';
-import { AnthropicAdapter } from '@neurome/llm';
+import { startEngram } from '@neurome/sdk';
 
-const llmAdapter = new AnthropicAdapter({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
-
-const { memory } = await createMemory({
-  storagePath: '/var/data/neurome.db',
-  llmAdapter,
-  sessionId: 'my-agent-session',
+const engram = await startEngram({
+  engramId: 'my-agent',
+  db: '/var/data/my-agent.db',
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  openaiApiKey: process.env.OPENAI_API_KEY,
 });
 ```
 
-Pass `embeddingAdapter: new OpenAIEmbeddingAdapter({ apiKey: process.env.OPENAI_API_KEY })` to use OpenAI embeddings. An `embeddingAdapter` is required.
+#### `StartEngramConfig`
+
+| Field             | Required | Default                 | Description                                      |
+| ----------------- | -------- | ----------------------- | ------------------------------------------------ |
+| `engramId`        | Yes      | —                       | Unique identifier for this engram                |
+| `db`              | Yes      | —                       | Path to the SQLite database file                 |
+| `source`          | No       | —                       | If set, forks `source` into `db` before starting |
+| `anthropicApiKey` | No       | `ANTHROPIC_API_KEY` env | Anthropic Claude API key                         |
+| `openaiApiKey`    | No       | `OPENAI_API_KEY` env    | OpenAI API key for embeddings                    |
 
 ### Logging an Insight
 
 `logInsight` is non-blocking. It returns `void` immediately after appending to STM.
 
 ```typescript
-memory.logInsight({
+engram.logInsight({
   summary: 'The user prefers dark mode across all interfaces.',
   contextFile: '/workspace/settings.ts',
   tags: ['ui', 'preference'],
@@ -350,27 +354,11 @@ Tags are stored alongside the record and propagated to LTM once the amygdala pro
 
 ### Recalling Memories
 
-`recall` returns a `ResultAsync` (neverthrow). Unwrap it with `.match` or `await`:
-
 ```typescript
-import { ok, err } from 'neverthrow';
-
-const result = await memory.recall('what does the user prefer?', {
+const results = await engram.recall('what does the user prefer?', {
   limit: 5,
   threshold: 0.5,
-  sessionId: 'my-agent-session',
 });
-
-result.match(
-  (records) => {
-    for (const r of records) {
-      console.log(r.data, r.score);
-    }
-  },
-  (error) => {
-    console.error('recall failed', error);
-  },
-);
 ```
 
 Pass `minResults: 1` to guarantee at least one result even when nothing exceeds the threshold. Use `tier: 'semantic'` to restrict results to consolidated, generalised knowledge.
@@ -380,43 +368,82 @@ Pass `minResults: 1` to guarantee at least one result even when nothing exceeds 
 Use `insertMemory` to write a record to LTM without going through the amygdala. This is appropriate for seeding knowledge at startup or importing structured facts.
 
 ```typescript
-const insertResult = await memory.insertMemory('The payment service runs on port 3001.', {
+const id = await engram.insertMemory('The payment service runs on port 3001.', {
   importance: 0.9,
   tier: 'semantic',
   category: 'infrastructure',
 });
-
-insertResult.match(
-  (id) => console.log('inserted as record', id),
-  (error) => console.error('insert failed', error),
-);
 ```
 
-### Importing Free-Form Text
+### Forking for Parallel Agents
 
-`importText` chunks a longer document and bulk-inserts all chunks as episodic records. It is suitable for onboarding large bodies of knowledge from files or docs.
+`fork` creates an atomic SQLite snapshot (via `VACUUM INTO` / `db.backup()`) for parallel agent runs. There is no write-back — the caller manages the fork lifecycle.
 
 ```typescript
-const text = await fs.readFile('/workspace/README.md', 'utf8');
-const importResult = await memory.importText(text);
-
-importResult.match(
-  ({ inserted }) => console.log(`imported ${inserted} records`),
-  (error) => console.error('import failed', error),
-);
+const forkPath = await engram.fork('/tmp/fork-agent.db');
+const forkEngram = await startEngram({ engramId: 'fork-agent', db: forkPath });
 ```
+
+You can also fork at startup using the `source` config:
+
+```typescript
+const engram = await startEngram({
+  engramId: 'fork-agent',
+  db: '/tmp/fork-agent.db',
+  source: '/var/data/original.db',
+});
+```
+
+### MCP Integration
+
+`asMcpServer()` returns the MCP server config pointing to the bundled dendrite script. Pass it directly to the Claude Agent SDK or any MCP client.
+
+```typescript
+const mcpConfig = engram.asMcpServer();
+// => { type: 'stdio', command: 'node', args: ['/path/to/sdk/dist/bin/dendrite.js'], env: { NEUROME_ENGRAM_ID: '...', MEMORY_DB_PATH: '...' } }
+```
+
+### `Engram` Methods
+
+| Method                      | Returns              | Description                                        |
+| --------------------------- | -------------------- | -------------------------------------------------- |
+| `recall(query, options?)`   | `Promise<Result[]>`  | Semantic search over long-term memory              |
+| `logInsight(payload)`       | `void`               | Fire-and-forget observation to STM                 |
+| `insertMemory(data, opts?)` | `Promise<number>`    | Direct LTM insert, bypassing amygdala              |
+| `getRecent(limit)`          | `Promise<unknown[]>` | N most recent LTM records                          |
+| `getStats()`                | `Promise<unknown>`   | Memory system statistics                           |
+| `fork(outputPath)`          | `Promise<string>`    | Atomic SQLite snapshot to `outputPath`             |
+| `asMcpServer()`             | `McpServerConfig`    | MCP server config for Claude Agent SDK             |
+| `close()`                   | `Promise<void>`      | Graceful cortex shutdown (SIGTERM, 10s force kill) |
 
 ### Handling Shutdown
 
-Call `memory.shutdown()` before process exit. It drains the STM, waits for any in-progress amygdala or hippocampus cycles to finish, and closes the SQLite database.
+Call `engram.close()` before process exit. It disconnects the IPC client, sends SIGTERM to cortex, and waits up to 10 seconds before force-killing.
 
 ```typescript
 process.on('SIGTERM', async () => {
-  const report = await memory.shutdown();
-  console.log('shutdown complete', report);
+  await engram.close();
   process.exit(0);
 });
 ```
+
+### Low-level Access
+
+For advanced use cases within the monorepo, you can use `@neurome/memory` (in-process) or `@neurome/axon` (IPC client) directly. These packages are `private: true`.
+
+```typescript
+import { createMemory } from '@neurome/memory';
+import { OpenAIEmbeddingAdapter } from '@neurome/ltm';
+
+const { memory } = await createMemory({
+  storagePath: '/var/data/neurome.db',
+  llmAdapter,
+  embeddingAdapter: new OpenAIEmbeddingAdapter({ apiKey: process.env.OPENAI_API_KEY }),
+  engramId: 'my-agent',
+});
+```
+
+`createMemory` requires an explicit `embeddingAdapter`. Recommended: `new OpenAIEmbeddingAdapter({ apiKey })` from `@neurome/ltm`.
 
 ---
 
@@ -428,7 +455,7 @@ The IPC protocol is language-agnostic. Any process that can open a Unix domain s
 
 ### Transport
 
-The IPC transport MUST be a Unix domain socket. The socket path SHALL be `/tmp/neurome-{sessionId}.sock`, where `sessionId` MUST match the regular expression `/^[\da-z][\w-]{0,127}$/i`. Implementations MUST reject session identifiers that do not conform.
+The IPC transport MUST be a Unix domain socket. The socket path SHALL be `/tmp/neurome-{engramId}.sock`, where `engramId` MUST match the regular expression `/^[\da-z][\w-]{0,127}$/i`. Implementations MUST reject identifiers that do not conform.
 
 ### Framing
 
@@ -444,7 +471,7 @@ Every request MUST carry a unique string `id` chosen by the caller, a `type` ide
 { "id": "uuid-string", "type": "<operation>", "payload": { ... } }
 ```
 
-Valid `type` values: `logInsight`, `getContext`, `recall`, `getStats`, `insertMemory`, `importText`, `getRecent`, `consolidate`.
+Valid `type` values: `logInsight`, `getContext`, `recall`, `getStats`, `insertMemory`, `importText`, `getRecent`, `consolidate`, `fork`.
 
 #### Response
 
@@ -485,7 +512,7 @@ The server MAY push event messages to connected clients at any time. Push messag
 | `options.after`         | ISO 8601 string                                                  | No       | Created-at lower bound                        |
 | `options.before`        | ISO 8601 string                                                  | No       | Created-at upper bound                        |
 | `options.sort`          | `"confidence"` \| `"recency"` \| `"stability"` \| `"importance"` | No       | Result ordering                               |
-| `options.sessionId`     | string                                                           | No       | Filter by session                             |
+| `options.engramId`      | string                                                           | No       | Filter by engram                              |
 | `options.category`      | string                                                           | No       | Filter by category                            |
 | `options.minResults`    | integer                                                          | No       | Minimum results (relaxes threshold if needed) |
 
@@ -497,7 +524,7 @@ The server MAY push event messages to connected clients at any time. Push messag
 | `toolInput` | object | Yes      | Input that will be passed to the tool        |
 | `category`  | string | No       | Category hint for boosting relevant memories |
 
-Returns the top-5 results with session (+0.15) and category (+0.10) boosting applied.
+Returns the top-5 results with engram (+0.15) and category (+0.10) boosting applied.
 
 #### `getRecent`
 
@@ -512,7 +539,7 @@ Returns the top-5 results with session (+0.15) and category (+0.10) boosting app
 | `data`               | string                       | Yes      | Text content to store               |
 | `options.importance` | number                       | No       | Importance score 0–1 (default: 0)   |
 | `options.tier`       | `"episodic"` \| `"semantic"` | No       | Memory tier (default: `"episodic"`) |
-| `options.sessionId`  | string                       | No       | Session scope override              |
+| `options.engramId`   | string                       | No       | Engram scope override               |
 | `options.category`   | string                       | No       | Category tag                        |
 | `options.metadata`   | object                       | No       | Arbitrary key-value metadata        |
 
@@ -530,9 +557,17 @@ No payload fields. Returns a snapshot of current memory system statistics.
 
 No payload fields. Triggers an immediate hippocampus consolidation cycle.
 
+#### `fork`
+
+| Field        | Type   | Required | Description                                    |
+| ------------ | ------ | -------- | ---------------------------------------------- |
+| `outputPath` | string | Yes      | Absolute path for the snapshot SQLite database |
+
+Triggers an atomic SQLite backup (`VACUUM INTO` / `db.backup()`) to the given path. Returns the confirmed output path.
+
 ### Socket Path Resolution
 
-The socket path is always `/tmp/neurome-{sessionId}.sock`. A `sessionId` MUST match `/^[\da-z][\w-]{0,127}$/i`; implementations MUST reject session identifiers that do not conform.
+The socket path is always `/tmp/neurome-{engramId}.sock`. An `engramId` MUST match `/^[\da-z][\w-]{0,127}$/i`; implementations MUST reject identifiers that do not conform.
 
 ### Reconnection
 
@@ -546,12 +581,12 @@ Clients SHALL attempt to reconnect up to 3 times with a delay of `100 × attempt
 
 ### Tools
 
-| Tool          | Description                                                           | Returns                    |
-| ------------- | --------------------------------------------------------------------- | -------------------------- |
-| `recall`      | Semantic search over long-term memory                                 | `RecallResult[]`           |
-| `get_recent`  | N most recent LTM records                                             | `LtmRecord[]`              |
-| `get_context` | Pre-assembled context for a tool call, with session/category boosting | `LtmQueryResult[]` (top 5) |
-| `get_stats`   | Memory system statistics                                              | `MemoryStats`              |
+| Tool          | Description                                                          | Returns                    |
+| ------------- | -------------------------------------------------------------------- | -------------------------- |
+| `recall`      | Semantic search over long-term memory                                | `RecallResult[]`           |
+| `get_recent`  | N most recent LTM records                                            | `LtmRecord[]`              |
+| `get_context` | Pre-assembled context for a tool call, with engram/category boosting | `LtmQueryResult[]` (top 5) |
+| `get_stats`   | Memory system statistics                                             | `MemoryStats`              |
 
 ### `recall`
 
@@ -567,7 +602,7 @@ Input schema:
       "threshold": { "type": "number", "description": "Minimum effective score (default 0.5)" },
       "tier": { "type": "string", "enum": ["episodic", "semantic"] },
       "category": { "type": "string" },
-      "sessionId": { "type": "string" },
+      "engramId": { "type": "string" },
       "minResults": { "type": "number" }
     }
   }
@@ -611,7 +646,7 @@ Input schema:
 }
 ```
 
-Returns up to 5 results. Session and category boosts are applied automatically.
+Returns up to 5 results. Engram and category boosts are applied automatically.
 
 ### `get_stats`
 
@@ -643,7 +678,7 @@ No input. Example response:
 ```typescript
 import { createAfferent } from '@neurome/afferent';
 
-const afferent = createAfferent('my-agent-session');
+const afferent = createAfferent('my-agent');
 
 afferent.emit({ agent: 'my-agent', text: 'Started processing batch job 17.' });
 
@@ -659,6 +694,8 @@ Clients in other languages can achieve the same result by writing a `logInsight`
 ## 9. Running Cortex
 
 > **Audience:** Operators
+
+Most users don't need to run cortex manually — `@neurome/sdk` spawns and manages cortex as a child process automatically (see Section 5). The instructions below are for operators who need standalone cortex instances.
 
 ### Starting the Server
 
@@ -676,7 +713,7 @@ The process writes `cortex ready` to stderr once the socket is bound and ready t
 2. Opens SQLite at `MEMORY_DB_PATH`; runs pending migrations.
 3. Initialises `LtmEngine` with the configured embedding adapter.
 4. Starts `AmygdalaProcess` and `HippocampusProcess` in background.
-5. Binds Unix socket at `/tmp/neurome-{sessionId}.sock`.
+5. Binds Unix socket at `/tmp/neurome-{engramId}.sock`.
 6. Writes `cortex ready\n` to stderr.
 
 ### Environment Variables
@@ -686,7 +723,7 @@ The process writes `cortex ready` to stderr once the socket is bound and ready t
 | `MEMORY_DB_PATH`    | Yes      | —           | Absolute path to SQLite database file            |
 | `ANTHROPIC_API_KEY` | Yes      | —           | Anthropic Claude API key                         |
 | `OPENAI_API_KEY`    | No       | —           | OpenAI API key; enables `OpenAIEmbeddingAdapter` |
-| `MEMORY_SESSION_ID` | No       | Random UUID | Session identifier for this Cortex instance      |
+| `NEUROME_ENGRAM_ID` | No       | Random UUID | Engram identifier for this Cortex instance       |
 
 ### Stale Socket Detection
 
@@ -698,7 +735,7 @@ There is no HTTP health endpoint. Operators can verify liveness by connecting to
 
 ```bash
 echo '{"id":"health","type":"getStats","payload":{}}'  | \
-  nc -U /tmp/neurome-my-session.sock
+  nc -U /tmp/neurome-my-engram.sock
 ```
 
 ### Graceful Shutdown
@@ -752,7 +789,7 @@ interface LtmInsertOptions {
   importance?: number;
   metadata?: Record<string, unknown>;
   tier?: 'episodic' | 'semantic';
-  sessionId?: string;
+  engramId?: string;
   category?: string;
   episodeSummary?: string;
 }
@@ -770,7 +807,7 @@ interface LtmQueryOptions {
   after?: Date;
   before?: Date;
   sort?: 'confidence' | 'recency' | 'stability' | 'importance';
-  sessionId?: string;
+  engramId?: string;
   category?: string;
   minResults?: number;
 }
@@ -793,7 +830,7 @@ interface LtmRecord {
   createdAt: Date;
   tombstoned: boolean;
   tombstonedAt: Date | undefined;
-  sessionId: string;
+  engramId: string;
   category?: string;
   episodeSummary?: string;
 }
@@ -870,7 +907,7 @@ CREATE INDEX IF NOT EXISTS idx_ltm_category
 | Temporal score       | `cosine × retention`                                                                                                                 |
 | Effective score      | `cosine × retention`                                                                                                                 |
 | RRF merge            | `score(id) = Σ 1 / (60 + rank_i)` across semantic, temporal, and associative lists                                                   |
-| Context boosting     | session match +0.15, category match +0.10, capped at 1.0                                                                             |
+| Context boosting     | engram match +0.15, category match +0.10, capped at 1.0                                                                              |
 
 ### `@neurome/stm` — InsightLog
 
@@ -898,13 +935,13 @@ The amygdala runs a configurable cadence loop and a threshold watcher. Key inter
 
 ```typescript
 interface Memory {
-  readonly sessionId: string;
+  readonly engramId: string;
   readonly events: MemoryEventEmitter;
   logInsight(options: LogInsightOptions): void;
   recall(nlQuery: string, options?: LtmQueryOptions): ResultAsync<LtmQueryResult[], LtmQueryError>;
   recallSession(
     query: string,
-    options: { sessionId: string } & Omit<LtmQueryOptions, 'sessionId'>,
+    options: { engramId: string } & Omit<LtmQueryOptions, 'engramId'>,
   ): Promise<LtmQueryResult[]>;
   recallFull(
     id: number,
@@ -997,13 +1034,12 @@ type LLMError =
 
 ### Environment Variables
 
-| Variable            | Package             | Required | Default     | Description                                      |
-| ------------------- | ------------------- | -------- | ----------- | ------------------------------------------------ |
-| `MEMORY_DB_PATH`    | `@neurome/cortex`   | Yes      | —           | Absolute path to SQLite database file            |
-| `ANTHROPIC_API_KEY` | `@neurome/cortex`   | Yes      | —           | Anthropic Claude API key                         |
-| `OPENAI_API_KEY`    | `@neurome/cortex`   | No       | —           | OpenAI API key; enables `OpenAIEmbeddingAdapter` |
-| `MEMORY_SESSION_ID` | `@neurome/cortex`   | No       | Random UUID | Session identifier                               |
-| `MEMEX_SESSION_ID`  | `@neurome/dendrite` | Yes      | —           | Session ID for the Dendrite MCP server           |
+| Variable            | Package           | Required | Default     | Description                                      |
+| ------------------- | ----------------- | -------- | ----------- | ------------------------------------------------ |
+| `MEMORY_DB_PATH`    | `@neurome/cortex` | Yes      | —           | Absolute path to SQLite database file            |
+| `ANTHROPIC_API_KEY` | `@neurome/cortex` | Yes      | —           | Anthropic Claude API key                         |
+| `OPENAI_API_KEY`    | `@neurome/cortex` | No       | —           | OpenAI API key; enables `OpenAIEmbeddingAdapter` |
+| `NEUROME_ENGRAM_ID` | `@neurome/cortex` | No       | Random UUID | Engram identifier                                |
 
 ### MemoryConfig
 
@@ -1011,7 +1047,7 @@ type LLMError =
 | --------------------------- | -------- | ------------------------------ | ----------------------------------------------- |
 | `storagePath`               | Yes      | —                              | SQLite file path                                |
 | `llmAdapter`                | Yes      | —                              | `LLMAdapter` instance                           |
-| `sessionId`                 | No       | Random UUID                    | Session identifier                              |
+| `engramId`                  | No       | Random UUID                    | Engram identifier                               |
 | `contextDirectory`          | No       | `dirname(storagePath)/context` | Root directory for context files                |
 | `embeddingAdapter`          | Yes      | —                              | Embedding provider                              |
 | `stm`                       | No       | `InsightLog` (in-memory)       | STM backend                                     |
@@ -1030,7 +1066,7 @@ type LLMError =
 | `ltm`                         | Yes      | —        | `LtmEngine` instance                                   |
 | `stm`                         | Yes      | —        | `InsightLogLike` instance                              |
 | `llmAdapter`                  | Yes      | —        | `LLMAdapter` instance                                  |
-| `sessionId`                   | Yes      | —        | Session identifier                                     |
+| `engramId`                    | Yes      | —        | Engram identifier                                      |
 | `cadenceMs`                   | No       | `300000` | Cycle interval in ms                                   |
 | `maxBatchSize`                | No       | `10`     | Max entries processed per cycle                        |
 | `maxLLMCallsPerHour`          | No       | `200`    | Rate cap                                               |

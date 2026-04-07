@@ -52,4 +52,12 @@ export default [
       '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
+  {
+    files: ['**/synapses/sdk/src/start-engram.ts'],
+    rules: {
+      'neverthrow/no-try-catch': 'off',
+      'neverthrow/no-throw': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
 ];

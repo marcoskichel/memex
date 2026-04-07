@@ -1,35 +1,34 @@
 {
-  "name": "@neurome/dendrite",
+  "name": "@neurome/sdk",
   "version": "0.0.0",
+  "description": "Neurome SDK — drop-in memory for agents",
   "type": "module",
-  "private": true,
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
-  "bin": {
-    "dendrite": "./dist/bin/dendrite.js"
-  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@neurome/axon": "workspace:*",
-    "zod": "^3.25.0"
+    "@neurome/cortex": "workspace:*",
+    "@neurome/dendrite": "workspace:*",
+    "better-sqlite3": "^12.8.0"
   },
   "devDependencies": {
     "@neurome/eslint-config": "workspace:*",
     "@neurome/typescript-config": "workspace:*",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",
