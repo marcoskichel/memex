@@ -25,6 +25,8 @@ scopes:
     path: synapses/afferent
   - name: axon
     path: nuclei/axon
+  - name: perirhinal
+    path: nuclei/perirhinal
   - name: dendrite
     path: synapses/dendrite
   - name: sdk
