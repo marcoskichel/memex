@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/marcoskichel/neurome/compare/sdk-v0.1.0...sdk-v0.1.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **sdk,release:** add publishConfig for public access and release environment ([a6853f6](https://github.com/marcoskichel/neurome/commit/a6853f65b109c1120a4ca7bbc58317b7af39788e))
+* **sdk:** format CHANGELOG.md ([04612ba](https://github.com/marcoskichel/neurome/commit/04612ba7fce4cf27e8bb2d9d3d4a66551dbb282a))
+
 ## [0.1.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.0.1...sdk-v0.1.0) (2026-04-07)
 
 ### Features
