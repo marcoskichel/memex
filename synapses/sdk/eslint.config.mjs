@@ -6,7 +6,7 @@ export default [
   ...baseConfig,
   ...nodeConfig,
   {
-    files: ['src/start-engram.ts', 'src/bin/**/*.ts'],
+    files: ['src/start-engram.ts', 'src/bin/**/*.ts', '**/sdk/src/start-engram.ts', '**/sdk/src/bin/**/*.ts'],
     rules: {
       'neverthrow/no-throw': 'off',
       'neverthrow/no-try-catch': 'off',
