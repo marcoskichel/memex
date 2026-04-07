@@ -14,6 +14,7 @@ export type {
   MemoryEventName,
   PushMessage,
   RecallOptions,
+  RecallPayload,
   RequestMessage,
   RequestType,
   ResponseMessage,
