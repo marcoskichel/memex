@@ -11,7 +11,7 @@ export interface ApplyActionOptions {
   ltm: LtmEngine;
   stm: InsightLogLike;
   events: EventBus;
-  sessionId: string;
+  engramId: string;
   singletonPromotionThreshold: number;
 }
 
@@ -20,7 +20,7 @@ interface InsertContext {
   scoringResult: AmygdalaScoringResult;
   relatedMemories: { data: string; id: number }[];
   ltm: LtmEngine;
-  sessionId: string;
+  engramId: string;
   singletonPromotionThreshold: number;
   action: string;
 }
@@ -28,7 +28,7 @@ interface InsertContext {
 async function insertAndRelate(
   context: InsertContext,
 ): Promise<{ relatedToId: number | undefined } | false> {
-  const { entry, scoringResult, ltm, sessionId, singletonPromotionThreshold, action } = context;
+  const { entry, scoringResult, ltm, engramId, singletonPromotionThreshold, action } = context;
   const isSingleton = context.relatedMemories.length === 0;
   const qualifiesForPromotion =
     action === 'insert' &&
@@ -38,8 +38,13 @@ async function insertAndRelate(
   const insertOk = await ltm
     .insert(entry.summary, {
       importance: scoringResult.importanceScore,
-      metadata: { source: 'amygdala', insightId: entry.id, tags: forwardedTags },
-      sessionId,
+      metadata: {
+        source: 'amygdala',
+        insightId: entry.id,
+        tags: forwardedTags,
+        entities: scoringResult.entities,
+      },
+      engramId,
       episodeSummary: entry.summary,
       ...(qualifiesForPromotion && { tier: 'semantic' }),
     })

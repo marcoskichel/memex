@@ -37,6 +37,8 @@ import type {
 export type {
   ConsolidateOptions,
   ConsolidateRequest,
+  EntityMention,
+  EntityType,
   LtmBulkInsertEntry,
   LtmEngineOptions,
   LtmEngineStats,
@@ -74,7 +76,7 @@ export class LtmEngine {
         modelId: embedData.modelId,
         dimensions: embedData.dimensions,
         importance,
-        ...(insertOptions?.sessionId !== undefined && { sessionId: insertOptions.sessionId }),
+        ...(insertOptions?.engramId !== undefined && { engramId: insertOptions.engramId }),
         ...(insertOptions?.category !== undefined && { category: insertOptions.category }),
         ...(insertOptions?.episodeSummary !== undefined && {
           episodeSummary: insertOptions.episodeSummary,
@@ -117,7 +119,7 @@ export class LtmEngine {
         modelId: embedData.modelId,
         dimensions: embedData.dimensions,
         importance,
-        ...(entry.sessionId !== undefined && { sessionId: entry.sessionId }),
+        ...(entry.engramId !== undefined && { engramId: entry.engramId }),
         ...(entry.category !== undefined && { category: entry.category }),
         ...(entry.episodeSummary !== undefined && { episodeSummary: entry.episodeSummary }),
       };

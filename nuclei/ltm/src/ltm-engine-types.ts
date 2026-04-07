@@ -1,6 +1,13 @@
 import type { EmbeddingAdapter, EmbedError } from './core/embedding-adapter.js';
 import type { LtmEdge, LtmRecord, StorageAdapter } from './storage/storage-adapter.js';
 
+export type EntityType = 'person' | 'project' | 'concept' | 'preference' | 'decision' | 'tool';
+
+export interface EntityMention {
+  name: string;
+  type: EntityType;
+}
+
 export interface LtmQueryOptions {
   limit?: number;
   threshold?: number;
@@ -12,17 +19,19 @@ export interface LtmQueryOptions {
   minStability?: number;
   minAccessCount?: number;
   sort?: 'confidence' | 'recency' | 'stability' | 'importance';
-  sessionId?: string;
+  engramId?: string;
   category?: string;
   tags?: string[];
   minResults?: number;
+  entityName?: string;
+  entityType?: EntityType;
 }
 
 export interface LtmInsertOptions {
   importance?: number;
   metadata?: Record<string, unknown>;
   tier?: 'episodic' | 'semantic';
-  sessionId?: string;
+  engramId?: string;
   category?: string;
   episodeSummary?: string;
 }
@@ -32,7 +41,7 @@ export interface LtmBulkInsertEntry {
   importance?: number;
   metadata?: Record<string, unknown>;
   tier?: 'episodic' | 'semantic';
-  sessionId?: string;
+  engramId?: string;
   category?: string;
   episodeSummary?: string;
 }

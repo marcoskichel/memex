@@ -138,10 +138,10 @@ describe('createMemory', () => {
     expect(mockHippocampusStart).toHaveBeenCalledOnce();
   });
 
-  it('memory has a sessionId', async () => {
+  it('memory has an engramId', async () => {
     const { memory } = await createMemory(baseConfig);
-    expect(typeof memory.sessionId).toBe('string');
-    expect(memory.sessionId).toBeTruthy();
+    expect(typeof memory.engramId).toBe('string');
+    expect(memory.engramId).toBeTruthy();
   });
 
   it('memory.events is a MemoryEventEmitter', async () => {
@@ -247,6 +247,26 @@ describe('recall', () => {
       limit: 5,
     });
   });
+
+  it('passes entityName filter through to ltm.query', async () => {
+    const { memory } = await createMemory(baseConfig);
+    memory.recall('what do I know about marcos', { entityName: 'marcos' });
+    expect(mockLtmQuery).toHaveBeenCalledWith('what do I know about marcos', {
+      minResults: 1,
+      strengthen: false,
+      entityName: 'marcos',
+    });
+  });
+
+  it('passes entityType filter through to ltm.query', async () => {
+    const { memory } = await createMemory(baseConfig);
+    memory.recall('tools used', { entityType: 'tool' });
+    expect(mockLtmQuery).toHaveBeenCalledWith('tools used', {
+      minResults: 1,
+      strengthen: false,
+      entityType: 'tool',
+    });
+  });
 });
 
 describe('shutdown', () => {
@@ -288,7 +308,7 @@ describe('shutdown', () => {
     const { memory } = await createMemory(baseConfig);
     const report = await memory.shutdown();
 
-    expect(report).toHaveProperty('sessionId');
+    expect(report).toHaveProperty('engramId');
     expect(report).toHaveProperty('shutdownAt');
     expect(report).toHaveProperty('durationMs');
     expect(report).toHaveProperty('stmPhasesCompressed');
@@ -318,7 +338,7 @@ describe('getStats', () => {
     const stats = await memory.getStats();
 
     expect(stats).toHaveProperty('capturedAt');
-    expect(stats).toHaveProperty('sessionId');
+    expect(stats).toHaveProperty('engramId');
     expect(stats).toHaveProperty('ltm');
     expect(stats).toHaveProperty('stm');
     expect(stats).toHaveProperty('amygdala');
@@ -393,9 +413,9 @@ function makeBaseStatsSetup() {
 describe('recallSession', () => {
   makeBaseStatsSetup();
 
-  it('4.1 returns only records from specified session', async () => {
+  it('4.1 returns only records from specified engram', async () => {
     const fakeRecord = {
-      record: { id: 1, data: 'session memory', sessionId: 'sess-abc' },
+      record: { id: 1, data: 'engram memory', engramId: 'engram-abc' },
       effectiveScore: 0.9,
       rrfScore: 0.9,
       retrievalStrategies: ['semantic'],
@@ -403,23 +423,23 @@ describe('recallSession', () => {
     };
     mockLtmQuery.mockReturnValueOnce({ isOk: () => true, value: [fakeRecord] } as never);
     const { memory } = await createMemory(baseConfig);
-    const results = await memory.recallSession('what happened?', { sessionId: 'sess-abc' });
+    const results = await memory.recallSession('what happened?', { engramId: 'engram-abc' });
     expect(mockLtmQuery).toHaveBeenCalledWith(
       'what happened?',
-      expect.objectContaining({ sessionId: 'sess-abc', strengthen: false }),
+      expect.objectContaining({ engramId: 'engram-abc', strengthen: false }),
     );
     expect(results).toHaveLength(1);
     expect(results[0]).toBe(fakeRecord);
   });
 
-  it('4.2 applies additional options alongside sessionId filter', async () => {
+  it('4.2 applies additional options alongside engramId filter', async () => {
     mockLtmQuery.mockReturnValueOnce({ isOk: () => true, value: [] });
     const { memory } = await createMemory(baseConfig);
-    await memory.recallSession('query', { sessionId: 'sess-abc', tier: 'episodic', limit: 5 });
+    await memory.recallSession('query', { engramId: 'engram-abc', tier: 'episodic', limit: 5 });
     expect(mockLtmQuery).toHaveBeenCalledWith(
       'query',
       expect.objectContaining({
-        sessionId: 'sess-abc',
+        engramId: 'engram-abc',
         tier: 'episodic',
         limit: 5,
         strengthen: false,
@@ -427,10 +447,10 @@ describe('recallSession', () => {
     );
   });
 
-  it('4.3 returns empty array for unknown session', async () => {
+  it('4.3 returns empty array for unknown engram', async () => {
     mockLtmQuery.mockReturnValueOnce({ isOk: () => true, value: [] });
     const { memory } = await createMemory(baseConfig);
-    const results = await memory.recallSession('query', { sessionId: 'unknown-session' });
+    const results = await memory.recallSession('query', { engramId: 'unknown-engram' });
     expect(results).toEqual([]);
   });
 });
@@ -445,7 +465,7 @@ describe('recallFull', () => {
       tier: 'episodic',
       tombstoned: false,
       episodeSummary: 'summary text',
-      sessionId: 's',
+      engramId: 's',
     };
     mockLtmGetById.mockReturnValue(record);
     const { memory } = await createMemory(baseConfig);
@@ -463,7 +483,7 @@ describe('recallFull', () => {
       data: 'semantic fact',
       tier: 'semantic',
       tombstoned: false,
-      sessionId: 's',
+      engramId: 's',
     };
     mockLtmGetById.mockReturnValue(record);
     const { memory } = await createMemory(baseConfig);
@@ -563,14 +583,14 @@ describe('getRecent', () => {
   });
 });
 
-describe('4.7 createMemory sessionId wiring', () => {
+describe('4.7 createMemory engramId wiring', () => {
   makeBaseStatsSetup();
 
-  it('wires sessionId to AmygdalaProcess when provided in config', async () => {
+  it('wires engramId to AmygdalaProcess when provided in config', async () => {
     const { AmygdalaProcess } = await import('@neurome/amygdala');
-    await createMemory({ ...baseConfig, sessionId: 'explicit-session-id' });
+    await createMemory({ ...baseConfig, engramId: 'explicit-engram-id' });
     expect(AmygdalaProcess).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId: 'explicit-session-id' }),
+      expect.objectContaining({ engramId: 'explicit-engram-id' }),
     );
   });
 });

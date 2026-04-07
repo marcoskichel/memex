@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
 import type { StructuredOutputSchema } from '@neurome/llm';
+import type { EntityMention } from '@neurome/ltm';
 
 export interface StorageWithLock {
   acquireLock?: (p: string, ttl: number) => boolean;
@@ -55,6 +56,15 @@ For each observation, you must:
    - elaborates: Adds detail to existing memory
    - supersedes: Replaces or updates existing memory
    - contradicts: Conflicts with existing memory
+4. Extract named entities mentioned in the observation. Use these types:
+   - person: named individuals (e.g. "Alice", "the CEO")
+   - project: software projects, products, or initiatives (e.g. "Neurome", "Project X")
+   - concept: technical or domain topics (e.g. "vector embeddings", "consolidation")
+   - preference: explicit preferences (e.g. "prefers TypeScript", "avoids ORMs")
+   - decision: explicit choices made (e.g. "decided to use SQLite")
+   - tool: software tools, libraries, or services (e.g. "pnpm", "Anthropic API")
+
+Do NOT extract: bare pronouns (it, they, this), abstract nouns (system, process, thing), temporal expressions (today, last week), generic verbs or adjectives.
 
 Be conservative with importance scores. Most observations are 0.1-0.4. Reserve 0.7+ for genuinely significant information.`;
 
@@ -81,6 +91,7 @@ export interface AmygdalaScoringResult {
   edgeType?: 'supersedes' | 'elaborates' | 'contradicts';
   reasoning: string;
   importanceScore: number;
+  entities: EntityMention[];
 }
 
 export interface EntryOutcome {
@@ -94,21 +105,59 @@ export interface EventBus {
   on(event: string, listener: (...arguments_: unknown[]) => void): unknown;
 }
 
+const VALID_ENTITY_TYPES = new Set([
+  'person',
+  'project',
+  'concept',
+  'preference',
+  'decision',
+  'tool',
+]);
+
+function parseEntities(raw: unknown): EntityMention[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const result: EntityMention[] = [];
+  for (const item of raw) {
+    if (typeof item === 'object' && item !== null) {
+      const { name, type } = item as Record<string, unknown>;
+      if (typeof name === 'string' && typeof type === 'string' && VALID_ENTITY_TYPES.has(type)) {
+        result.push({ name, type: type as EntityMention['type'] });
+      }
+    }
+  }
+  return result;
+}
+
 export const amygdalaScoringSchema: StructuredOutputSchema<AmygdalaScoringResult> = {
   name: 'score_observation',
-  description: 'Classify a new observation for memory storage',
+  description: 'Classify a new observation for memory storage and extract named entities',
   shape: {
     action: { type: 'string', enum: ['insert', 'relate', 'skip'] },
     targetId: { type: 'string' },
     edgeType: { type: 'string', enum: ['supersedes', 'elaborates', 'contradicts'] },
     reasoning: { type: 'string' },
     importanceScore: { type: 'number' },
+    entities: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          type: {
+            type: 'string',
+            enum: ['person', 'project', 'concept', 'preference', 'decision', 'tool'],
+          },
+        },
+      },
+    },
   },
   parse: (raw: unknown): AmygdalaScoringResult => {
     const object = raw as Record<string, unknown>;
     const action = object.action as 'insert' | 'relate' | 'skip';
     if (!['insert', 'relate', 'skip'].includes(action)) {
-      return { action: 'skip', reasoning: '', importanceScore: 0 };
+      return { action: 'skip', reasoning: '', importanceScore: 0, entities: [] };
     }
     const rawScore = Number(object.importanceScore);
     const importanceScore = Number.isNaN(rawScore) ? 0 : Math.max(0, Math.min(1, rawScore));
@@ -116,6 +165,7 @@ export const amygdalaScoringSchema: StructuredOutputSchema<AmygdalaScoringResult
       action,
       importanceScore,
       reasoning: typeof object.reasoning === 'string' ? object.reasoning : '',
+      entities: parseEntities(object.entities),
     };
     if (typeof object.targetId === 'string') {
       result.targetId = object.targetId;

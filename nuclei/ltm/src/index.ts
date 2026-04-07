@@ -30,6 +30,8 @@ export { OpenAIEmbeddingAdapter } from './adapters/openai-embedding-adapter.js';
 export { LtmCategory, LtmEngine } from './ltm-engine.js';
 export type {
   ConsolidateOptions,
+  EntityMention,
+  EntityType,
   LtmBulkInsertEntry,
   LtmEngineStats,
   LtmInsertError,
