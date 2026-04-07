@@ -10,11 +10,45 @@ Neurome (`@neurome/*`) is a biologically-inspired, persistent memory system for 
 
 ### Component Layout
 
-![Component Layout](./docs/images/component-layout.png)
+```
+  Agent Process
+  +---------------------+        Unix socket
+  | @neurome/sdk        |  ----> @neurome/cortex (server process)
+  | @neurome/axon       |  <----   |
+  | @neurome/afferent   |          |
+  | @neurome/dendrite   |          v
+  +---------------------+     @neurome/memory  (orchestrator)
+                                /    |    \    \
+                           stm /  ltm|  amy\  hip\
+                              v      v      v      v
+                            STM    LTM   Amygdala  Hippocampus
+                                    |
+                                 SQLite DB
+```
 
 ### Memory Lifecycle
 
-![Memory Lifecycle](./docs/images/memory-lifecycle.png)
+```
+  Agent calls logInsight()
+          |
+          v
+        STM  (InsightLog -- volatile buffer)
+          |
+          | (polled on cadence)
+          v
+      Amygdala  -- LLM scores importance
+          |
+     +----+----+
+     |         |
+  discard    write to LTM  (episodic record + embedding)
+                |
+                | (background consolidation)
+                v
+           Hippocampus  -- clusters episodic records
+                |
+                v
+           LTM semantic record  (durable, cross-engram)
+```
 
 ## Nuclei
 
