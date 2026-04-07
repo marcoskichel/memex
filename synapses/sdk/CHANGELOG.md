@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.1.1...sdk-v0.2.0) (2026-04-07)
+
+
+### Features
+
+* **sdk:** add @neurome/sdk package and update docs ([798e857](https://github.com/marcoskichel/neurome/commit/798e857b978523baa0a4caba92f431d256174eb6))
+* **sdk:** add release-please automation and bundle workspace deps ([b7d3d3b](https://github.com/marcoskichel/neurome/commit/b7d3d3b96c474f6358d8992cf22d21e86b0053db))
+
+
+### Bug Fixes
+
+* **sdk,amygdala:** fix prettier violations ([56799ec](https://github.com/marcoskichel/neurome/commit/56799ec765766e3c59b51143006737dd297db16a))
+* **sdk,release:** add publishConfig for public access and release environment ([8704646](https://github.com/marcoskichel/neurome/commit/870464659744d93070c231d955af4a558240daf3))
+* **sdk:** format CHANGELOG.md ([d5a263d](https://github.com/marcoskichel/neurome/commit/d5a263ded0f88ea4650193130cd77fb0ebabdc3e))
+
 ## [0.1.1](https://github.com/marcoskichel/neurome/compare/sdk-v0.1.0...sdk-v0.1.1) (2026-04-07)
 
 
