@@ -25,7 +25,6 @@ export type {
 export { InMemoryAdapter } from './storage/in-memory-adapter.js';
 export { SqliteAdapter } from './storage/sqlite-adapter.js';
 
-export { TransformersJsAdapter } from './adapters/transformers-js-adapter.js';
 export { OpenAIEmbeddingAdapter } from './adapters/openai-embedding-adapter.js';
 
 export { LtmCategory, LtmEngine } from './ltm-engine.js';
