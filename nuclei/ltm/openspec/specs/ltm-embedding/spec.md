@@ -19,25 +19,6 @@ The LTM package SHALL define an `EmbeddingAdapter` interface with `readonly mode
 - **WHEN** `adapter.embed('')` is called
 - **THEN** a `ResultAsync` resolving to `{ type: 'EMBED_EMPTY_INPUT' }` is returned
 
-### Requirement: TransformersJsAdapter is the default adapter
-
-The package SHALL provide a `TransformersJsAdapter` using `Xenova/all-MiniLM-L6-v2` (384 dimensions) via `@xenova/transformers` with local WASM inference. No API key SHALL be required. The pipeline SHALL initialize lazily on the first `embed()` call.
-
-#### Scenario: Default adapter works without API key
-
-- **WHEN** `new TransformersJsAdapter()` is created with no arguments
-- **THEN** `embed('hello')` succeeds without any API key configured
-
-#### Scenario: Cold start completes within 5 seconds
-
-- **WHEN** `embed()` is called for the first time on a fresh adapter
-- **THEN** the pipeline initializes and the call completes within 5 seconds
-
-#### Scenario: Subsequent calls are sub-100ms
-
-- **WHEN** `embed()` is called after the pipeline is initialized
-- **THEN** the call completes in under 100ms
-
 ### Requirement: OpenAIEmbeddingAdapter as an alternative
 
 The package SHALL provide an `OpenAIEmbeddingAdapter` using `text-embedding-3-small` (1536 dimensions). It SHALL require an `apiKey` at construction. It SHALL fail with `EMBED_API_UNAVAILABLE` on network error and SHALL NOT silently fall back to another model.
