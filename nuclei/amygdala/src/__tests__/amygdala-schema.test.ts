@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { amygdalaScoringSchema } from '../amygdala-schema.js';
 
 describe('amygdalaScoringSchema.parse', () => {
-  it('parses valid entities array', () => {
+  it('parses valid entities array and lowercases names', () => {
     const result = amygdalaScoringSchema.parse({
       action: 'insert',
       importanceScore: 0.5,
@@ -14,9 +14,39 @@ describe('amygdalaScoringSchema.parse', () => {
       ],
     });
     expect(result.entities).toEqual([
-      { name: 'Marcos', type: 'person' },
-      { name: 'TypeScript', type: 'tool' },
+      { name: 'marcos', type: 'person' },
+      { name: 'typescript', type: 'tool' },
     ]);
+  });
+
+  it('lowercases uppercase entity name', () => {
+    const result = amygdalaScoringSchema.parse({
+      action: 'insert',
+      importanceScore: 0.5,
+      reasoning: 'ok',
+      entities: [{ name: 'Alice Smith', type: 'person' }],
+    });
+    expect(result.entities).toEqual([{ name: 'alice smith', type: 'person' }]);
+  });
+
+  it('lowercases mixed-case tool name', () => {
+    const result = amygdalaScoringSchema.parse({
+      action: 'insert',
+      importanceScore: 0.5,
+      reasoning: 'ok',
+      entities: [{ name: 'SQLite', type: 'tool' }],
+    });
+    expect(result.entities).toEqual([{ name: 'sqlite', type: 'tool' }]);
+  });
+
+  it('leaves already-lowercase names unchanged', () => {
+    const result = amygdalaScoringSchema.parse({
+      action: 'insert',
+      importanceScore: 0.5,
+      reasoning: 'ok',
+      entities: [{ name: 'sqlite', type: 'tool' }],
+    });
+    expect(result.entities).toEqual([{ name: 'sqlite', type: 'tool' }]);
   });
 
   it('defaults to empty array when entities field is missing', () => {
@@ -48,7 +78,7 @@ describe('amygdalaScoringSchema.parse', () => {
         { name: 'Invalid', type: 'unknown-type' },
       ],
     });
-    expect(result.entities).toEqual([{ name: 'Valid', type: 'person' }]);
+    expect(result.entities).toEqual([{ name: 'valid', type: 'person' }]);
   });
 
   it('returns empty entities on skip action', () => {

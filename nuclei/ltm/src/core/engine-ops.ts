@@ -7,7 +7,7 @@ import type {
   LtmQueryOptions,
   LtmQueryResult,
 } from '../ltm-engine-types.js';
-import { filterCandidates, sortResults } from './query-filters.js';
+import { buildEntityRankedList, filterCandidates, sortResults } from './query-filters.js';
 import { clusterEpisodic } from './query-filters.js';
 import type { QueryMaps } from './query-helpers.js';
 import {
@@ -82,11 +82,17 @@ export function executeQuery(context: QueryContext): ResultAsync<LtmQueryResult[
   const candidates = filterCandidates(allRecords, context.options);
   const maps = buildQueryMaps(candidates, context.queryVector);
   const rankedLists = buildRankedLists({ candidates, maps, storage });
+  const entityRanked = buildEntityRankedList({
+    candidates,
+    options: context.options,
+    semanticScores: maps.semanticScores,
+  });
   const strategyMap = buildStrategyMap(rankedLists);
   const rrfScores = rrfMerge([
     rankedLists.semanticRanked,
     rankedLists.temporalRanked,
     rankedLists.associativeRanked,
+    ...(entityRanked.length > 0 ? [entityRanked] : []),
   ]);
   const collectContext: CollectResultsContext = {
     rrfScores,

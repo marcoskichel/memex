@@ -1,3 +1,4 @@
+import type { EntityMention } from '../ltm-engine-types.js';
 import { initialStability } from './stability-manager.js';
 import type { LtmRecord, StorageAdapter } from '../storage/storage-adapter.js';
 
@@ -106,6 +107,25 @@ export function loadSources(sourceIds: number[], storage: StorageAdapter): LtmRe
   return sources;
 }
 
+function mergeEntities(sources: LtmRecord[]): EntityMention[] | undefined {
+  const seen = new Set<string>();
+  const result: EntityMention[] = [];
+  for (const source of sources) {
+    const entities = source.metadata.entities;
+    if (!Array.isArray(entities)) {
+      continue;
+    }
+    for (const entity of entities as EntityMention[]) {
+      const key = `${entity.name}|${entity.type}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(entity);
+      }
+    }
+  }
+  return result.length > 0 ? result : undefined;
+}
+
 interface InsertConsolidatedParams {
   consolidateParams: ConsolidateParams;
   storage: StorageAdapter;
@@ -124,9 +144,11 @@ function insertConsolidatedRecord(params: InsertConsolidatedParams): number {
     embedding,
     modelId,
     dimensions,
+    sources,
     sourceIds,
     category,
   } = consolidateParams;
+  const entities = mergeEntities(sources);
   return storage.insertRecord({
     data,
     metadata: {
@@ -135,6 +157,7 @@ function insertConsolidatedRecord(params: InsertConsolidatedParams): number {
       uncertainties,
       consolidatedAt: now.toISOString(),
       sourceIds,
+      ...(entities !== undefined && { entities }),
     },
     embedding,
     embeddingMeta: { modelId, dimensions },

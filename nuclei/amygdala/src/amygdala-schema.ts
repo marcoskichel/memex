@@ -64,6 +64,8 @@ For each observation, you must:
    - decision: explicit choices made (e.g. "decided to use SQLite")
    - tool: software tools, libraries, or services (e.g. "pnpm", "Anthropic API")
 
+When naming entities, always use the most complete known proper name (e.g. "Alice Smith" not "Alice", "TypeScript" not "TS"). Use role-based or alias names (e.g. "the CEO", "the user") only when no proper name is known.
+
 Do NOT extract: bare pronouns (it, they, this), abstract nouns (system, process, thing), temporal expressions (today, last week), generic verbs or adjectives.
 
 Be conservative with importance scores. Most observations are 0.1-0.4. Reserve 0.7+ for genuinely significant information.`;
@@ -123,7 +125,7 @@ function parseEntities(raw: unknown): EntityMention[] {
     if (typeof item === 'object' && item !== null) {
       const { name, type } = item as Record<string, unknown>;
       if (typeof name === 'string' && typeof type === 'string' && VALID_ENTITY_TYPES.has(type)) {
-        result.push({ name, type: type as EntityMention['type'] });
+        result.push({ name: name.toLowerCase(), type: type as EntityMention['type'] });
       }
     }
   }

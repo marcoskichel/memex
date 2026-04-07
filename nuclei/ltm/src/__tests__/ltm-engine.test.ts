@@ -538,6 +538,69 @@ describe('LtmEngine', () => {
     });
   });
 
+  describe('entity inheritance through consolidation', () => {
+    it('unions entities from source records', async () => {
+      const id1 = unwrap(
+        await engine.insert('source one', {
+          metadata: { entities: [{ name: 'alice', type: 'person' }] },
+        }),
+      );
+      const id2 = unwrap(
+        await engine.insert('source two', {
+          metadata: { entities: [{ name: 'sqlite', type: 'tool' }] },
+        }),
+      );
+      const semId = unwrap(await engine.consolidate([id1, id2], { data: 'merged' }));
+      const record = engine.getById(semId) as LtmRecord;
+      expect(record.metadata.entities).toEqual(
+        expect.arrayContaining([
+          { name: 'alice', type: 'person' },
+          { name: 'sqlite', type: 'tool' },
+        ]),
+      );
+    });
+
+    it('deduplicates identical entities', async () => {
+      const id1 = unwrap(
+        await engine.insert('source one', {
+          metadata: { entities: [{ name: 'alice', type: 'person' }] },
+        }),
+      );
+      const id2 = unwrap(
+        await engine.insert('source two', {
+          metadata: { entities: [{ name: 'alice', type: 'person' }] },
+        }),
+      );
+      const semId = unwrap(await engine.consolidate([id1, id2], { data: 'merged' }));
+      const record = engine.getById(semId) as LtmRecord;
+      const entities = record.metadata.entities as { name: string; type: string }[];
+      const aliceEntries = entities.filter(
+        (entity) => entity.name === 'alice' && entity.type === 'person',
+      );
+      expect(aliceEntries).toHaveLength(1);
+    });
+
+    it('omits entities field when sources have none', async () => {
+      const id1 = unwrap(await engine.insert('source one'));
+      const id2 = unwrap(await engine.insert('source two'));
+      const semId = unwrap(await engine.consolidate([id1, id2], { data: 'merged' }));
+      const record = engine.getById(semId) as LtmRecord;
+      expect(record.metadata.entities).toBeUndefined();
+    });
+
+    it('entity-filtered query finds consolidated semantic record', async () => {
+      const id1 = unwrap(
+        await engine.insert('alice prefers dark mode', {
+          metadata: { entities: [{ name: 'alice', type: 'person' }] },
+        }),
+      );
+      const semId = unwrap(await engine.consolidate([id1], { data: 'alice prefers dark mode' }));
+      const result = await engine.query('alice', { entityName: 'alice', threshold: 0 });
+      const ids = result.isOk() ? result.value.map((queryResult) => queryResult.record.id) : [];
+      expect(ids).toContain(semId);
+    });
+  });
+
   describe('stats', () => {
     it('reflects current store state', async () => {
       unwrap(await engine.insert('a'));
