@@ -18,6 +18,7 @@ export class InMemoryAdapter implements StorageAdapter {
   private entities = new Map<number, EntityNode>();
   private entityEdges = new Map<number, EntityEdge>();
   private entityRecordLinks = new Map<number, { entityId: number; recordId: number }>();
+  private locks = new Map<string, { acquiredAt: number; ttlMs: number }>();
   private nextRecordId = 1;
   private nextEdgeId = 1;
   private nextEntityId = 1;
@@ -170,14 +171,18 @@ export class InMemoryAdapter implements StorageAdapter {
     edge.lastAccessedAt = params.lastAccessedAt;
   }
 
-  acquireLock(process: string, ttlMs: number): boolean {
-    void process;
-    void ttlMs;
+  acquireLock(lockName: string, ttlMs: number): boolean {
+    const now = Date.now();
+    const existing = this.locks.get(lockName);
+    if (existing && now < existing.acquiredAt + existing.ttlMs) {
+      return false;
+    }
+    this.locks.set(lockName, { acquiredAt: now, ttlMs });
     return true;
   }
 
-  releaseLock(process: string): void {
-    void process;
+  releaseLock(lockName: string): void {
+    this.locks.delete(lockName);
   }
 
   insertEntity(entity: Omit<EntityNode, 'id'>): number {
