@@ -332,7 +332,7 @@ const { memory } = await createMemory({
 });
 ```
 
-If `OPENAI_API_KEY` is present and you prefer OpenAI embeddings, pass `embeddingAdapter: new OpenAIEmbeddingAdapter(...)` explicitly. The default is `TransformersJsAdapter`, which runs inference locally with no API key required.
+Pass `embeddingAdapter: new OpenAIEmbeddingAdapter({ apiKey: process.env.OPENAI_API_KEY })` to use OpenAI embeddings. An `embeddingAdapter` is required.
 
 ### Logging an Insight
 
@@ -941,7 +941,6 @@ type LLMError =
 | Adapter                  | Model                       | Dimensions | Notes                                |
 | ------------------------ | --------------------------- | ---------- | ------------------------------------ |
 | `AnthropicAdapter`       | `claude-haiku-4-5-20251001` | —          | Default LLM adapter; max_tokens 1024 |
-| `TransformersJsAdapter`  | `Xenova/all-MiniLM-L6-v2`   | 384        | Local inference; no API key required |
 | `OpenAIEmbeddingAdapter` | `text-embedding-3-small`    | 1536       | Requires `OPENAI_API_KEY`            |
 | `SqliteAdapter`          | —                           | —          | SQLite-backed storage adapter        |
 | `InMemoryAdapter`        | —                           | —          | In-process adapter for testing       |
@@ -1014,7 +1013,7 @@ type LLMError =
 | `llmAdapter`                | Yes      | —                              | `LLMAdapter` instance                           |
 | `sessionId`                 | No       | Random UUID                    | Session identifier                              |
 | `contextDirectory`          | No       | `dirname(storagePath)/context` | Root directory for context files                |
-| `embeddingAdapter`          | No       | `TransformersJsAdapter`        | Embedding provider                              |
+| `embeddingAdapter`          | Yes      | —                              | Embedding provider                              |
 | `stm`                       | No       | `InsightLog` (in-memory)       | STM backend                                     |
 | `maxTokens`                 | No       | `100000`                       | Token budget for STM compression                |
 | `amygdalaCadenceMs`         | No       | `300000`                       | Amygdala cycle interval in ms                   |

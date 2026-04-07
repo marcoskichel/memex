@@ -37,7 +37,7 @@ export interface MemoryConfig {
   sessionId?: string;
   contextDirectory?: string;
   llmAdapter: LLMAdapter;
-  embeddingAdapter?: EmbeddingAdapter;
+  embeddingAdapter: EmbeddingAdapter;
   stm?: InsightLogLike;
   compressionThreshold?: number;
   amygdalaCadenceMs?: number;

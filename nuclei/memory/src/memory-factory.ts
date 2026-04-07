@@ -6,7 +6,7 @@ import type { EventBus as AmygdalaEventBus } from '@neurome/amygdala';
 import { AmygdalaProcess } from '@neurome/amygdala';
 import { HippocampusProcess } from '@neurome/hippocampus';
 import type { EmbeddingAdapter } from '@neurome/ltm';
-import { LtmEngine, SqliteAdapter, TransformersJsAdapter } from '@neurome/ltm';
+import { LtmEngine, SqliteAdapter } from '@neurome/ltm';
 import type { InsightLogLike } from '@neurome/stm';
 import { InsightLog } from '@neurome/stm';
 
@@ -53,7 +53,7 @@ function buildHippocampus(
 
 export async function createMemory(config: MemoryConfig): Promise<CreateMemoryResult> {
   const storage = new SqliteAdapter(config.storagePath);
-  const embeddingAdapter: EmbeddingAdapter = config.embeddingAdapter ?? new TransformersJsAdapter();
+  const embeddingAdapter: EmbeddingAdapter = config.embeddingAdapter;
   const ltm = new LtmEngine({ storage, embeddingAdapter });
   const stm = config.stm ?? new InsightLog();
   const sessionId = config.sessionId ?? randomUUID();
