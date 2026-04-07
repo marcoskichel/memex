@@ -16,7 +16,8 @@
     "check": "turbo run lint typecheck test --continue=never",
     "check:fix": "turbo run lint:fix typecheck test --continue=never",
     "prepare": "husky",
-    "db:seed": "tsx --env-file=synapses/cortex/.env.local scripts/seed-dev-db.mts"
+    "db:seed": "tsx --env-file=synapses/cortex/.env.local scripts/seed-dev-db.mts",
+    "e2e": "turbo run e2e --filter=@neurome/perirhinal"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

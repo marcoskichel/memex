@@ -19,6 +19,9 @@
     "lint:fix": {
       "cache": false
     },
-    "typecheck": {}
+    "typecheck": {},
+    "e2e": {
+      "cache": false
+    }
   }
 }
