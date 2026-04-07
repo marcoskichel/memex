@@ -29,9 +29,9 @@ Neurome (`@neurome/*`) is a biologically-inspired, persistent memory system for 
 ### Memory Lifecycle
 
 ```
-  Agent calls logInsight()
+  Agent emits observation via @neurome/afferent
           |
-          v
+          v  (fire-and-forget over Unix socket)
         STM  (InsightLog -- volatile buffer)
           |
           | (polled on cadence)
