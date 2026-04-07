@@ -40,6 +40,12 @@ Types: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`
 3. Ensure `pnpm lint` and `pnpm test` pass
 4. Open a PR — the template will guide you
 
+## Releases
+
+Releases for `@neurome/sdk` are automated via [release-please](https://github.com/googleapis/release-please). When a release PR is merged to `master`, the package is published to npm automatically.
+
+To enable publishing in a fork or self-hosted environment, add an `NPM_TOKEN` secret to the repository (Settings → Secrets → Actions) with an npm automation token scoped to `@neurome/sdk`.
+
 ## License
 
 By contributing, you agree your changes are licensed under the [MIT License](./LICENSE).

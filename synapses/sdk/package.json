@@ -1,6 +1,6 @@
 {
   "name": "@neurome/sdk",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Neurome SDK — drop-in memory for agents",
   "type": "module",
   "exports": {
@@ -9,29 +9,36 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsc",
+    "clean": "rm -rf dist",
+    "build": "tsup",
     "dev": "tsc --watch",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
-    "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
+    "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test",
+    "prepublishOnly": "pnpm -w run build --filter @neurome/sdk..."
   },
   "dependencies": {
-    "@neurome/axon": "workspace:*",
-    "@neurome/cortex": "workspace:*",
-    "@neurome/dendrite": "workspace:*",
     "better-sqlite3": "^12.8.0"
   },
   "devDependencies": {
+    "@neurome/axon": "workspace:*",
+    "@neurome/cortex": "workspace:*",
+    "@neurome/dendrite": "workspace:*",
     "@neurome/eslint-config": "workspace:*",
     "@neurome/typescript-config": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   }
