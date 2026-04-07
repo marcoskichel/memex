@@ -33,7 +33,7 @@ describe('V3 migration (SqliteAdapter)', () => {
     rmSync(testDirectory, { recursive: true, force: true });
   });
 
-  it('7.1a upgrades V2 database to V3', () => {
+  it('7.1a upgrades V2 database to V4', () => {
     const db = new Database(dbPath);
     sqliteVec.load(db);
     db.exec(SCHEMA);
@@ -42,7 +42,7 @@ describe('V3 migration (SqliteAdapter)', () => {
     runMigrations(db);
 
     const version = db.pragma('user_version', { simple: true }) as number;
-    expect(version).toBe(3);
+    expect(version).toBe(4);
 
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
       name: string;
@@ -54,7 +54,7 @@ describe('V3 migration (SqliteAdapter)', () => {
     db.close();
   });
 
-  it('7.1b V3 migration is idempotent', () => {
+  it('7.1b migrations are idempotent', () => {
     const db = new Database(dbPath);
     sqliteVec.load(db);
     db.exec(SCHEMA);
@@ -62,7 +62,53 @@ describe('V3 migration (SqliteAdapter)', () => {
     runMigrations(db);
 
     const version = db.pragma('user_version', { simple: true }) as number;
-    expect(version).toBe(3);
+    expect(version).toBe(4);
+    db.close();
+  });
+
+  it('7.3a upgrades V3 database to V4 — unique index created', () => {
+    const db = new Database(dbPath);
+    sqliteVec.load(db);
+    db.exec(SCHEMA);
+    db.pragma('user_version = 2');
+    db.transaction(() => {
+      for (const sql of [
+        `CREATE TABLE IF NOT EXISTS entities (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL, embedding BLOB NOT NULL, created_at INTEGER NOT NULL)`,
+        `CREATE TABLE IF NOT EXISTS entity_edges (id INTEGER PRIMARY KEY AUTOINCREMENT, from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, type TEXT NOT NULL, created_at INTEGER NOT NULL)`,
+        `CREATE TABLE IF NOT EXISTS entity_record_links (id INTEGER PRIMARY KEY AUTOINCREMENT, entity_id INTEGER NOT NULL, record_id INTEGER NOT NULL, created_at INTEGER NOT NULL)`,
+      ]) {
+        db.exec(sql);
+      }
+      db.pragma('user_version = 3');
+    })();
+
+    runMigrations(db);
+
+    const version = db.pragma('user_version', { simple: true }) as number;
+    expect(version).toBe(4);
+
+    const indexes = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_entity_edges_unique'",
+      )
+      .all() as { name: string }[];
+    expect(indexes).toHaveLength(1);
+    db.close();
+  });
+
+  it('7.3b V4 migration is a no-op on already-V4 database', () => {
+    const db = new Database(dbPath);
+    sqliteVec.load(db);
+    db.exec(SCHEMA);
+    runMigrations(db);
+
+    const versionBefore = db.pragma('user_version', { simple: true }) as number;
+    expect(versionBefore).toBe(4);
+
+    runMigrations(db);
+
+    const versionAfter = db.pragma('user_version', { simple: true }) as number;
+    expect(versionAfter).toBe(4);
     db.close();
   });
 });
@@ -206,6 +252,39 @@ describe('SqliteAdapter entity graph', () => {
       const neighbors = adapter.getEntityNeighbors(aliceId, 1);
       expect(neighbors).toHaveLength(0);
     });
+
+    it('7.3f duplicate edge insert is a no-op — one row exists', () => {
+      const aliceId = adapter.insertEntity(makeEntity({ name: 'alice' }));
+      const bobId = adapter.insertEntity(makeEntity({ name: 'bob' }));
+      const edge = { fromId: aliceId, toId: bobId, type: 'prefers', createdAt: new Date() };
+
+      adapter.insertEntityEdge(edge);
+      adapter.insertEntityEdge(edge);
+
+      const neighbors = adapter.getEntityNeighbors(aliceId, 1);
+      expect(neighbors).toHaveLength(1);
+    });
+
+    it('7.3g same node pair with different type creates two edges', () => {
+      const aliceId = adapter.insertEntity(makeEntity({ name: 'alice' }));
+      const bobId = adapter.insertEntity(makeEntity({ name: 'bob' }));
+
+      adapter.insertEntityEdge({
+        fromId: aliceId,
+        toId: bobId,
+        type: 'prefers',
+        createdAt: new Date(),
+      });
+      adapter.insertEntityEdge({
+        fromId: aliceId,
+        toId: bobId,
+        type: 'works_with',
+        createdAt: new Date(),
+      });
+
+      const neighbors = adapter.getEntityNeighbors(aliceId, 1);
+      expect(neighbors).toHaveLength(1);
+    });
   });
 });
 
@@ -296,5 +375,36 @@ describe('InMemoryAdapter entity graph', () => {
   it('7.4h getEntityNeighbors no neighbors returns empty array', () => {
     const aliceId = adapter.insertEntity(makeEntity({ name: 'alice' }));
     expect(adapter.getEntityNeighbors(aliceId, 1)).toHaveLength(0);
+  });
+
+  it('7.4i duplicate edge insert is a no-op — one neighbor entry', () => {
+    const aliceId = adapter.insertEntity(makeEntity({ name: 'alice' }));
+    const bobId = adapter.insertEntity(makeEntity({ name: 'bob' }));
+    const edge = { fromId: aliceId, toId: bobId, type: 'prefers', createdAt: new Date() };
+
+    adapter.insertEntityEdge(edge);
+    adapter.insertEntityEdge(edge);
+
+    expect(adapter.getEntityNeighbors(aliceId, 1)).toHaveLength(1);
+  });
+
+  it('7.4j same node pair with different types produces two edges', () => {
+    const aliceId = adapter.insertEntity(makeEntity({ name: 'alice' }));
+    const bobId = adapter.insertEntity(makeEntity({ name: 'bob' }));
+
+    adapter.insertEntityEdge({
+      fromId: aliceId,
+      toId: bobId,
+      type: 'prefers',
+      createdAt: new Date(),
+    });
+    adapter.insertEntityEdge({
+      fromId: aliceId,
+      toId: bobId,
+      type: 'works_with',
+      createdAt: new Date(),
+    });
+
+    expect(adapter.getEntityNeighbors(aliceId, 1)).toHaveLength(1);
   });
 });

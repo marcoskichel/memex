@@ -204,6 +204,15 @@ export class InMemoryAdapter implements StorageAdapter {
   }
 
   insertEntityEdge(edge: Omit<EntityEdge, 'id'>): number {
+    for (const [id, existing] of this.entityEdges) {
+      if (
+        existing.fromId === edge.fromId &&
+        existing.toId === edge.toId &&
+        existing.type === edge.type
+      ) {
+        return id;
+      }
+    }
     const id = this.nextEntityEdgeId++;
     this.entityEdges.set(id, { ...edge, id });
     return id;

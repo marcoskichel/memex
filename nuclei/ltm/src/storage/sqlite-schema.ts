@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import type { EntityEdge, EntityNode, LtmEdge, LtmRecord } from './storage-adapter.js';
 
 export const FLOAT32_BYTES = 4;
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const MAX_ENTITY_NEIGHBOR_DEPTH = 5;
 
 export const SCHEMA = `
@@ -83,6 +83,16 @@ const V3_MIGRATION = [
   `CREATE INDEX IF NOT EXISTS idx_entity_record_links_record ON entity_record_links(record_id)`,
 ];
 
+const V4_MIGRATION = [
+  `DELETE FROM entity_edges
+   WHERE id NOT IN (
+     SELECT MIN(id) FROM entity_edges GROUP BY from_id, to_id, type
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_edges_unique ON entity_edges(from_id, to_id, type)`,
+];
+
+const SCHEMA_VERSION_3 = 3;
+
 export function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version < 2) {
@@ -93,9 +103,17 @@ export function runMigrations(db: Database.Database): void {
       db.pragma('user_version = 2');
     })();
   }
-  if (version < SCHEMA_VERSION) {
+  if (version < SCHEMA_VERSION_3) {
     db.transaction(() => {
       for (const sql of V3_MIGRATION) {
+        db.exec(sql);
+      }
+      db.pragma('user_version = ' + String(SCHEMA_VERSION_3));
+    })();
+  }
+  if (version < SCHEMA_VERSION) {
+    db.transaction(() => {
+      for (const sql of V4_MIGRATION) {
         db.exec(sql);
       }
       db.pragma('user_version = ' + String(SCHEMA_VERSION));

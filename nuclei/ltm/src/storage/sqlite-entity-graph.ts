@@ -38,7 +38,9 @@ export class SqliteEntityGraph {
 
   insertEntityEdge(edge: Omit<EntityEdge, 'id'>): number {
     const result = this.db
-      .prepare('INSERT INTO entity_edges (from_id, to_id, type, created_at) VALUES (?, ?, ?, ?)')
+      .prepare(
+        'INSERT OR IGNORE INTO entity_edges (from_id, to_id, type, created_at) VALUES (?, ?, ?, ?)',
+      )
       .run(edge.fromId, edge.toId, edge.type, edge.createdAt.getTime());
     return result.lastInsertRowid as number;
   }
