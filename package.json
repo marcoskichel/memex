@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "build": "turbo build",
-    "dev:packages": "turbo run dev --concurrency=20",
+    "dev:nuclei": "turbo run dev --concurrency=20",
     "dev:cortex": "turbo run dev:run --filter=@neurome/cortex",
     "dev:tui": "pnpm --filter=@neurome/neurome-tui run dev:run",
     "test": "turbo test",
