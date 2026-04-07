@@ -86,6 +86,7 @@ pnpm test           # run all tests
 pnpm check          # lint + typecheck + test
 pnpm dev:nuclei     # watch mode for all nuclei
 pnpm dev:cortex     # run the cortex server
+pnpm dev:tui        # start the terminal UI
 ```
 
 ## License
