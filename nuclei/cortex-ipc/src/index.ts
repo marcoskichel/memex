@@ -1,6 +1,9 @@
 export { IPC_SOCKET_PATH, REQUEST_TYPES } from './protocol.js';
 export type {
   ConsolidatePayload,
+  EntityMention,
+  EntityType,
+  ForkPayload,
   GetContextPayload,
   GetRecentPayload,
   GetStatsPayload,
@@ -11,7 +14,6 @@ export type {
   MemoryEventName,
   PushMessage,
   RecallOptions,
-  RecallPayload,
   RequestMessage,
   RequestType,
   ResponseMessage,

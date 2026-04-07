@@ -8,7 +8,7 @@ import type { EventBus } from '../amygdala-process.js';
 import { AmygdalaProcess } from '../amygdala-process.js';
 import { applyAction } from '../apply-action.js';
 
-const TEST_SESSION_ID = 'test-session-42';
+const TEST_ENGRAM_ID = 'test-engram-42';
 
 function makeEntry(overrides: Partial<InsightEntry> = {}): InsightEntry {
   return {
@@ -88,7 +88,7 @@ describe('AmygdalaProcess', () => {
     events = makeEventBus();
   });
 
-  it('insert path: LLM returns insert → ltm.insert called with sessionId and episodeSummary', async () => {
+  it('insert path: LLM returns insert → ltm.insert called with engramId and episodeSummary', async () => {
     const entry = makeEntry();
     const ltm = makeLtm();
     const stm = makeStm([entry]);
@@ -103,7 +103,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -111,7 +111,7 @@ describe('AmygdalaProcess', () => {
     expect(ltm.insert).toHaveBeenCalledWith(entry.summary, {
       importance: 0.7,
       metadata: { source: 'amygdala', insightId: entry.id, tags: [] },
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       episodeSummary: entry.summary,
       tier: 'semantic',
     });
@@ -136,14 +136,14 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(ltm.insert).toHaveBeenCalledWith(
       entry.summary,
-      expect.objectContaining({ importance: 0.6, sessionId: TEST_SESSION_ID }),
+      expect.objectContaining({ importance: 0.6, engramId: TEST_ENGRAM_ID }),
     );
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(ltm.relate).toHaveBeenCalledWith({ fromId: 42, toId: 10, type: 'elaborates' });
@@ -166,7 +166,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -189,7 +189,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -219,7 +219,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       _sleep: () => Promise.resolve(),
     });
     await proc.run();
@@ -244,7 +244,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       _sleep: () => Promise.resolve(),
     });
     await proc.run();
@@ -267,7 +267,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       maxBatchSize: 10,
     });
     await process.run();
@@ -296,7 +296,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -325,7 +325,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -352,7 +352,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -371,7 +371,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       maxLLMCallsPerHour: 0,
     });
     await process.run();
@@ -400,7 +400,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       _sleep: () => Promise.resolve(),
     });
 
@@ -426,7 +426,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -451,7 +451,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -459,19 +459,19 @@ describe('AmygdalaProcess', () => {
     expect(ltm.relate).toHaveBeenCalledWith({ fromId: 42, toId: 5, type: 'supersedes' });
   });
 
-  it('3.1 inserted LTM record has sessionId matching AmygdalaConfig.sessionId', async () => {
+  it('3.1 inserted LTM record has engramId matching AmygdalaConfig.engramId', async () => {
     const entry = makeEntry();
     const ltm = makeLtm();
     const stm = makeStm([entry]);
     const llmAdapter = makeLlmAdapter({ action: 'insert', importanceScore: 0.5, reasoning: 'ok' });
 
-    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events, sessionId: 'session-xyz' });
+    const process = new AmygdalaProcess({ ltm, stm, llmAdapter, events, engramId: 'engram-xyz' });
     await process.run();
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(ltm.insert).toHaveBeenCalledWith(
       entry.summary,
-      expect.objectContaining({ sessionId: 'session-xyz' }),
+      expect.objectContaining({ engramId: 'engram-xyz' }),
     );
   });
 
@@ -486,7 +486,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -508,7 +508,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -528,7 +528,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -546,7 +546,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -569,7 +569,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -591,7 +591,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -619,7 +619,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -641,7 +641,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       singletonPromotionThreshold: 0.9,
     });
     await process.run();
@@ -664,7 +664,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -679,7 +679,12 @@ describe('AmygdalaProcess', () => {
     const entry = makeEntry({ tags: ['permanently_skipped', 'llm_rate_limited'] });
     const ltm = makeLtm();
     const stm = makeStm([entry]);
-    const scoringResult = { action: 'insert' as const, importanceScore: 0.5, reasoning: 'ok' };
+    const scoringResult = {
+      action: 'insert' as const,
+      importanceScore: 0.5,
+      reasoning: 'ok',
+      entities: [],
+    };
 
     await applyAction({
       entry,
@@ -688,7 +693,7 @@ describe('AmygdalaProcess', () => {
       ltm,
       stm,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
       singletonPromotionThreshold: 0.7,
     });
 
@@ -710,7 +715,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 
@@ -738,7 +743,7 @@ describe('AmygdalaProcess', () => {
       stm,
       llmAdapter,
       events,
-      sessionId: TEST_SESSION_ID,
+      engramId: TEST_ENGRAM_ID,
     });
     await process.run();
 

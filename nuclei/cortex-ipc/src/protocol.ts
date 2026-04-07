@@ -1,21 +1,21 @@
 import type { LtmInsertOptions } from '@neurome/ltm';
-export type { LtmRecord } from '@neurome/ltm';
+export type { EntityMention, EntityType, LtmRecord } from '@neurome/ltm';
 import type { Memory, MemoryEvents } from '@neurome/memory';
 
-const VALID_SESSION_ID = /^[\da-z][\w-]{0,127}$/i;
+const VALID_ENGRAM_ID = /^[\da-z][\w-]{0,127}$/i;
 
-export function IPC_SOCKET_PATH(sessionId: string): string {
-  if (!VALID_SESSION_ID.test(sessionId)) {
-    throw new Error(`Invalid sessionId: ${sessionId}`);
+export function IPC_SOCKET_PATH(engramId: string): string {
+  if (!VALID_ENGRAM_ID.test(engramId)) {
+    throw new Error(`Invalid engramId: ${engramId}`);
   }
-  return `/tmp/neurome-${sessionId}.sock`;
+  return `/tmp/neurome-${engramId}.sock`;
 }
 
 export type LogInsightPayload = Parameters<Memory['logInsight']>[0];
 export type RecallOptions = Parameters<Memory['recall']>[1];
 
 export interface GetContextPayload {
-  sessionId: string;
+  engramId: string;
   toolName: string;
   toolInput: unknown;
   category?: string;
@@ -43,6 +43,10 @@ export interface GetRecentPayload {
 
 export type ConsolidatePayload = Record<string, never>;
 
+export interface ForkPayload {
+  outputPath: string;
+}
+
 interface RequestPayloadMap {
   logInsight: LogInsightPayload;
   getContext: GetContextPayload;
@@ -52,6 +56,7 @@ interface RequestPayloadMap {
   importText: ImportTextPayload;
   getRecent: GetRecentPayload;
   consolidate: ConsolidatePayload;
+  fork: ForkPayload;
 }
 
 export const REQUEST_TYPES = [
@@ -63,6 +68,7 @@ export const REQUEST_TYPES = [
   'importText',
   'getRecent',
   'consolidate',
+  'fork',
 ] as const;
 
 export type RequestType = (typeof REQUEST_TYPES)[number];

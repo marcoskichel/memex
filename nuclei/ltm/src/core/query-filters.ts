@@ -1,6 +1,20 @@
-import type { LtmQueryOptions, LtmQueryResult } from '../ltm-engine-types.js';
+import type { EntityMention, LtmQueryOptions, LtmQueryResult } from '../ltm-engine-types.js';
 import { cosineSimilarity } from './cosine-similarity.js';
 import type { LtmRecord } from '../storage/storage-adapter.js';
+
+function matchesEntityFilter(record: LtmRecord, options: LtmQueryOptions): boolean {
+  const entityName = options.entityName?.toLowerCase();
+  const entityType = options.entityType;
+  const entities = record.metadata.entities;
+  if (!Array.isArray(entities)) {
+    return false;
+  }
+  return (entities as EntityMention[]).some(
+    (entity) =>
+      (entityName === undefined || entity.name.toLowerCase().includes(entityName)) &&
+      (entityType === undefined || entity.type === entityType),
+  );
+}
 
 export function filterCandidates(records: LtmRecord[], options: LtmQueryOptions): LtmRecord[] {
   let candidates = records;
@@ -27,9 +41,9 @@ export function filterCandidates(records: LtmRecord[], options: LtmQueryOptions)
     const minAccessCount = options.minAccessCount;
     candidates = candidates.filter((record) => record.accessCount >= minAccessCount);
   }
-  if (options.sessionId !== undefined) {
-    const sessionId = options.sessionId;
-    candidates = candidates.filter((record) => record.sessionId === sessionId);
+  if (options.engramId !== undefined) {
+    const engramId = options.engramId;
+    candidates = candidates.filter((record) => record.engramId === engramId);
   }
   if (options.category !== undefined) {
     const category = options.category;
@@ -43,6 +57,9 @@ export function filterCandidates(records: LtmRecord[], options: LtmQueryOptions)
         Array.isArray(recordTags) && tags.every((tag) => (recordTags as string[]).includes(tag))
       );
     });
+  }
+  if (options.entityName !== undefined || options.entityType !== undefined) {
+    candidates = candidates.filter((record) => matchesEntityFilter(record, options));
   }
   return candidates;
 }

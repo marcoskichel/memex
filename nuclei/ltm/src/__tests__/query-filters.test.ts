@@ -18,7 +18,7 @@ function makeRecord(overrides: Partial<LtmRecord> & { id: number }): LtmRecord {
     createdAt: now,
     tombstoned: false,
     tombstonedAt: undefined,
-    sessionId: 'session-1',
+    engramId: 'engram-1',
     ...overrides,
   };
 }
@@ -86,5 +86,60 @@ describe('filterCandidates - tags', () => {
       tags: ['behavioral'],
     });
     expect(result).toEqual([episodicWithTag]);
+  });
+});
+
+describe('filterCandidates — entity filters', () => {
+  it('entityName filter returns only records mentioning that entity (case-insensitive)', () => {
+    const withEntity = makeRecord({
+      id: 1,
+      metadata: { entities: [{ name: 'Marcos', type: 'person' }] },
+    });
+    const without = makeRecord({ id: 2, metadata: {} });
+    const result = filterCandidates([withEntity, without], { entityName: 'marcos' });
+    expect(result).toEqual([withEntity]);
+  });
+
+  it('entityType filter returns only records with that entity type', () => {
+    const withTool = makeRecord({
+      id: 1,
+      metadata: { entities: [{ name: 'pnpm', type: 'tool' }] },
+    });
+    const withPerson = makeRecord({
+      id: 2,
+      metadata: { entities: [{ name: 'Alice', type: 'person' }] },
+    });
+    const result = filterCandidates([withTool, withPerson], { entityType: 'tool' });
+    expect(result).toEqual([withTool]);
+  });
+
+  it('entityName and entityType combined require both to match', () => {
+    const match = makeRecord({
+      id: 1,
+      metadata: { entities: [{ name: 'TypeScript', type: 'tool' }] },
+    });
+    const wrongType = makeRecord({
+      id: 2,
+      metadata: { entities: [{ name: 'TypeScript', type: 'concept' }] },
+    });
+    const wrongName = makeRecord({
+      id: 3,
+      metadata: { entities: [{ name: 'JavaScript', type: 'tool' }] },
+    });
+    const result = filterCandidates([match, wrongType, wrongName], {
+      entityName: 'typescript',
+      entityType: 'tool',
+    });
+    expect(result).toEqual([match]);
+  });
+
+  it('excludes records without metadata.entities when entity filter is active', () => {
+    const noEntities = makeRecord({ id: 1, metadata: {} });
+    const withEntities = makeRecord({
+      id: 2,
+      metadata: { entities: [{ name: 'Neurome', type: 'project' }] },
+    });
+    const result = filterCandidates([noEntities, withEntities], { entityName: 'neurome' });
+    expect(result).toEqual([withEntities]);
   });
 });
