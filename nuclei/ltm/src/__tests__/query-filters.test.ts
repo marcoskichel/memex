@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { filterCandidates } from '../core/query-filters.js';
+import { buildEntityRankedList, filterCandidates } from '../core/query-filters.js';
 import type { LtmRecord } from '../storage/storage-adapter.js';
 
 function makeRecord(overrides: Partial<LtmRecord> & { id: number }): LtmRecord {
@@ -89,57 +89,106 @@ describe('filterCandidates - tags', () => {
   });
 });
 
-describe('filterCandidates — entity filters', () => {
-  it('entityName filter returns only records mentioning that entity (case-insensitive)', () => {
+describe('filterCandidates — entity filters no longer hard-filter', () => {
+  it('entityName does not exclude non-entity records from candidates', () => {
     const withEntity = makeRecord({
       id: 1,
-      metadata: { entities: [{ name: 'Marcos', type: 'person' }] },
+      metadata: { entities: [{ name: 'alice', type: 'person' }] },
     });
     const without = makeRecord({ id: 2, metadata: {} });
-    const result = filterCandidates([withEntity, without], { entityName: 'marcos' });
-    expect(result).toEqual([withEntity]);
+    const result = filterCandidates([withEntity, without], { entityName: 'alice' });
+    expect(result).toEqual([withEntity, without]);
   });
 
-  it('entityType filter returns only records with that entity type', () => {
+  it('entityType does not hard-filter candidates', () => {
     const withTool = makeRecord({
       id: 1,
       metadata: { entities: [{ name: 'pnpm', type: 'tool' }] },
     });
     const withPerson = makeRecord({
       id: 2,
-      metadata: { entities: [{ name: 'Alice', type: 'person' }] },
+      metadata: { entities: [{ name: 'alice', type: 'person' }] },
     });
     const result = filterCandidates([withTool, withPerson], { entityType: 'tool' });
-    expect(result).toEqual([withTool]);
+    expect(result).toEqual([withTool, withPerson]);
   });
+});
 
-  it('entityName and entityType combined require both to match', () => {
-    const match = makeRecord({
+describe('buildEntityRankedList', () => {
+  it('returns empty list when no entity filter is present', () => {
+    const record = makeRecord({
       id: 1,
-      metadata: { entities: [{ name: 'TypeScript', type: 'tool' }] },
+      metadata: { entities: [{ name: 'alice', type: 'person' }] },
     });
-    const wrongType = makeRecord({
-      id: 2,
-      metadata: { entities: [{ name: 'TypeScript', type: 'concept' }] },
-    });
-    const wrongName = makeRecord({
-      id: 3,
-      metadata: { entities: [{ name: 'JavaScript', type: 'tool' }] },
-    });
-    const result = filterCandidates([match, wrongType, wrongName], {
-      entityName: 'typescript',
-      entityType: 'tool',
-    });
-    expect(result).toEqual([match]);
+    const scores = new Map([[1, 0.9]]);
+    expect(
+      buildEntityRankedList({ candidates: [record], options: {}, semanticScores: scores }),
+    ).toEqual([]);
   });
 
-  it('excludes records without metadata.entities when entity filter is active', () => {
-    const noEntities = makeRecord({ id: 1, metadata: {} });
-    const withEntities = makeRecord({
-      id: 2,
-      metadata: { entities: [{ name: 'Neurome', type: 'project' }] },
+  it('ranks only entity-matching records', () => {
+    const matching = makeRecord({
+      id: 1,
+      metadata: { entities: [{ name: 'alice', type: 'person' }] },
     });
-    const result = filterCandidates([noEntities, withEntities], { entityName: 'neurome' });
-    expect(result).toEqual([withEntities]);
+    const nonMatching = makeRecord({ id: 2, metadata: {} });
+    const scores = new Map([
+      [1, 0.9],
+      [2, 0.8],
+    ]);
+    const result = buildEntityRankedList({
+      candidates: [matching, nonMatching],
+      options: { entityName: 'alice' },
+      semanticScores: scores,
+    });
+    expect(result).toEqual([{ recordId: 1, rank: 1 }]);
+  });
+
+  it('ranks by semantic score descending', () => {
+    const low = makeRecord({ id: 1, metadata: { entities: [{ name: 'alice', type: 'person' }] } });
+    const high = makeRecord({ id: 2, metadata: { entities: [{ name: 'alice', type: 'person' }] } });
+    const scores = new Map([
+      [1, 0.4],
+      [2, 0.9],
+    ]);
+    const result = buildEntityRankedList({
+      candidates: [low, high],
+      options: { entityName: 'alice' },
+      semanticScores: scores,
+    });
+    expect(result[0]).toEqual({ recordId: 2, rank: 1 });
+    expect(result[1]).toEqual({ recordId: 1, rank: 2 });
+  });
+
+  it('matches entityName case-insensitively', () => {
+    const record = makeRecord({
+      id: 1,
+      metadata: { entities: [{ name: 'alice', type: 'person' }] },
+    });
+    const scores = new Map([[1, 0.9]]);
+    const result = buildEntityRankedList({
+      candidates: [record],
+      options: { entityName: 'Alice' },
+      semanticScores: scores,
+    });
+    expect(result).toHaveLength(1);
+  });
+
+  it('filters by entityType when specified', () => {
+    const tool = makeRecord({ id: 1, metadata: { entities: [{ name: 'pnpm', type: 'tool' }] } });
+    const person = makeRecord({
+      id: 2,
+      metadata: { entities: [{ name: 'alice', type: 'person' }] },
+    });
+    const scores = new Map([
+      [1, 0.9],
+      [2, 0.8],
+    ]);
+    const result = buildEntityRankedList({
+      candidates: [tool, person],
+      options: { entityType: 'tool' },
+      semanticScores: scores,
+    });
+    expect(result).toEqual([{ recordId: 1, rank: 1 }]);
   });
 });

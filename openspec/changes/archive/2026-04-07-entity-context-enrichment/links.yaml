@@ -1,0 +1,5 @@
+scopes:
+  - name: amygdala
+    path: nuclei/amygdala
+  - name: ltm
+    path: nuclei/ltm

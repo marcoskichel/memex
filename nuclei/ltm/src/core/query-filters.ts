@@ -1,3 +1,4 @@
+import type { RankedCandidate } from './rrf-merge.js';
 import type { EntityMention, LtmQueryOptions, LtmQueryResult } from '../ltm-engine-types.js';
 import { cosineSimilarity } from './cosine-similarity.js';
 import type { LtmRecord } from '../storage/storage-adapter.js';
@@ -58,10 +59,29 @@ export function filterCandidates(records: LtmRecord[], options: LtmQueryOptions)
       );
     });
   }
-  if (options.entityName !== undefined || options.entityType !== undefined) {
-    candidates = candidates.filter((record) => matchesEntityFilter(record, options));
-  }
   return candidates;
+}
+
+export interface EntityRankedListParams {
+  candidates: LtmRecord[];
+  options: LtmQueryOptions;
+  semanticScores: Map<number, number>;
+}
+
+export function buildEntityRankedList({
+  candidates,
+  options,
+  semanticScores,
+}: EntityRankedListParams): RankedCandidate[] {
+  if (options.entityName === undefined && options.entityType === undefined) {
+    return [];
+  }
+  return candidates
+    .filter((record) => matchesEntityFilter(record, options))
+    .toSorted(
+      (first, second) => (semanticScores.get(second.id) ?? 0) - (semanticScores.get(first.id) ?? 0),
+    )
+    .map((record, index) => ({ recordId: record.id, rank: index + 1 }));
 }
 
 export function sortResults(results: LtmQueryResult[], sort: string): void {
