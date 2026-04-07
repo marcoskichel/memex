@@ -8,6 +8,14 @@ Neurome (`@neurome/*`) is a biologically-inspired, persistent memory system for 
 
 > For the full system specification, see [docs/SPEC.md](./docs/SPEC.md).
 
+### Component Layout
+
+![Component Layout](./docs/images/component-layout.png)
+
+### Memory Lifecycle
+
+![Memory Lifecycle](./docs/images/memory-lifecycle.png)
+
 ## Nuclei
 
 Core packages — compose via `@neurome/memory` or use individually.
@@ -15,8 +23,8 @@ Core packages — compose via `@neurome/memory` or use individually.
 | Package                                        | Role                                                                               |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------- |
 | [`@neurome/memory`](./nuclei/memory)           | Orchestration — unified interface composing all nuclei; start here                 |
-| [`@neurome/stm`](./nuclei/stm)                 | Short-term memory — session-scoped observation buffer                              |
-| [`@neurome/ltm`](./nuclei/ltm)                 | Long-term memory — durable semantic store with cross-session persistence           |
+| [`@neurome/stm`](./nuclei/stm)                 | Short-term memory — engram-scoped observation buffer                               |
+| [`@neurome/ltm`](./nuclei/ltm)                 | Long-term memory — durable semantic store with cross-engram persistence            |
 | [`@neurome/amygdala`](./nuclei/amygdala)       | Salience filter — LLM-scores STM observations and routes them to LTM               |
 | [`@neurome/hippocampus`](./nuclei/hippocampus) | Consolidation — clusters episodic records and distills them into semantic memories |
 | [`@neurome/llm`](./nuclei/llm)                 | LLM adapter — Anthropic and OpenAI-compatible client                               |
@@ -29,6 +37,7 @@ Integration adapters that wire Neurome into external systems.
 
 | Package                                          | Role                                                                                 |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [`@neurome/sdk`](./synapses/sdk)                 | Published SDK — single entry point for app developers; manages cortex lifecycle      |
 | [`@neurome/cortex`](./synapses/cortex)           | Memory server — hosts all subsystems in one process, exposes them over a Unix socket |
 | [`@neurome/dendrite`](./synapses/dendrite)       | MCP server — exposes memory operations as MCP tools for LLM agents                   |
 | [`@neurome/afferent`](./synapses/afferent)       | Event bridge — fire-and-forget observation emitter from agent to cortex              |
@@ -36,46 +45,62 @@ Integration adapters that wire Neurome into external systems.
 
 ## Usage
 
-### Direct SDK
+### `@neurome/sdk`
 
-Embed memory directly in your agent process via `@neurome/memory`:
+The SDK is the single published entry point. It spawns and manages cortex as a child process — no manual server setup required.
+
+```bash
+npm install @neurome/sdk
+```
+
+```ts
+import { startEngram } from '@neurome/sdk';
+
+const engram = await startEngram({
+  engramId: 'my-agent',
+  db: '/var/data/my-agent.db',
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+});
+
+const results = await engram.recall('what did the user prefer?');
+engram.logInsight({ summary: 'User prefers concise answers', tags: ['pref'] });
+
+await engram.close();
+```
+
+#### MCP integration
+
+`asMcpServer()` returns a config object you can pass directly to the Claude Agent SDK or any MCP client:
+
+```ts
+const mcpConfig = engram.asMcpServer();
+// => { type: 'stdio', command: 'node', args: [...], env: { NEUROME_ENGRAM_ID: '...', MEMORY_DB_PATH: '...' } }
+```
+
+#### Forking for parallel agents
+
+`fork` creates a read-only SQLite snapshot for parallel agent runs. The caller manages the fork lifecycle.
+
+```ts
+const forkPath = await engram.fork('/tmp/fork-agent.db');
+const forkEngram = await startEngram({ engramId: 'fork-agent', db: forkPath });
+```
+
+### Direct / Advanced
+
+For lower-level access, you can use `@neurome/memory` (in-process) or `@neurome/axon` (IPC client) directly. These packages are `private: true` and not published to npm — they're available within the monorepo for contributors and advanced use cases.
 
 ```ts
 import { createMemory } from '@neurome/memory';
-import { AnthropicAdapter } from '@neurome/llm';
+import { OpenAIEmbeddingAdapter } from '@neurome/ltm';
 
 const { memory } = await createMemory({
   storagePath: './neurome.db',
-  llmAdapter: new AnthropicAdapter(process.env.ANTHROPIC_API_KEY),
+  llmAdapter,
+  embeddingAdapter: new OpenAIEmbeddingAdapter({ apiKey: process.env.OPENAI_API_KEY }),
 });
-
-memory.logInsight({ summary: 'User prefers concise answers', tags: ['preference'] });
-
-const results = await memory.recall('response style');
-// => [{ record: { data: 'User prefers concise answers', ... }, effectiveScore: 0.94 }]
-
-await memory.shutdown();
 ```
-
-### Server mode
-
-Run cortex as a long-lived server, connect from any process via `@neurome/axon`:
-
-```sh
-MEMORY_DB_PATH=./neurome.db ANTHROPIC_API_KEY=sk-ant-... npx @neurome/cortex
-```
-
-```ts
-import { AxonClient } from '@neurome/axon';
-
-const axon = new AxonClient(process.env.MEMORY_SESSION_ID);
-axon.logInsight({ summary: 'User opened the dashboard', tags: ['navigation'] });
-
-const results = await axon.recall('what did the user do last session');
-axon.disconnect();
-```
-
-MCP-compatible agents can use `@neurome/dendrite` instead of axon directly — it exposes the same operations as MCP tools over stdio.
 
 ## Development
 
