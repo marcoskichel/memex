@@ -1,6 +1,6 @@
 {
   "name": "@neurome/sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Neurome SDK — drop-in memory for agents",
   "type": "module",
   "exports": {
