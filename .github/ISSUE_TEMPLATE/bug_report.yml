@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a bug in Neurome
+title: 'bug: '
+labels: ['bug: unconfirmed']
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear description of what the bug is
+    validations:
+      required: true
+  - type: input
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Link to a minimal reproduction or steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: system-info
+    attributes:
+      label: Environment
+      description: 'Run: `npx envinfo --system --binaries --npmPackages @neurome/sdk`'
+      render: shell
+    validations:
+      required: true
+  - type: checkboxes
+    id: validations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched for existing issues
+          required: true
+        - label: I read the docs
+          required: true
