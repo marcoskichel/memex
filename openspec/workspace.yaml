@@ -27,3 +27,5 @@ scopes:
     path: nuclei/axon
   - name: dendrite
     path: synapses/dendrite
+  - name: sdk
+    path: synapses/sdk

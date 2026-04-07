@@ -9,7 +9,7 @@ vi.mock('node:net', () => ({
 }));
 
 vi.mock('@neurome/cortex-ipc', () => ({
-  IPC_SOCKET_PATH: (sessionId: string) => `/tmp/neurome-${sessionId}.sock`,
+  IPC_SOCKET_PATH: (engramId: string) => `/tmp/neurome-${engramId}.sock`,
 }));
 
 import { createAfferent } from '../index.js';
@@ -44,7 +44,7 @@ describe('createAfferent — buffering', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const afferent = createAfferent('sess-1');
+    const afferent = createAfferent('engram-1');
     afferent.emit({ agent: 'explorer', text: 'first thought' });
     afferent.emit({ agent: 'explorer', text: 'second thought' });
 
@@ -64,7 +64,7 @@ describe('createAfferent — buffering', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
 
-    const afferent = createAfferent('sess-2');
+    const afferent = createAfferent('engram-2');
     socket.emit('connect');
 
     afferent.emit({ agent: 'explorer', text: 'a thought' });
@@ -77,7 +77,7 @@ describe('createAfferent — event translation', () => {
   it('emits logInsight with observation tag and correct summary', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-3');
+    const afferent = createAfferent('engram-3');
     socket.emit('connect');
 
     afferent.emit({ agent: 'explorer', text: 'I see the home screen' });
@@ -94,7 +94,7 @@ describe('createAfferent — silent degradation', () => {
   it('does not throw when socket emits error', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-4');
+    const afferent = createAfferent('engram-4');
 
     expect(() => {
       socket.emit('error', new Error('ECONNREFUSED'));
@@ -109,7 +109,7 @@ describe('createAfferent — runId', () => {
   it('all events from the same observer share the same runId tag', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-5');
+    const afferent = createAfferent('engram-5');
     socket.emit('connect');
 
     afferent.emit({ agent: 'explorer', text: 'thought one' });
@@ -130,7 +130,7 @@ describe('createAfferent — disconnect', () => {
   it('destroys socket and clears queue on disconnect', () => {
     const socket = makeSocket();
     mockCreateConnection.mockReturnValue(socket);
-    const afferent = createAfferent('sess-6');
+    const afferent = createAfferent('engram-6');
 
     afferent.emit({ agent: 'explorer', text: 'buffered thought' });
     afferent.disconnect();

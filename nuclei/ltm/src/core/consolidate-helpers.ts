@@ -24,7 +24,7 @@ export interface EpisodicRecordParams {
   modelId: string;
   dimensions: number;
   importance: number;
-  sessionId?: string;
+  engramId?: string;
   category?: string;
   episodeSummary?: string;
 }
@@ -37,7 +37,7 @@ export function buildEpisodicRecord(params: EpisodicRecordParams): Omit<LtmRecor
     modelId,
     dimensions,
     importance,
-    sessionId,
+    engramId,
     category,
     episodeSummary,
   } = params;
@@ -55,7 +55,7 @@ export function buildEpisodicRecord(params: EpisodicRecordParams): Omit<LtmRecor
     createdAt: now,
     tombstoned: false,
     tombstonedAt: undefined,
-    sessionId: sessionId ?? 'legacy',
+    engramId: engramId ?? 'legacy',
     ...(category !== undefined && { category }),
     ...(episodeSummary !== undefined && { episodeSummary }),
   };
@@ -68,13 +68,12 @@ export interface SemanticRecordParams {
   modelId: string;
   dimensions: number;
   importance: number;
-  sessionId?: string;
+  engramId?: string;
   category?: string;
 }
 
 export function buildSemanticRecord(params: SemanticRecordParams): Omit<LtmRecord, 'id'> {
-  const { data, metadata, embedding, modelId, dimensions, importance, sessionId, category } =
-    params;
+  const { data, metadata, embedding, modelId, dimensions, importance, engramId, category } = params;
   const confidence = (metadata.confidence as number | undefined) ?? 1;
   const now = new Date();
   return {
@@ -90,7 +89,7 @@ export function buildSemanticRecord(params: SemanticRecordParams): Omit<LtmRecor
     createdAt: now,
     tombstoned: false,
     tombstonedAt: undefined,
-    sessionId: sessionId ?? 'legacy',
+    engramId: engramId ?? 'legacy',
     ...(category !== undefined && { category }),
   };
 }
@@ -147,7 +146,7 @@ function insertConsolidatedRecord(params: InsertConsolidatedParams): number {
     createdAt: now,
     tombstoned: false,
     tombstonedAt: undefined,
-    sessionId: 'legacy',
+    engramId: 'legacy',
     ...(category !== undefined && { category }),
   });
 }

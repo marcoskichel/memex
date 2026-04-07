@@ -66,6 +66,10 @@ async function dispatch(message: RequestMessage, memory: Memory): Promise<unknow
       await memory.consolidate();
       return undefined;
     }
+    case 'fork': {
+      const forkPath = await memory.fork(message.payload.outputPath);
+      return { forkPath };
+    }
     default: {
       const exhaustive: never = message;
       throw new Error(`unknown request type: ${(exhaustive as { type: string }).type}`);
@@ -106,18 +110,18 @@ function mergeRecallResults(results: RecallResult[], limit: number) {
 }
 
 interface ContextBoostOptions {
-  sessionId: string;
+  engramId: string;
   category?: string;
 }
 
 function applyContextBoosts<T extends { record: { metadata: unknown }; effectiveScore: number }>(
   results: T[],
-  { sessionId, category }: ContextBoostOptions,
+  { engramId, category }: ContextBoostOptions,
 ): T[] {
   return results.map((item) => {
-    const meta = item.record.metadata as { sessionId?: string; category?: string };
+    const meta = item.record.metadata as { engramId?: string; category?: string };
     let boost = 0;
-    if (meta.sessionId === sessionId) {
+    if (meta.engramId === engramId) {
       boost += SESSION_MATCH_BOOST;
     }
     if (category !== undefined && meta.category === category) {
@@ -144,7 +148,7 @@ async function getContext(
   const merged = applyContextBoosts(
     mergeRecallResults([primaryResult, identityResult, projectResult], RECALL_LIMIT_FOR_CONTEXT),
     {
-      sessionId: payload.sessionId,
+      engramId: payload.engramId,
       ...(payload.category !== undefined && { category: payload.category }),
     },
   );
@@ -152,7 +156,7 @@ async function getContext(
   const contextDirectory = stats.disk.contextDirectory;
   const contextFiles = readRecentContextFiles({
     contextDirectory,
-    sessionId: payload.sessionId,
+    engramId: payload.engramId,
     limit: RECENT_CONTEXT_FILE_LIMIT,
   });
 
@@ -196,16 +200,16 @@ async function getStats(memory: Memory): Promise<unknown> {
 
 interface ReadContextFilesOptions {
   contextDirectory: string;
-  sessionId: string;
+  engramId: string;
   limit: number;
 }
 
 function readRecentContextFiles({
   contextDirectory,
-  sessionId,
+  engramId,
   limit,
 }: ReadContextFilesOptions): string[] {
-  const sessionDirectory = path.join(contextDirectory, sessionId);
+  const sessionDirectory = path.join(contextDirectory, engramId);
   if (!existsSync(sessionDirectory)) {
     return [];
   }

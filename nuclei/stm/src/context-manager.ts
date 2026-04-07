@@ -18,7 +18,7 @@ export interface CompressResult {
 export type CompressFunction = (phase: Phase) => Promise<string>;
 
 export interface ContextManagerOptions {
-  sessionId: string;
+  engramId: string;
   contextDir: string;
   maxTokens: number;
   compressionThreshold?: number;
@@ -45,7 +45,7 @@ function phaseToRaw(phase: Phase): string {
 }
 
 export class ContextManager {
-  private readonly sessionId: string;
+  private readonly engramId: string;
   private readonly contextDir: string;
   private readonly maxTokens: number;
   private readonly compressionThreshold: number;
@@ -55,7 +55,7 @@ export class ContextManager {
   private currentTokenCount = 0;
 
   constructor(options: ContextManagerOptions) {
-    this.sessionId = options.sessionId;
+    this.engramId = options.engramId;
     this.contextDir = options.contextDir;
     this.maxTokens = options.maxTokens;
     this.compressionThreshold = options.compressionThreshold ?? DEFAULT_COMPRESSION_THRESHOLD;
@@ -95,9 +95,9 @@ export class ContextManager {
   }
 
   private async compressPhase(storedPhase: StoredPhase): Promise<void> {
-    const contextFilePath = path.join(this.contextDir, this.sessionId, `${storedPhase.id}.ctx`);
+    const contextFilePath = path.join(this.contextDir, this.engramId, `${storedPhase.id}.ctx`);
 
-    await mkdir(path.join(this.contextDir, this.sessionId), { recursive: true });
+    await mkdir(path.join(this.contextDir, this.engramId), { recursive: true });
     await writeFile(contextFilePath, phaseToRaw(storedPhase.phase), 'utf8');
 
     const compressed = await this.compressFn(storedPhase.phase);

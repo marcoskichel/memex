@@ -11,7 +11,7 @@ const mockImportText = vi.fn();
 const mockGetRecent = vi.fn();
 
 const mockMemory = {
-  sessionId: 'test-session',
+  engramId: 'test-engram',
   logInsight: mockLogInsight,
   recall: mockRecall,
   getStats: mockGetStats,
@@ -86,7 +86,7 @@ describe('handleRequest — recall', () => {
 
 describe('handleRequest — getStats', () => {
   it('delegates to memory.getStats and returns stats', async () => {
-    const fakeStats = { capturedAt: new Date(), sessionId: 'test-session' };
+    const fakeStats = { capturedAt: new Date(), engramId: 'test-engram' };
     mockGetStats.mockResolvedValueOnce(fakeStats);
     const message: RequestMessage = {
       id: '3',
@@ -159,7 +159,7 @@ describe('handleRequest — getContext', () => {
     const message: RequestMessage = {
       id: '5',
       type: 'getContext',
-      payload: { sessionId: 'test-session', toolName: 'Read', toolInput: { path: '/foo' } },
+      payload: { engramId: 'test-engram', toolName: 'Read', toolInput: { path: '/foo' } },
     };
     const response = await handleRequest(message, mockMemory);
     expect(mockRecall).toHaveBeenCalledTimes(3);
@@ -186,7 +186,7 @@ describe('handleRequest — getContext', () => {
     const message: RequestMessage = {
       id: '6',
       type: 'getContext',
-      payload: { sessionId: 'test-session', toolName: 'Read', toolInput: {} },
+      payload: { engramId: 'test-engram', toolName: 'Read', toolInput: {} },
     };
     const response = await handleRequest(message, mockMemory);
     const result = (response as { result: string }).result;
@@ -209,7 +209,7 @@ describe('handleRequest — getContext', () => {
     const message: RequestMessage = {
       id: '7',
       type: 'getContext',
-      payload: { sessionId: 'test-session', toolName: 'Read', toolInput: {} },
+      payload: { engramId: 'test-engram', toolName: 'Read', toolInput: {} },
     };
     const response = await handleRequest(message, mockMemory);
     const result = (response as { result: string }).result;
@@ -224,7 +224,7 @@ describe('handleRequest — getContext', () => {
     const message: RequestMessage = {
       id: '8',
       type: 'getContext',
-      payload: { sessionId: 'test-session', toolName: 'Read', toolInput: {} },
+      payload: { engramId: 'test-engram', toolName: 'Read', toolInput: {} },
     };
     const response = await handleRequest(message, mockMemory);
     const result = (response as { result: string }).result;
@@ -244,7 +244,7 @@ describe('handleRequest — getContext', () => {
     const message: RequestMessage = {
       id: '9',
       type: 'getContext',
-      payload: { sessionId: 'test-session', toolName: 'Read', toolInput: {} },
+      payload: { engramId: 'test-engram', toolName: 'Read', toolInput: {} },
     };
     const response = await handleRequest(message, mockMemory);
     expect(response).toMatchObject({ id: '9', ok: true });
@@ -263,7 +263,7 @@ describe('handleRequest — getContext', () => {
     const message: RequestMessage = {
       id: '10',
       type: 'getContext',
-      payload: { sessionId: 'test-session', toolName: 'Read', toolInput: {} },
+      payload: { engramId: 'test-engram', toolName: 'Read', toolInput: {} },
     };
     const response = await handleRequest(message, mockMemory);
     expect(response).toMatchObject({ id: '10', ok: true });

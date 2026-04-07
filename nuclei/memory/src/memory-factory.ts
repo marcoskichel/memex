@@ -16,13 +16,13 @@ import type { CreateMemoryResult, MemoryConfig } from './memory-types.js';
 
 function buildAmygdala(
   config: MemoryConfig,
-  deps: { ltm: LtmEngine; stm: InsightLogLike; events: MemoryEventEmitter; sessionId: string },
+  deps: { ltm: LtmEngine; stm: InsightLogLike; events: MemoryEventEmitter; engramId: string },
 ): AmygdalaProcess {
   return new AmygdalaProcess({
     ltm: deps.ltm,
     stm: deps.stm,
     llmAdapter: config.llmAdapter,
-    sessionId: deps.sessionId,
+    engramId: deps.engramId,
     ...(config.amygdalaCadenceMs !== undefined && { cadenceMs: config.amygdalaCadenceMs }),
     ...(config.maxLLMCallsPerHour !== undefined && {
       maxLLMCallsPerHour: config.maxLLMCallsPerHour,
@@ -56,30 +56,31 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
   const embeddingAdapter: EmbeddingAdapter = config.embeddingAdapter;
   const ltm = new LtmEngine({ storage, embeddingAdapter });
   const stm = config.stm ?? new InsightLog();
-  const sessionId = config.sessionId ?? randomUUID();
+  const engramId = config.engramId ?? randomUUID();
   const contextDirectory =
     config.contextDirectory ?? path.join(path.dirname(config.storagePath), 'context');
-  const sessionContextDirectory = path.join(contextDirectory, sessionId);
+  const engramContextDirectory = path.join(contextDirectory, engramId);
 
-  await mkdir(sessionContextDirectory, { recursive: true });
+  await mkdir(engramContextDirectory, { recursive: true });
 
   const events = new MemoryEventEmitter();
 
-  const amygdala = buildAmygdala(config, { ltm, stm, events, sessionId });
+  const amygdala = buildAmygdala(config, { ltm, stm, events, engramId });
   const hippocampus = buildHippocampus(config, { ltm, events, contextDirectory });
 
   amygdala.start();
   hippocampus.start();
 
   const memory = new MemoryImpl({
-    sessionId,
+    engramId,
     events,
     ltm,
     stm,
     amygdala,
     hippocampus,
-    contextDirectory: sessionContextDirectory,
+    contextDirectory: engramContextDirectory,
     llmAdapter: config.llmAdapter,
+    forkFn: (outputPath: string) => storage.fork(outputPath),
   });
   const startupStats = await memory.getStats();
   return { memory, startupStats };

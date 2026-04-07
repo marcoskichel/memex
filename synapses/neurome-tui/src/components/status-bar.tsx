@@ -2,7 +2,7 @@ import type { MemoryStats } from '@neurome/memory';
 import { Box, Text } from 'ink';
 
 interface StatusBarProps {
-  sessionId: string;
+  engramId: string;
   connected: boolean;
   reconnectCount: number;
   maxReconnectExceeded: boolean;
@@ -11,7 +11,7 @@ interface StatusBarProps {
 }
 
 export function StatusBar({
-  sessionId,
+  engramId,
   connected,
   reconnectCount,
   maxReconnectExceeded,
@@ -36,7 +36,7 @@ export function StatusBar({
   return (
     <Box borderStyle="single" paddingX={1} width={width} flexDirection="column">
       <Box>
-        <Text>session: {sessionId} </Text>
+        <Text>engram: {engramId} </Text>
         <Box flexGrow={1}>{connectionIndicator}</Box>
         <Text>
           ltm: {ltmCount} stm: {stmPending}

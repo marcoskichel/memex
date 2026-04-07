@@ -62,7 +62,7 @@ function registerGetStats(server: McpServer, axon: AxonClient): void {
   );
 }
 
-export function createServer(axon: AxonClient, sessionId: string): McpServer {
+export function createServer(axon: AxonClient, engramId: string): McpServer {
   const server = new McpServer({ name: 'dendrite', version: '0.0.0' });
 
   registerRecall(server, axon);
@@ -80,7 +80,7 @@ export function createServer(axon: AxonClient, sessionId: string): McpServer {
     async ({ tool_name: toolName, tool_input: toolInput, category }) => {
       try {
         const payload = {
-          sessionId,
+          engramId,
           toolName,
           toolInput,
           ...(category === undefined ? {} : { category }),
@@ -97,8 +97,8 @@ export function createServer(axon: AxonClient, sessionId: string): McpServer {
   return server;
 }
 
-export async function startServer(axon: AxonClient, sessionId: string): Promise<void> {
-  const server = createServer(axon, sessionId);
+export async function startServer(axon: AxonClient, engramId: string): Promise<void> {
+  const server = createServer(axon, engramId);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

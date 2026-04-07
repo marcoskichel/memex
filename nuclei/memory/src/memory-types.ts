@@ -34,7 +34,7 @@ export const DEFAULT_PENDING_CONSOLIDATION_TTL_MS =
 
 export interface MemoryConfig {
   storagePath: string;
-  sessionId?: string;
+  engramId?: string;
   contextDirectory?: string;
   llmAdapter: LLMAdapter;
   embeddingAdapter: EmbeddingAdapter;
@@ -60,7 +60,7 @@ export interface PendingConsolidation {
 }
 
 export interface ShutdownReport {
-  sessionId: string;
+  engramId: string;
   shutdownAt: Date;
   durationMs: number;
   stmPhasesCompressed: number;
@@ -116,13 +116,13 @@ export interface LogInsightOptions {
 }
 
 export interface Memory {
-  readonly sessionId: string;
+  readonly engramId: string;
   readonly events: MemoryEventEmitter;
   logInsight(options: LogInsightOptions): void;
   recall(nlQuery: string, options?: LtmQueryOptions): ReturnType<LtmEngine['query']>;
   recallSession(
     query: string,
-    options: { sessionId: string } & Omit<LtmQueryOptions, 'sessionId'>,
+    options: { engramId: string } & Omit<LtmQueryOptions, 'engramId'>,
   ): Promise<LtmQueryResult[]>;
   recallFull(
     id: number,
@@ -136,6 +136,7 @@ export interface Memory {
   discardConsolidation(pendingId: string): void;
   setAgentState(state: AgentState | undefined): void;
   getStats(): Promise<MemoryStats>;
+  fork(outputPath: string): Promise<string>;
   pruneContextFiles(options: { olderThanDays: number }): Promise<PruneContextFilesReport>;
   shutdown(): Promise<ShutdownReport>;
 }

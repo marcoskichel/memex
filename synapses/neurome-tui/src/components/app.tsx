@@ -26,10 +26,10 @@ const LEFT_PANE_WIDTH_RATIO = 0.55;
 const TOAST_DURATION_MS = 4000;
 
 interface AppProps {
-  sessionId: string;
+  engramId: string;
 }
 
-export function App({ sessionId }: AppProps) {
+export function App({ engramId }: AppProps) {
   const [focused, setFocused] = useState<Pane>('events');
   const [connected, setConnected] = useState(false);
   const [reconnectCount, setReconnectCount] = useState(0);
@@ -60,7 +60,7 @@ export function App({ sessionId }: AppProps) {
   );
 
   useEffect(() => {
-    const client = MemexSocketClient.forSession(sessionId);
+    const client = MemexSocketClient.forSession(engramId);
     clientReference.current = client;
 
     const unsubConn = client.onConnectionChange((isConnected) => {
@@ -86,7 +86,7 @@ export function App({ sessionId }: AppProps) {
       unsubError();
       client.disconnect();
     };
-  }, [sessionId, handleError]);
+  }, [engramId, handleError]);
 
   const handleStats = useCallback((memoryStats: MemoryStats) => {
     setStats(memoryStats);
@@ -218,7 +218,7 @@ export function App({ sessionId }: AppProps) {
     <Box flexDirection="column" width={cols} height={rows}>
       <ToastBar toasts={toasts} />
       <StatusBar
-        sessionId={sessionId}
+        engramId={engramId}
         connected={connected}
         reconnectCount={reconnectCount}
         maxReconnectExceeded={maxReconnectExceeded}

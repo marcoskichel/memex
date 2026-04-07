@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   ConsolidatePayload,
+  ForkPayload,
   GetContextPayload,
   GetRecentPayload,
   GetStatsPayload,
@@ -44,8 +45,8 @@ export class AxonClient {
   private readonly inflight = new Map<string, PendingRequest>();
   private readonly pending: (() => void)[] = [];
 
-  constructor(sessionId: string) {
-    const socketPath = IPC_SOCKET_PATH(sessionId);
+  constructor(engramId: string) {
+    const socketPath = IPC_SOCKET_PATH(engramId);
     this.connection = new Connection(socketPath, {
       inflight: this.inflight,
       pending: this.pending,
@@ -116,6 +117,16 @@ export class AxonClient {
   async consolidate(timeoutMs = DEFAULT_READ_TIMEOUT_MS): Promise<void> {
     const payload: ConsolidatePayload = {};
     await this.sendRequest<undefined>({ type: 'consolidate', payload, timeoutMs });
+  }
+
+  async fork(outputPath: string, timeoutMs = DEFAULT_READ_TIMEOUT_MS): Promise<string> {
+    const payload: ForkPayload = { outputPath };
+    const result = await this.sendRequest<{ forkPath: string }>({
+      type: 'fork',
+      payload,
+      timeoutMs,
+    });
+    return result.forkPath;
   }
 
   disconnect(): void {

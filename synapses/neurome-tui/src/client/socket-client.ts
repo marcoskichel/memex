@@ -32,8 +32,8 @@ export class MemexSocketClient {
 
   constructor(private readonly socketPath: string) {}
 
-  static forSession(sessionId: string): MemexSocketClient {
-    return new MemexSocketClient(IPC_SOCKET_PATH(sessionId));
+  static forSession(engramId: string): MemexSocketClient {
+    return new MemexSocketClient(IPC_SOCKET_PATH(engramId));
   }
 
   get isConnected(): boolean {

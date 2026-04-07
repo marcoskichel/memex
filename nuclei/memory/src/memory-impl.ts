@@ -29,7 +29,7 @@ import {
 import { PendingConsolidationStore } from './pending-consolidation-store.js';
 
 export interface MemoryImplDeps {
-  sessionId: string;
+  engramId: string;
   events: MemoryEventEmitter;
   ltm: LtmEngine;
   stm: InsightLogLike;
@@ -37,11 +37,12 @@ export interface MemoryImplDeps {
   hippocampus: HippocampusProcess;
   contextDirectory: string;
   llmAdapter: LLMAdapter;
+  forkFn: (outputPath: string) => Promise<string>;
   pendingConsolidationTtlMs?: number;
 }
 
 export class MemoryImpl implements Memory {
-  readonly sessionId: string;
+  readonly engramId: string;
   readonly events: MemoryEventEmitter;
 
   private ltm: LtmEngine;
@@ -50,6 +51,7 @@ export class MemoryImpl implements Memory {
   private hippocampus: HippocampusProcess;
   private contextDirectory: string;
   private llmAdapter: LLMAdapter;
+  private forkFn: (outputPath: string) => Promise<string>;
   private isShuttingDown = false;
   private pendingStore: PendingConsolidationStore;
 
@@ -71,7 +73,7 @@ export class MemoryImpl implements Memory {
   };
 
   constructor(deps: MemoryImplDeps) {
-    this.sessionId = deps.sessionId;
+    this.engramId = deps.engramId;
     this.events = deps.events;
     this.ltm = deps.ltm;
     this.stm = deps.stm;
@@ -79,6 +81,7 @@ export class MemoryImpl implements Memory {
     this.hippocampus = deps.hippocampus;
     this.contextDirectory = deps.contextDirectory;
     this.llmAdapter = deps.llmAdapter;
+    this.forkFn = deps.forkFn;
     this.pendingStore = new PendingConsolidationStore(
       deps.pendingConsolidationTtlMs ?? DEFAULT_PENDING_CONSOLIDATION_TTL_MS,
     );
@@ -127,10 +130,10 @@ export class MemoryImpl implements Memory {
 
   async recallSession(
     query: string,
-    options: { sessionId: string } & Omit<LtmQueryOptions, 'sessionId'>,
+    options: { engramId: string } & Omit<LtmQueryOptions, 'engramId'>,
   ): Promise<LtmQueryResult[]> {
-    const { sessionId, ...rest } = options;
-    const result = await this.ltm.query(query, { strengthen: false, ...rest, sessionId });
+    const { engramId, ...rest } = options;
+    const result = await this.ltm.query(query, { strengthen: false, ...rest, engramId });
     return result.isOk() ? result.value : [];
   }
 
@@ -190,7 +193,7 @@ export class MemoryImpl implements Memory {
 
     return {
       capturedAt: new Date(),
-      sessionId: this.sessionId,
+      engramId: this.engramId,
       ltm: {
         totalRecords: ltmRaw.total,
         episodicCount: ltmRaw.episodic,
@@ -208,6 +211,10 @@ export class MemoryImpl implements Memory {
     };
   }
 
+  async fork(outputPath: string): Promise<string> {
+    return this.forkFn(outputPath);
+  }
+
   async pruneContextFiles(options: { olderThanDays: number }): Promise<PruneContextFilesReport> {
     return pruneContextFiles(this.contextDirectory, { stm: this.stm, options });
   }
@@ -223,7 +230,7 @@ export class MemoryImpl implements Memory {
     const diskStats = await this.collectDiskStats();
 
     return {
-      sessionId: this.sessionId,
+      engramId: this.engramId,
       shutdownAt: new Date(),
       durationMs: Date.now() - startedAt,
       stmPhasesCompressed: 0,

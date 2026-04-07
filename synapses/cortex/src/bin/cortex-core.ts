@@ -14,8 +14,8 @@ const FORCE_EXIT_TIMEOUT_MS = 30_000;
 export interface CortexConfig {
   dbPath: string;
   apiKey: string;
-  openaiApiKey?: string;
-  sessionId?: string;
+  openaiApiKey: string;
+  engramId?: string;
 }
 
 export class ConfigError extends Error {
@@ -28,20 +28,22 @@ export class ConfigError extends Error {
 export function readConfig(): CortexConfig {
   const dbPath = process.env.MEMORY_DB_PATH;
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
   if (!dbPath) {
     throw new ConfigError('MEMORY_DB_PATH is required');
   }
   if (!apiKey) {
     throw new ConfigError('ANTHROPIC_API_KEY is required');
   }
+  if (!openaiApiKey) {
+    throw new ConfigError('OPENAI_API_KEY is required');
+  }
   return {
     dbPath,
     apiKey,
-    ...(process.env.OPENAI_API_KEY !== undefined && {
-      openaiApiKey: process.env.OPENAI_API_KEY,
-    }),
-    ...(process.env.MEMORY_SESSION_ID !== undefined && {
-      sessionId: process.env.MEMORY_SESSION_ID,
+    openaiApiKey,
+    ...(process.env.NEUROME_ENGRAM_ID !== undefined && {
+      engramId: process.env.NEUROME_ENGRAM_ID,
     }),
   };
 }
@@ -108,22 +110,20 @@ export async function main(): Promise<void> {
 
   const stm = new SqliteInsightLog(config.dbPath);
   const llmAdapter = new AnthropicAdapter(config.apiKey);
-  const embeddingAdapter = config.openaiApiKey
-    ? new OpenAIEmbeddingAdapter({ apiKey: config.openaiApiKey })
-    : undefined;
+  const embeddingAdapter = new OpenAIEmbeddingAdapter({ apiKey: config.openaiApiKey });
 
   const result = await createMemory({
     storagePath: config.dbPath,
     llmAdapter,
+    embeddingAdapter,
     stm,
-    ...(embeddingAdapter !== undefined && { embeddingAdapter }),
-    ...(config.sessionId !== undefined && { sessionId: config.sessionId }),
+    ...(config.engramId !== undefined && { engramId: config.engramId }),
   });
 
   const { memory } = result;
   setActiveMemory(memory);
 
-  const socketPath = IPC_SOCKET_PATH(memory.sessionId);
+  const socketPath = IPC_SOCKET_PATH(memory.engramId);
   const server = new SocketServer(socketPath);
   activeServer = server;
 
