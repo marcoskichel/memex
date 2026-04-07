@@ -23,3 +23,14 @@
 
 - **WHEN** a record is inserted without a `metadata.entities` field
 - **THEN** `record.metadata.entities` is `undefined` on retrieval
+
+## ADDED Requirements
+
+### Requirement: StorageAdapter exposes entity graph methods
+
+`StorageAdapter` SHALL declare `insertEntity`, `findEntityByEmbedding`, `insertEntityEdge`, and `getEntityNeighbors` as required methods. All implementations (`SqliteAdapter`, `InMemoryAdapter`) SHALL provide concrete implementations.
+
+#### Scenario: InMemoryAdapter satisfies StorageAdapter contract
+
+- **WHEN** `InMemoryAdapter` is used in tests
+- **THEN** all four entity graph methods are callable without runtime errors
