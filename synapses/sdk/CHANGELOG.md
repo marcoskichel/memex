@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/marcoskichel/neurome/compare/sdk-v0.2.0...sdk-v0.2.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **sdk:** add repository url for npm provenance verification ([91aa3c9](https://github.com/marcoskichel/neurome/commit/91aa3c963b79c74bb412f75d775231f78e84a764))
+
 ## [0.2.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.1.1...sdk-v0.2.0) (2026-04-07)
 
 
