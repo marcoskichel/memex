@@ -17,8 +17,18 @@ permissions:
 jobs:
   prepare-manual-release:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.actor == 'marcoskichel'
+    if: github.event_name == 'workflow_dispatch'
     steps:
+      - name: Check admin permission
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          permission=$(gh api repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission --jq '.permission')
+          if [ "$permission" != "admin" ]; then
+            echo "Only admins can trigger manual releases"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Determine version
