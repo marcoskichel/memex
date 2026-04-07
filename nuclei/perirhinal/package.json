@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test",
-    "e2e": "tsx scripts/e2e.ts"
+    "e2e": "dotenv -e .env.e2e -- tsx scripts/e2e.ts"
   },
   "dependencies": {
     "@neurome/ltm": "workspace:*",
@@ -33,6 +33,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.0.0",
     "better-sqlite3": "^11.9.1",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",
     "tsx": "^4.19.4",
