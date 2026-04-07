@@ -6,12 +6,6 @@ This is the recommended starting point for most users. If you need fine-grained 
 
 Part of the [Neurome](../../README.md) memory infrastructure.
 
-## Install
-
-```sh
-pnpm add @neurome/memory
-```
-
 ## Usage
 
 ```ts
@@ -70,7 +64,7 @@ const report = await memory.shutdown();
 | `llmAdapter`            | `LLMAdapter`       | required                       | LLM used for scoring and consolidation            |
 | `sessionId`             | `string`           | random UUID                    | Identifies the current session                    |
 | `contextDirectory`      | `string`           | `dirname(storagePath)/context` | Directory for context files                       |
-| `embeddingAdapter`      | `EmbeddingAdapter` | `TransformersJsAdapter`        | Embedding model for semantic search               |
+| `embeddingAdapter`      | `EmbeddingAdapter` | required                       | Embedding model for semantic search               |
 | `stm`                   | `InsightLogLike`   | in-memory `InsightLog`         | Short-term memory store                           |
 | `maxTokens`             | `number`           | `100000`                       | Token budget before STM compression triggers      |
 | `amygdalaCadenceMs`     | `number`           | `300000`                       | How often the amygdala scores STM insights (ms)   |

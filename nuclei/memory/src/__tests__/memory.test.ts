@@ -63,7 +63,6 @@ const mockHippocampusStop = vi.fn();
 
 vi.mock('@neurome/ltm', () => ({
   SqliteAdapter: vi.fn(() => ({})),
-  TransformersJsAdapter: vi.fn(() => ({})),
   LtmEngine: vi.fn(() => ({
     query: mockLtmQuery,
     stats: mockLtmStats,
@@ -105,9 +104,12 @@ vi.mock('node:fs/promises', () => ({
 
 const mockLlmAdapter = { complete: vi.fn(), completeStructured: vi.fn() };
 
+const mockEmbeddingAdapter = { modelId: 'mock', dimensions: 384, embed: vi.fn() };
+
 const baseConfig = {
   storagePath: '/tmp/test.db',
   llmAdapter: mockLlmAdapter,
+  embeddingAdapter: mockEmbeddingAdapter,
 };
 
 describe('createMemory', () => {
