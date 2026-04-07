@@ -1,9 +1,8 @@
 {
   "extends": "@neurome/typescript-config/node",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "outDir": "./dist"
   },
-  "include": ["src"],
+  "include": ["src", "tsup.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
