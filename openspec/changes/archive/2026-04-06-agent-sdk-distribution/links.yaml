@@ -1,0 +1,13 @@
+scopes:
+  - name: engram-rename
+    path: openspec/changes
+  - name: drop-xenova
+    path: nuclei/ltm
+  - name: fork-protocol
+    path: nuclei/cortex-ipc
+  - name: fork-command
+    path: synapses/cortex
+  - name: fork-client
+    path: nuclei/axon
+  - name: engram-sdk
+    path: synapses/sdk

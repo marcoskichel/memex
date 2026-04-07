@@ -1,0 +1,9 @@
+scopes:
+  - name: amygdala
+    path: nuclei/amygdala
+  - name: ltm
+    path: nuclei/ltm
+  - name: memory
+    path: nuclei/memory
+  - name: cortex-ipc
+    path: nuclei/cortex-ipc
