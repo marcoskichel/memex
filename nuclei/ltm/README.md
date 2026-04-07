@@ -4,12 +4,6 @@ Long-term memory for agents — persists observations as vector embeddings in SQ
 
 Part of the [Neurome](../../README.md) memory infrastructure.
 
-## Install
-
-```sh
-pnpm add @neurome/ltm
-```
-
 ## Usage
 
 ```ts

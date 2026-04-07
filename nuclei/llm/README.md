@@ -4,12 +4,6 @@ The cognitive processing layer — a uniform adapter interface over Anthropic an
 
 Part of the [Neurome](../../README.md) memory infrastructure.
 
-## Install
-
-```sh
-pnpm add @neurome/llm
-```
-
 ## Usage
 
 **Basic text completion**

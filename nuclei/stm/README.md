@@ -4,12 +4,6 @@ Short-term memory for agents — records raw insights during a run and holds the
 
 Part of the [Neurome](../../README.md) memory infrastructure.
 
-## Install
-
-```sh
-pnpm add @neurome/stm
-```
-
 ## Usage
 
 ```ts

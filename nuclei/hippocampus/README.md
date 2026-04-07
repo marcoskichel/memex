@@ -4,12 +4,6 @@ Like its biological namesake, this package consolidates short-term episodic reco
 
 Part of the [Neurome](../../README.md) memory infrastructure.
 
-## Install
-
-```sh
-pnpm add @neurome/hippocampus
-```
-
 ## Usage
 
 ```ts

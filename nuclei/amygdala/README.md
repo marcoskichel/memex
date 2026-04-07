@@ -4,12 +4,6 @@ Like its neural namesake, it decides what matters — a background worker that L
 
 Part of the [Neurome](../../README.md) memory infrastructure.
 
-## Install
-
-```sh
-pnpm add @neurome/amygdala
-```
-
 ## Usage
 
 ```ts
