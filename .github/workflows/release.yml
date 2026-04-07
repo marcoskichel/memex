@@ -22,27 +22,6 @@ jobs:
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
-      - uses: actions/checkout@v4
-        if: steps.release.outputs.pr != ''
-        with:
-          ref: ${{ steps.release.outputs.pr != '' && fromJson(steps.release.outputs.pr).headBranchName || '' }}
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-
-      - uses: pnpm/action-setup@v4
-        if: steps.release.outputs.pr != ''
-        with:
-          version: 10.11.0
-
-      - name: Format CHANGELOG
-        if: steps.release.outputs.pr != ''
-        run: |
-          pnpm exec prettier --write synapses/sdk/CHANGELOG.md
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add synapses/sdk/CHANGELOG.md
-          git diff --staged --quiet || git commit -m "chore: format CHANGELOG.md"
-          git push
-
   publish:
     runs-on: ubuntu-latest
     needs: release-please
