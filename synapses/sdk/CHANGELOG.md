@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/marcoskichel/neurome/compare/sdk-v0.2.1...sdk-v0.2.2) (2026-04-07)
+
+
+### Continuous Integration
+
+* **release:** remove manual dispatch workflow ([ce7222d](https://github.com/marcoskichel/neurome/commit/ce7222d1bd4909d8a4a18e34c1891e54595c2749))
+
 ## [0.2.1](https://github.com/marcoskichel/neurome/compare/sdk-v0.2.0...sdk-v0.2.1) (2026-04-07)
 
 
