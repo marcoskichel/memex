@@ -2,6 +2,12 @@
 
 The human brain filters, consolidates, and recalls by relevance. AI agents don't — by default. Neurome gives them the same machinery: an amygdala for salience, a hippocampus for consolidation, short-term memory for the present, and long-term memory for the past.
 
+## Overview
+
+Neurome (`@neurome/*`) is a biologically-inspired, persistent memory system for AI agents. It models the human cognitive memory system — working memory, short-term consolidation, long-term storage, and hippocampal integration — as a layered, autonomous pipeline that runs continuously alongside an agent process. By borrowing structure from neuroscience rather than from conventional database design, Neurome gives agents the ability to remember, forget gracefully, and discover relationships across accumulated observations over time.
+
+> For the full system specification, see [docs/SPEC.md](./docs/SPEC.md).
+
 ## Nuclei
 
 Core packages — compose via `@neurome/memory` or use individually.
