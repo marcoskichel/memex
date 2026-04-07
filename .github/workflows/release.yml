@@ -5,15 +5,48 @@ on:
     branches:
       - master
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.2.3). Leave empty to auto-bump patch.'
+        required: false
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
+  prepare-manual-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.actor == 'marcoskichel'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            echo "version=$INPUT_VERSION" >> $GITHUB_OUTPUT
+          else
+            current=$(jq -r '.["synapses/sdk"]' .release-please-manifest.json)
+            IFS='.' read -r major minor patch <<< "$current"
+            patch=$((patch + 1))
+            echo "version=${major}.${minor}.${patch}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push release commit
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: release $RELEASE_VERSION" -m "Release-As: $RELEASE_VERSION"
+          git push
+
   release-please:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.actor == 'marcoskichel'
+    if: github.event_name == 'push'
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
     steps:
