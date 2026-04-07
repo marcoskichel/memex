@@ -1,4 +1,5 @@
 import type { EmbeddingMeta } from '../core/embedding-adapter.js';
+import type { EntityType } from '../ltm-engine-types.js';
 
 export interface LtmRecord {
   id: number;
@@ -26,6 +27,22 @@ export interface LtmEdge {
   type: 'supersedes' | 'elaborates' | 'contradicts' | 'consolidates';
   stability: number;
   lastAccessedAt: Date;
+  createdAt: Date;
+}
+
+export interface EntityNode {
+  id: number;
+  name: string;
+  type: EntityType;
+  embedding: Float32Array;
+  createdAt: Date;
+}
+
+export interface EntityEdge {
+  id: number;
+  fromId: number;
+  toId: number;
+  type: string;
   createdAt: Date;
 }
 
@@ -73,4 +90,11 @@ export interface StorageAdapter {
 
   acquireLock(process: string, ttlMs: number): boolean;
   releaseLock(process: string): void;
+
+  insertEntity(entity: Omit<EntityNode, 'id'>): number;
+  findEntityByEmbedding(embedding: Float32Array, threshold: number): EntityNode[];
+  insertEntityEdge(edge: Omit<EntityEdge, 'id'>): number;
+  getEntityNeighbors(entityId: number, depth: number): EntityNode[];
+  insertEntityRecordLink(entityId: number, recordId: number): number;
+  getUnlinkedRecordIds(): number[];
 }

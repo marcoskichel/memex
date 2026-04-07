@@ -1,7 +1,7 @@
 ## 1. Package Scaffold
 
 - [ ] 1.1 Set up `src/` directory structure: `core/`, `shell/`, `shell/clients/`
-- [ ] 1.2 Install `pnpm` workspace dependencies (`@neurome/ltm`, `@neurome/llm`, `neverthrow`)
+- [x] 1.2 Install `pnpm` workspace dependencies (`@neurome/ltm`, `@neurome/llm`, `neverthrow`)
 
 ## 2. Types
 

@@ -1,4 +1,7 @@
+import { MAX_ENTITY_NEIGHBOR_DEPTH } from './sqlite-schema.js';
 import type {
+  EntityEdge,
+  EntityNode,
   LtmEdge,
   LtmRecord,
   StorageAdapter,
@@ -7,12 +10,19 @@ import type {
   UpdateEmbeddingParams,
   UpdateStabilityParams,
 } from './storage-adapter.js';
+import { cosineSimilarity } from '../core/cosine-similarity.js';
 
 export class InMemoryAdapter implements StorageAdapter {
   private records = new Map<number, LtmRecord & { _deleted?: boolean }>();
   private edges = new Map<number, LtmEdge>();
+  private entities = new Map<number, EntityNode>();
+  private entityEdges = new Map<number, EntityEdge>();
+  private entityRecordLinks = new Map<number, { entityId: number; recordId: number }>();
   private nextRecordId = 1;
   private nextEdgeId = 1;
+  private nextEntityId = 1;
+  private nextEntityEdgeId = 1;
+  private nextEntityRecordLinkId = 1;
 
   insertRecord(record: Omit<LtmRecord, 'id'>): number {
     const id = this.nextRecordId++;
@@ -168,5 +178,79 @@ export class InMemoryAdapter implements StorageAdapter {
 
   releaseLock(process: string): void {
     void process;
+  }
+
+  insertEntity(entity: Omit<EntityNode, 'id'>): number {
+    const id = this.nextEntityId++;
+    this.entities.set(id, { ...entity, id });
+    return id;
+  }
+
+  findEntityByEmbedding(embedding: Float32Array, threshold: number): EntityNode[] {
+    const candidates: { entity: EntityNode; similarity: number }[] = [];
+    for (const entity of this.entities.values()) {
+      const similarity = cosineSimilarity(entity.embedding, embedding);
+      if (similarity >= threshold) {
+        candidates.push({ entity, similarity });
+      }
+    }
+    candidates.sort((first, second) => second.similarity - first.similarity);
+    return candidates.map((candidate) => candidate.entity);
+  }
+
+  insertEntityEdge(edge: Omit<EntityEdge, 'id'>): number {
+    const id = this.nextEntityEdgeId++;
+    this.entityEdges.set(id, { ...edge, id });
+    return id;
+  }
+
+  getEntityNeighbors(entityId: number, depth: number): EntityNode[] {
+    const clampedDepth = Math.min(Math.max(depth, 1), MAX_ENTITY_NEIGHBOR_DEPTH);
+    const visited = new Set<number>();
+    const queue: { id: number; depth: number }[] = [{ id: entityId, depth: 0 }];
+    visited.add(entityId);
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current || current.depth >= clampedDepth) {
+        continue;
+      }
+      for (const edge of this.entityEdges.values()) {
+        if (edge.fromId === current.id && !visited.has(edge.toId)) {
+          visited.add(edge.toId);
+          queue.push({ id: edge.toId, depth: current.depth + 1 });
+        }
+      }
+    }
+
+    visited.delete(entityId);
+    const result: EntityNode[] = [];
+    for (const id of visited) {
+      const entity = this.entities.get(id);
+      if (entity) {
+        result.push(entity);
+      }
+    }
+    return result;
+  }
+
+  insertEntityRecordLink(entityId: number, recordId: number): number {
+    const id = this.nextEntityRecordLinkId++;
+    this.entityRecordLinks.set(id, { entityId, recordId });
+    return id;
+  }
+
+  getUnlinkedRecordIds(): number[] {
+    const linkedRecordIds = new Set<number>();
+    for (const link of this.entityRecordLinks.values()) {
+      linkedRecordIds.add(link.recordId);
+    }
+    const result: number[] = [];
+    for (const record of this.records.values()) {
+      if (!record.tombstoned && !linkedRecordIds.has(record.id)) {
+        result.push(record.id);
+      }
+    }
+    return result;
   }
 }
