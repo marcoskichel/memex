@@ -155,9 +155,96 @@ async function main(): Promise<void> {
   }
 
   // -----------------------------------------------
-  // Scenario 9: shutdown completes cleanly
+  // Scenario 9: entities extracted after consolidation
   // -----------------------------------------------
-  console.log('\n[Scenario 9] shutdown() — completes cleanly');
+  console.log('\n[Scenario 9] consolidate() — perirhinal extracts entities into graph');
+  const entityContextFilePath = path.join(tmpdir(), `e2e-entity-ctx-${Date.now()}.md`);
+  writeFileSync(
+    entityContextFilePath,
+    '# Context\nAlice Chen is a senior engineer at Nexus Corp. She collaborates closely with Bob Martinez, the product manager, on the payment gateway project. They have been working together since 2023.',
+  );
+  memory.logInsight({
+    summary:
+      'Alice Chen and Bob Martinez collaborate on the Nexus Corp payment gateway project. Alice leads engineering, Bob leads product.',
+    contextFile: entityContextFilePath,
+  });
+
+  const perirhinalDone9 = new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error('perirhinal:extraction:end timed out')),
+      30_000,
+    );
+    memory.events.once('perirhinal:extraction:end', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+  });
+  await memory.consolidate();
+  await perirhinalDone9;
+
+  const stats9 = await memory.getStats();
+  if (stats9.perirhinal.recordsProcessed === 0) {
+    console.warn(
+      '  WARN: perirhinal processed 0 records (amygdala may have produced no LTM records)',
+    );
+  } else {
+    console.log(
+      `  OK: perirhinal processed ${String(stats9.perirhinal.recordsProcessed)} record(s), inserted ${String(stats9.perirhinal.entitiesInserted)} entit(ies), reused ${String(stats9.perirhinal.entitiesReused)}`,
+    );
+  }
+
+  // -----------------------------------------------
+  // Scenario 10: entity info retrieval via recall + hint
+  // -----------------------------------------------
+  console.log('\n[Scenario 10] recall() with entity hint — entityContext.entities populated');
+  const recallResult10 = (
+    await memory.recall('payment gateway engineer Nexus Corp', {
+      currentEntityHint: ['Alice Chen'],
+    })
+  )._unsafeUnwrap();
+
+  const withEntities10 = recallResult10.filter((r) => (r.entityContext?.entities?.length ?? 0) > 0);
+  if (withEntities10.length === 0) {
+    console.warn(
+      '  WARN: no recall results with entityContext.entities (entity graph may be empty due to LLM variance)',
+    );
+  } else {
+    const top10 = withEntities10[0]!;
+    const entityNames = top10.entityContext!.entities.map((e) => e.name).join(', ');
+    console.log(
+      `  OK: ${String(withEntities10.length)} result(s) with entityContext; entities: [${entityNames}]`,
+    );
+  }
+
+  // -----------------------------------------------
+  // Scenario 11: entity path traversal
+  // -----------------------------------------------
+  console.log('\n[Scenario 11] recall() with entity hint — navigationPath between entities');
+  const recallResult11 = (
+    await memory.recall('product manager payment gateway', {
+      currentEntityHint: ['Alice Chen'],
+    })
+  )._unsafeUnwrap();
+
+  const withPath11 = recallResult11.filter(
+    (r) => (r.entityContext?.navigationPath?.length ?? 0) > 0,
+  );
+  if (withPath11.length === 0) {
+    console.warn(
+      '  WARN: no results with navigationPath (Alice and Bob may not be linked in entity graph yet)',
+    );
+  } else {
+    const top11 = withPath11[0]!;
+    const pathStr = top11
+      .entityContext!.navigationPath!.map((step) => step.entity.name)
+      .join(' → ');
+    console.log(`  OK: navigation path found: ${pathStr}`);
+  }
+
+  // -----------------------------------------------
+  // Scenario 12: shutdown completes cleanly
+  // -----------------------------------------------
+  console.log('\n[Scenario 12] shutdown() — completes cleanly');
   const report = await memory.shutdown();
   if (report.engramId !== memory.engramId) {
     throw new Error(
