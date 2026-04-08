@@ -244,6 +244,148 @@ async function main(): Promise<void> {
     await fs.unlink(contextFile).catch(() => undefined);
   }
 
+  // ---------------------------------------------------------------
+  // Scenario 6: Supersedes — reinforced belief overridden by a single contradicting observation
+  // ---------------------------------------------------------------
+  console.log('\n[Scenario 6] Supersedes — reinforced belief overridden by single contradiction');
+  {
+    const { storage, dbPath } = makeScenarioDb('s6');
+    console.log(`  DB: ${dbPath}`);
+
+    const stm = new InsightLog();
+    const proc = makeProcess(storage, stm);
+
+    const dislikeStatements = [
+      'The user said they dislike all fruit and never eat it',
+      'The user confirmed again that they do not eat any fruit',
+      'The user reiterated their strong dislike for fruit of any kind',
+    ];
+
+    for (const summary of dislikeStatements) {
+      const ctx = await writeTempContextFile('s6-dislike', summary);
+      stm.append({ summary, contextFile: ctx, tags: ['preference', 'food'] });
+      await proc.run();
+      await fs.unlink(ctx).catch(() => undefined);
+    }
+
+    const afterDislikes = countLtmRecords(storage);
+    assertOk(
+      afterDislikes >= 1,
+      `Expected at least 1 LTM record after dislike reinforcement, got ${afterDislikes.toString()}`,
+    );
+    console.log(`  OK: ${afterDislikes.toString()} LTM record(s) after 3× dislike observations`);
+
+    const dislikeRecords = storage.getAllRecords().filter((r) => !r.tombstoned);
+    const maxDislikeStability = Math.max(...dislikeRecords.map((r) => r.stability));
+    console.log(`  Max stability of dislike records: ${maxDislikeStability.toFixed(3)}`);
+
+    const likeCtx = await writeTempContextFile(
+      's6-like',
+      'The user said they actually enjoy apples and have been eating them lately',
+    );
+    stm.append({
+      summary: 'The user said they actually enjoy apples and have been eating them lately',
+      contextFile: likeCtx,
+      tags: ['preference', 'food'],
+    });
+    await proc.run();
+    await fs.unlink(likeCtx).catch(() => undefined);
+
+    const allRecords = storage.getAllRecords().filter((r) => !r.tombstoned);
+    const afterLike = allRecords.length;
+    assertOk(
+      afterLike > afterDislikes,
+      `Expected a new record after contradicting observation, got ${afterLike.toString()} (was ${afterDislikes.toString()})`,
+    );
+
+    const allEdges = allRecords.flatMap((r) => storage.edgesFrom(r.id));
+    const supersedesEdges = allEdges.filter((e) => e.type === 'supersedes');
+    const contradictsEdges = allEdges.filter((e) => e.type === 'contradicts');
+
+    if (supersedesEdges.length > 0) {
+      console.log(`  OK: supersedes edge(s) created — count=${supersedesEdges.length.toString()}`);
+      const newestRecord = allRecords.toSorted((a, b) => b.id - a.id)[0];
+      console.log(
+        `  Newest record stability: ${newestRecord.stability.toFixed(3)} (vs max dislike stability: ${maxDislikeStability.toFixed(3)})`,
+      );
+      if (newestRecord.stability < maxDislikeStability) {
+        console.warn(
+          '  WARN: superseding memory has lower stability than the memory it replaces — frequency beats recency',
+        );
+      }
+    } else if (contradictsEdges.length > 0) {
+      console.log(
+        `  OK: contradicts edge(s) created — count=${contradictsEdges.length.toString()}`,
+      );
+    } else {
+      console.warn(
+        '  WARN: no supersedes or contradicts edge created — LLM treated observation as independent insert',
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Scenario 7: Supersedes — user explicitly states a change of mind
+  // ---------------------------------------------------------------
+  console.log('\n[Scenario 7] Supersedes — explicit change of mind');
+  {
+    const { storage, dbPath } = makeScenarioDb('s7');
+    console.log(`  DB: ${dbPath}`);
+
+    const stm = new InsightLog();
+    const proc = makeProcess(storage, stm);
+
+    const oldBeliefCtx = await writeTempContextFile(
+      's7-old',
+      'The user said they dislike all fruit and never eat it',
+    );
+    stm.append({
+      summary: 'The user said they dislike all fruit and never eat it',
+      contextFile: oldBeliefCtx,
+      tags: ['preference', 'food'],
+    });
+    await proc.run();
+    await fs.unlink(oldBeliefCtx).catch(() => undefined);
+
+    const afterOld = countLtmRecords(storage);
+    assertOk(
+      afterOld >= 1,
+      `Expected at least 1 LTM record after old belief, got ${afterOld.toString()}`,
+    );
+
+    const updateCtx = await writeTempContextFile(
+      's7-update',
+      'The user said they used to dislike fruit but have changed their mind and now enjoy eating it',
+    );
+    stm.append({
+      summary:
+        'The user said they used to dislike fruit but have changed their mind and now enjoy eating it',
+      contextFile: updateCtx,
+      tags: ['preference', 'food'],
+    });
+    await proc.run();
+    await fs.unlink(updateCtx).catch(() => undefined);
+
+    const allRecords = storage.getAllRecords().filter((r) => !r.tombstoned);
+    const allEdges = allRecords.flatMap((r) => storage.edgesFrom(r.id));
+    const supersedesEdges = allEdges.filter((e) => e.type === 'supersedes');
+    const contradictsEdges = allEdges.filter((e) => e.type === 'contradicts');
+
+    if (supersedesEdges.length > 0) {
+      console.log(
+        `  OK: supersedes edge created — LLM correctly identified explicit belief update`,
+      );
+    } else if (contradictsEdges.length > 0) {
+      console.warn(
+        `  WARN: LLM chose contradicts instead of supersedes — explicit change of mind was not recognised`,
+      );
+    } else {
+      console.warn(
+        `  WARN: no supersedes or contradicts edge created — LLM treated observation as independent insert`,
+      );
+    }
+  }
+
   console.log('\nAll scenarios complete.');
 }
 
