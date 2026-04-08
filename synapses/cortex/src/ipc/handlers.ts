@@ -184,7 +184,8 @@ async function recallMemory(
   payload: Extract<RequestMessage, { type: 'recall' }>['payload'],
   memory: Memory,
 ): Promise<unknown> {
-  const result = await memory.recall(payload.query, payload.options);
+  const { engramId: _engramId, ...safeOptions } = payload.options ?? {};
+  const result = await memory.recall(payload.query, safeOptions);
   if (result.isErr()) {
     throw new Error(`recall failed: ${result.error.type}`);
   }

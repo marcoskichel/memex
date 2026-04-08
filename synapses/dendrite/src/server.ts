@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { AxonClient, RecallParams } from '@neurome/axon';
+import { recallOptionsSchema } from '@neurome/cortex-ipc';
 import { z } from 'zod';
 
 function toTextContent(value: unknown) {
@@ -17,7 +18,7 @@ function registerRecall(server: McpServer, axon: AxonClient): void {
     'recall',
     {
       description: 'Search memory for relevant records matching a natural language query.',
-      inputSchema: z.object({ query: z.string(), options: z.object({}).passthrough().optional() }),
+      inputSchema: z.object({ query: z.string(), options: recallOptionsSchema.optional() }),
     },
     async ({ query, options }) => {
       try {

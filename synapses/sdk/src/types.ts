@@ -23,8 +23,33 @@ export interface RecallResult {
   effectiveScore: number;
 }
 
+export type EntityType = 'person' | 'project' | 'concept' | 'preference' | 'decision' | 'tool';
+
+type RecallEntityPosition =
+  | { currentEntityIds: number[]; currentEntityHint?: never }
+  | { currentEntityHint: string[]; currentEntityIds?: never }
+  | { currentEntityIds?: never; currentEntityHint?: never };
+
+export interface RecallOptions {
+  limit?: number;
+  threshold?: number;
+  strengthen?: boolean;
+  tier?: 'episodic' | 'semantic';
+  minImportance?: number;
+  after?: Date;
+  before?: Date;
+  minStability?: number;
+  minAccessCount?: number;
+  sort?: 'confidence' | 'recency' | 'stability' | 'importance';
+  category?: string;
+  tags?: string[];
+  minResults?: number;
+  entityName?: string;
+  entityType?: EntityType;
+}
+
 export interface RecallParams {
-  options?: Record<string, unknown>;
+  options?: RecallOptions & RecallEntityPosition;
   timeoutMs?: number;
 }
 

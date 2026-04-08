@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@neurome/ltm": "workspace:*",
-    "@neurome/memory": "workspace:*"
+    "@neurome/memory": "workspace:*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@neurome/eslint-config": "workspace:*",

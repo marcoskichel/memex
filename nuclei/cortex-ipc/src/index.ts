@@ -1,4 +1,4 @@
-export { IPC_SOCKET_PATH, REQUEST_TYPES } from './protocol.js';
+export { IPC_SOCKET_PATH, recallOptionsSchema, REQUEST_TYPES } from './protocol.js';
 export type {
   ConsolidatePayload,
   EntityMention,

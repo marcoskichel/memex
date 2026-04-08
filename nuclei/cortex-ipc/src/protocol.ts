@@ -1,6 +1,7 @@
 import type { LtmInsertOptions } from '@neurome/ltm';
 export type { EntityMention, EntityType, LtmRecord } from '@neurome/ltm';
 import type { Memory, MemoryEvents } from '@neurome/memory';
+import { z } from 'zod';
 
 const VALID_ENGRAM_ID = /^[\da-z][\w-]{0,127}$/i;
 
@@ -13,6 +14,26 @@ export function IPC_SOCKET_PATH(engramId: string): string {
 
 export type LogInsightPayload = Parameters<Memory['logInsight']>[0];
 export type RecallOptions = Parameters<Memory['recall']>[1];
+
+export const recallOptionsSchema = z.object({
+  limit: z.number().int().positive().optional(),
+  threshold: z.number().min(0).max(1).optional(),
+  strengthen: z.boolean().optional(),
+  tier: z.enum(['episodic', 'semantic']).optional(),
+  minImportance: z.number().optional(),
+  after: z.coerce.date().optional(),
+  before: z.coerce.date().optional(),
+  minStability: z.number().optional(),
+  minAccessCount: z.number().int().optional(),
+  sort: z.enum(['confidence', 'recency', 'stability', 'importance']).optional(),
+  category: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  minResults: z.number().int().optional(),
+  entityName: z.string().optional(),
+  entityType: z.enum(['person', 'project', 'concept', 'preference', 'decision', 'tool']).optional(),
+  currentEntityIds: z.array(z.number().int()).optional(),
+  currentEntityHint: z.array(z.string()).optional(),
+});
 
 export interface GetContextPayload {
   engramId: string;

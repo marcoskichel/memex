@@ -115,6 +115,9 @@ importers:
       '@neurome/memory':
         specifier: workspace:*
         version: link:../memory
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@neurome/eslint-config':
         specifier: workspace:*
@@ -486,6 +489,9 @@ importers:
       '@neurome/axon':
         specifier: workspace:*
         version: link:../../nuclei/axon
+      '@neurome/cortex-ipc':
+        specifier: workspace:*
+        version: link:../../nuclei/cortex-ipc
       zod:
         specifier: ^3.25.0
         version: 3.25.76
