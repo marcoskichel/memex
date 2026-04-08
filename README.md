@@ -1,5 +1,8 @@
 # Neurome
 
+[![CI](https://github.com/marcoskichel/neurome/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/marcoskichel/neurome/actions/workflows/ci.yml)
+[![E2E](https://github.com/marcoskichel/neurome/actions/workflows/e2e.yml/badge.svg?branch=master)](https://github.com/marcoskichel/neurome/actions/workflows/e2e.yml)
+
 The human brain filters, consolidates, and recalls by relevance. AI agents don't — by default. Neurome gives them the same machinery: an amygdala for salience, a hippocampus for consolidation, short-term memory for the present, and long-term memory for the past.
 
 ## Overview
