@@ -28,17 +28,17 @@ The immediate consumer is a QA agent that stores screen fingerprints as `type: '
 ```typescript
 type RecallEntityPosition =
   | { currentEntityIds: number[]; currentEntityHint?: never }
-  | { currentEntityHint: string; currentEntityIds?: never }
+  | { currentEntityHint: string[]; currentEntityIds?: never }
   | { currentEntityIds?: never; currentEntityHint?: never };
 
 type RecallOptions = LtmQueryOptions & RecallEntityPosition;
 ```
 
-**Rationale:** Both fields being present is a caller error with no sensible merge strategy. A discriminated union makes it a compile-time error rather than a runtime ambiguity. The third branch (neither) preserves backwards compatibility — existing callers pass no position and get no enrichment. `currentEntityIds` is an array to support multi-entity context; the single-entity navigation case is the N=1 degenerate — no special handling needed.
+**Rationale:** Both fields being present is a caller error with no sensible merge strategy. A discriminated union makes it a compile-time error rather than a runtime ambiguity. The third branch (neither) preserves backwards compatibility — existing callers pass no position and get no enrichment. Both fields are arrays — `currentEntityIds` for exact IDs, `currentEntityHint` for free-text descriptions — matching symmetry. The single-entity/hint case is the N=1 degenerate.
 
-### D2: `currentEntityHint` resolved at query time via embedding
+### D2: `currentEntityHint` strings are each resolved at query time via embedding
 
-**Decision:** When `currentEntityHint` is provided, `MemoryImpl` calls `this.embedder.embed(hint)` then `storage.findEntitiesByEmbedding(embedding, threshold, topK=3)` to resolve the top-N nearest entities. All resolved entities become BFS seeds (see D9).
+**Decision:** When `currentEntityHint` is provided, `MemoryImpl` calls `this.embedder.embed(hint)` for each string, then `storage.findEntityByEmbedding(embedding, threshold)` for each. All resolved entities across all hints are merged (deduplicated by ID) and become BFS seeds (see D9).
 
 **Rationale:** Callers work with descriptions naturally (e.g., `"Alice working on Project X at Acme Corp"`). The hint string embeds to a context vector; resolving to top-N entities rather than exactly 1 captures the composite nature of context — a thought about Alice and Project X should seed BFS from both. The embedding model is already instantiated in `MemoryImpl` for `recall()` itself — a second embed call is marginal overhead. The hint interface is more biologically accurate than the ID interface: per the temporal context model (Howard & Kahana, 2002), context is always a distributed composite vector.
 
