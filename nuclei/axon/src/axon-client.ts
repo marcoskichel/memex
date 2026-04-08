@@ -149,6 +149,7 @@ export class AxonClient {
     timeoutMs: number;
   }): Promise<T> {
     const id = randomUUID();
+    const frame = JSON.stringify({ id, type, payload }) + '\n';
 
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -158,32 +159,38 @@ export class AxonClient {
         }
       }, timeoutMs);
 
-      this.inflight.set(id, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
-        timer,
-      });
+      this.inflight.set(id, { resolve: resolve as (value: unknown) => void, reject, timer });
+      void this.connectAndWrite({ id, frame, timer }, reject);
+    });
+  }
 
-      const frame = JSON.stringify({ id, type, payload }) + '\n';
-
-      void this.ensureConnected().then(() => {
-        const { socket } = this.connection;
-        if (!socket) {
-          if (this.inflight.has(id)) {
-            clearTimeout(timer);
-            this.inflight.delete(id);
-            reject(new Error('Socket not available'));
-          }
-          return;
-        }
-        socket.write(frame, (writeError) => {
-          if (writeError && this.inflight.has(id)) {
-            clearTimeout(timer);
-            this.inflight.delete(id);
-            reject(writeError);
-          }
-        });
-      });
+  private async connectAndWrite(
+    params: { id: string; frame: string; timer: ReturnType<typeof setTimeout> },
+    reject: (reason: Error) => void,
+  ): Promise<void> {
+    const { id, frame, timer } = params;
+    const fail = (error: unknown): void => {
+      if (this.inflight.has(id)) {
+        clearTimeout(timer);
+        this.inflight.delete(id);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    };
+    try {
+      await this.ensureConnected();
+    } catch (connectError) {
+      fail(connectError);
+      return;
+    }
+    const { socket } = this.connection;
+    if (!socket) {
+      fail(new Error('Socket not available'));
+      return;
+    }
+    socket.write(frame, (writeError) => {
+      if (writeError) {
+        fail(writeError);
+      }
     });
   }
 
