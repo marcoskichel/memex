@@ -24,9 +24,9 @@ export function resolveEntityIdentity(
   for (const candidate of candidates) {
     const similarity = cosineSimilarity(extracted.embedding, candidate.embedding);
 
-    if (similarity >= MERGE_THRESHOLD && candidate.type === extracted.type) {
+    if (similarity >= MERGE_THRESHOLD) {
       return { type: 'merge', entityId: candidate.id, extracted };
-    } else if (similarity >= AMBIGUOUS_THRESHOLD && candidate.type === extracted.type) {
+    } else if (similarity >= AMBIGUOUS_THRESHOLD) {
       llmNeededCandidates.push(candidate);
     }
   }

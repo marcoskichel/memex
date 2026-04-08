@@ -24,7 +24,8 @@ const EXTRACTION_SCHEMA: StructuredOutputSchema<ExtractionOutput> = {
           name: { type: 'string' },
           type: {
             type: 'string',
-            enum: ['person', 'project', 'concept', 'preference', 'decision', 'tool'],
+            description:
+              'Entity type. Suggested: person, project, concept, preference, decision, tool, screen',
           },
         },
         required: ['name', 'type'],
@@ -37,7 +38,11 @@ const EXTRACTION_SCHEMA: StructuredOutputSchema<ExtractionOutput> = {
         properties: {
           fromName: { type: 'string' },
           toName: { type: 'string' },
-          relationshipType: { type: 'string' },
+          relationshipType: {
+            type: 'string',
+            description:
+              'Relationship type. Suggested: works_on, knows, uses, prefers, decided, navigates_to',
+          },
         },
         required: ['fromName', 'toName', 'relationshipType'],
       },
@@ -75,7 +80,7 @@ export function callExtractionLlm(
     .map((output) => ({
       entities: (output.entities ?? []).map((entity) => ({
         name: entity.name,
-        type: entity.type as ExtractedEntity['type'],
+        type: entity.type.toLowerCase().trim(),
         embedding: new Float32Array(0),
       })),
       edges: (output.edges ?? []).map((edge) => ({
@@ -106,6 +111,7 @@ export function callDeduplicationLlm(
     .join('\n');
 
   const prompt = `For each pair below, decide if the extracted entity is the same as the existing entity ("merge") or different ("distinct").
+Type differences alone are not a reason to return "distinct" — evaluate based on name and meaning.
 
 Pairs:
 ${pairDescriptions}

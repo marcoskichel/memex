@@ -1,4 +1,4 @@
-export type EntityType = 'person' | 'project' | 'concept' | 'preference' | 'decision' | 'tool';
+export type EntityType = string;
 
 export interface EntityMention {
   name: string;

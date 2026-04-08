@@ -5,7 +5,7 @@ import type { LtmRecord } from '../storage/storage-adapter.js';
 
 function matchesEntityFilter(record: LtmRecord, options: LtmQueryOptions): boolean {
   const entityName = options.entityName?.toLowerCase();
-  const entityType = options.entityType;
+  const entityType = options.entityType?.toLowerCase().trim();
   const entities = record.metadata.entities;
   if (!Array.isArray(entities)) {
     return false;

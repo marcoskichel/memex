@@ -54,14 +54,14 @@ describe('resolveEntityIdentity', () => {
     }
   });
 
-  it('different type at cosine 0.82 returns distinct', () => {
+  it('different type at cosine 0.82 returns llm-needed (type gate removed)', () => {
     const vec = new Float32Array([0.82, 0.57, 0]);
     const candidate = makeCandidate({ id: 4, name: 'neurome', type: 'project', embedding: vec });
     const result = resolveEntityIdentity(
       makeExtracted({ name: 'alice', type: 'person', embedding: new Float32Array([1, 0, 0]) }),
       [candidate],
     );
-    expect(result.type).toBe('distinct');
+    expect(result.type).toBe('llm-needed');
   });
 
   it('same type in ambiguous band [0.70, 0.85) requires LLM', () => {
