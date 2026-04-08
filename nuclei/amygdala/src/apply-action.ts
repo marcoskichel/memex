@@ -87,5 +87,8 @@ export async function applyAction(options: ApplyActionOptions): Promise<void> {
     importanceScore: scoringResult.importanceScore,
     relatedToId,
     edgeType: scoringResult.edgeType,
+    ...(scoringResult.goalRelevance !== undefined && {
+      goalRelevance: scoringResult.goalRelevance,
+    }),
   });
 }

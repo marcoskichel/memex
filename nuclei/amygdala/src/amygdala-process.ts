@@ -3,6 +3,7 @@ import type { LtmEngine } from '@neurome/ltm';
 import type { InsightEntry, InsightLogLike } from '@neurome/stm';
 
 import type {
+  AgentProfile,
   AgentState,
   AmygdalaScoringResult,
   EntryOutcome,
@@ -32,7 +33,12 @@ import {
 } from './amygdala-schema.js';
 import { applyAction } from './apply-action.js';
 
-export type { AgentState, AmygdalaScoringResult, EventBus } from './amygdala-schema.js';
+export type {
+  AgentProfile,
+  AgentState,
+  AmygdalaScoringResult,
+  EventBus,
+} from './amygdala-schema.js';
 
 export interface AmygdalaConfig {
   ltm: LtmEngine;
@@ -46,6 +52,7 @@ export interface AmygdalaConfig {
   singletonPromotionThreshold?: number;
   events?: EventBus;
   agentState?: AgentState;
+  agentProfile?: AgentProfile;
   _sleep?: (ms: number) => Promise<void>;
 }
 
@@ -67,6 +74,7 @@ export class AmygdalaProcess {
   private consecutiveFailures = new Map<string, number>();
   private sleepFn: (ms: number) => Promise<void>;
   private agentState: AgentState | undefined;
+  private agentProfile: AgentProfile | undefined;
 
   constructor(config: AmygdalaConfig) {
     this.ltm = config.ltm;
@@ -82,6 +90,7 @@ export class AmygdalaProcess {
     this.events = config.events ?? { emit: () => false, on: () => false };
     this.sleepFn = config._sleep ?? sleep;
     this.agentState = config.agentState;
+    this.agentProfile = config.agentProfile;
   }
 
   setAgentState(state: AgentState | undefined): void {
@@ -218,7 +227,7 @@ export class AmygdalaProcess {
       const callResult = await this.llmAdapter.completeStructured({
         prompt,
         schema: amygdalaScoringSchema,
-        options: { systemPrompt: buildSystemPrompt(this.agentState) },
+        options: { systemPrompt: buildSystemPrompt(this.agentState, this.agentProfile) },
       });
 
       this.callsThisHour++;

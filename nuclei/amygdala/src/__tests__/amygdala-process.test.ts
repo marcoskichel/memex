@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EventBus } from '../amygdala-process.js';
 import { AmygdalaProcess } from '../amygdala-process.js';
+import { SYSTEM_PROMPT } from '../amygdala-schema.js';
 import { applyAction } from '../apply-action.js';
 
 const TEST_ENGRAM_ID = 'test-engram-42';
@@ -752,5 +753,80 @@ describe('AmygdalaProcess', () => {
       unknown
     >;
     expect((call.metadata as Record<string, unknown>).tags).toEqual(['behavioral']);
+  });
+
+  it('4.1 agentProfile is injected into system prompt on scoring call', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'skip', importanceScore: 0.1, reasoning: 'noise' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      engramId: TEST_ENGRAM_ID,
+      agentProfile: { type: 'qa', purpose: 'Find UI bugs in the mobile app' },
+    });
+    await process.run();
+
+    const callArgument = (llmAdapter.completeStructured as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as Record<string, unknown>;
+    const systemPrompt = (callArgument.options as Record<string, unknown>).systemPrompt as string;
+    expect(systemPrompt).toContain('Agent Profile:');
+    expect(systemPrompt).toContain('Type: qa');
+    expect(systemPrompt).toContain('Find UI bugs in the mobile app');
+    expect(systemPrompt).toContain(SYSTEM_PROMPT);
+  });
+
+  it('4.2 without agentProfile, system prompt equals SYSTEM_PROMPT', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({ action: 'skip', importanceScore: 0.1, reasoning: 'noise' });
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      engramId: TEST_ENGRAM_ID,
+    });
+    await process.run();
+
+    const callArgument = (llmAdapter.completeStructured as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as Record<string, unknown>;
+    const systemPrompt = (callArgument.options as Record<string, unknown>).systemPrompt as string;
+    expect(systemPrompt).toBe(SYSTEM_PROMPT);
+  });
+
+  it('4.6 goalRelevance from LLM result appears in amygdala:entry:scored event', async () => {
+    const entry = makeEntry();
+    const ltm = makeLtm();
+    const stm = makeStm([entry]);
+    const llmAdapter = makeLlmAdapter({
+      action: 'insert',
+      importanceScore: 0.7,
+      reasoning: 'goal-relevant navigation',
+      goalRelevance: 0.8,
+    });
+
+    const scored = vi.fn();
+    events.on('amygdala:entry:scored', scored);
+
+    const process = new AmygdalaProcess({
+      ltm,
+      stm,
+      llmAdapter,
+      events,
+      engramId: TEST_ENGRAM_ID,
+      agentProfile: { purpose: 'Find UI bugs in the mobile app' },
+    });
+    await process.run();
+
+    const payload = scored.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload.goalRelevance).toBeDefined();
+    expect(payload.goalRelevance).toBe(0.8);
   });
 });

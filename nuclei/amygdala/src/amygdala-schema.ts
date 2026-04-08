@@ -72,6 +72,13 @@ Be conservative with importance scores. Most observations are 0.1-0.4. Reserve 0
 
 export type AgentState = string;
 
+export interface AgentProfile {
+  type?: string;
+  purpose?: string;
+}
+
+const AGENT_PROFILE_PURPOSE_MAX_LENGTH = 200;
+
 const AGENT_STATE_HINTS: Record<string, string> = {
   focused: 'Agent is focused on a task — raise bar for routine/distraction observations.',
   idle: 'Agent is idle — score normally.',
@@ -79,12 +86,30 @@ const AGENT_STATE_HINTS: Record<string, string> = {
   learning: 'Agent is in learning mode — raise importance for novel/unexpected observations.',
 };
 
-export function buildSystemPrompt(agentState?: AgentState): string {
+function buildProfileBlock(profile: AgentProfile): string {
+  const lines: string[] = ['Agent Profile:'];
+  if (profile.type !== undefined) {
+    lines.push(`- Type: ${profile.type}`);
+  }
+  if (profile.purpose !== undefined) {
+    const truncated = profile.purpose.slice(0, AGENT_PROFILE_PURPOSE_MAX_LENGTH);
+    lines.push(`- Purpose: ${truncated}`);
+  }
+  lines.push(
+    '',
+    "Use the agent's purpose to assess goal-relevance: observations that directly advance or reveal blockers to this purpose deserve higher scores, even if syntactically simple. Capture this in the goalRelevance dimension.",
+  );
+  return lines.join('\n');
+}
+
+export function buildSystemPrompt(agentState?: AgentState, agentProfile?: AgentProfile): string {
+  const profileBlock = agentProfile === undefined ? '' : `${buildProfileBlock(agentProfile)}\n\n`;
+  const base = `${profileBlock}${SYSTEM_PROMPT}`;
   if (!agentState) {
-    return SYSTEM_PROMPT;
+    return base;
   }
   const hint = AGENT_STATE_HINTS[agentState] ?? `Agent state: ${agentState}.`;
-  return `${SYSTEM_PROMPT}\n\nCurrent agent state: ${hint}`;
+  return `${base}\n\nCurrent agent state: ${hint}`;
 }
 
 export interface AmygdalaScoringResult {
@@ -94,6 +119,7 @@ export interface AmygdalaScoringResult {
   reasoning: string;
   importanceScore: number;
   entities: EntityMention[];
+  goalRelevance?: number;
 }
 
 export interface EntryOutcome {
@@ -141,6 +167,7 @@ export const amygdalaScoringSchema: StructuredOutputSchema<AmygdalaScoringResult
     edgeType: { type: 'string', enum: ['supersedes', 'elaborates', 'contradicts'] },
     reasoning: { type: 'string' },
     importanceScore: { type: 'number' },
+    goalRelevance: { type: 'number' },
     entities: {
       type: 'array',
       items: {
@@ -177,6 +204,10 @@ export const amygdalaScoringSchema: StructuredOutputSchema<AmygdalaScoringResult
       if (['supersedes', 'elaborates', 'contradicts'].includes(edgeType)) {
         result.edgeType = edgeType;
       }
+    }
+    const rawGoalRelevance = Number(object.goalRelevance);
+    if (!Number.isNaN(rawGoalRelevance)) {
+      result.goalRelevance = Math.max(0, Math.min(1, rawGoalRelevance));
     }
     return result;
   },
