@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.2.2...sdk-v0.3.0) (2026-04-08)
+
+
+### Features
+
+* **sdk:** add e2e test script with cortex lifecycle scenarios ([285c9bb](https://github.com/marcoskichel/neurome/commit/285c9bb0ef1143705910407d206efd8de8aa534c))
+
+
+### Bug Fixes
+
+* **sdk:** ignore scripts dir in eslint to fix tsconfig parse error ([4c5c716](https://github.com/marcoskichel/neurome/commit/4c5c716c18df97205bfad6fbc088235ce1e32686))
+
 ## [0.2.2](https://github.com/marcoskichel/neurome/compare/sdk-v0.2.1...sdk-v0.2.2) (2026-04-07)
 
 
