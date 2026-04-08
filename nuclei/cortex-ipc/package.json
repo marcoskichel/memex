@@ -20,6 +20,7 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
+    "@neurome/entorhinal": "workspace:*",
     "@neurome/ltm": "workspace:*",
     "@neurome/memory": "workspace:*",
     "zod": "^3.25.76"

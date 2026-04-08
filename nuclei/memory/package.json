@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@neurome/amygdala": "workspace:*",
+    "@neurome/entorhinal": "workspace:*",
     "@neurome/hippocampus": "workspace:*",
     "@neurome/llm": "workspace:*",
     "@neurome/ltm": "workspace:*",

@@ -1,5 +1,6 @@
+export type { EntityMention, EntityType } from '@neurome/entorhinal';
 import type { LtmInsertOptions } from '@neurome/ltm';
-export type { EntityMention, EntityType, LtmRecord } from '@neurome/ltm';
+export type { LtmRecord } from '@neurome/ltm';
 import type { ConsolidateTarget, Memory, MemoryEvents } from '@neurome/memory';
 import { z } from 'zod';
 

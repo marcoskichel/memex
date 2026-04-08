@@ -1,12 +1,9 @@
+import type { EntityType } from '@neurome/entorhinal';
+
 import type { EmbeddingAdapter, EmbedError } from './core/embedding-adapter.js';
 import type { LtmEdge, LtmRecord, StorageAdapter } from './storage/storage-adapter.js';
 
-export type EntityType = 'person' | 'project' | 'concept' | 'preference' | 'decision' | 'tool';
-
-export interface EntityMention {
-  name: string;
-  type: EntityType;
-}
+export type { EntityMention, EntityType } from '@neurome/entorhinal';
 
 export interface LtmQueryOptions {
   limit?: number;

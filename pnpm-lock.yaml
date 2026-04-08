@@ -109,6 +109,9 @@ importers:
 
   nuclei/cortex-ipc:
     dependencies:
+      '@neurome/entorhinal':
+        specifier: workspace:*
+        version: link:../entorhinal
       '@neurome/ltm':
         specifier: workspace:*
         version: link:../ltm
@@ -140,6 +143,24 @@ importers:
       vitest:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.19.17)(tsx@4.21.0)(yaml@2.8.3)
+
+  nuclei/entorhinal:
+    devDependencies:
+      '@neurome/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@neurome/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   nuclei/eslint-config:
     dependencies:
@@ -247,6 +268,9 @@ importers:
 
   nuclei/ltm:
     dependencies:
+      '@neurome/entorhinal':
+        specifier: workspace:*
+        version: link:../entorhinal
       better-sqlite3:
         specifier: ^12.8.0
         version: 12.8.0
@@ -296,6 +320,9 @@ importers:
       '@neurome/amygdala':
         specifier: workspace:*
         version: link:../amygdala
+      '@neurome/entorhinal':
+        specifier: workspace:*
+        version: link:../entorhinal
       '@neurome/hippocampus':
         specifier: workspace:*
         version: link:../hippocampus
@@ -563,6 +590,9 @@ importers:
 
   synapses/sdk:
     dependencies:
+      '@neurome/entorhinal':
+        specifier: workspace:*
+        version: link:../../nuclei/entorhinal
       better-sqlite3:
         specifier: ^12.8.0
         version: 12.8.0

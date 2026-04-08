@@ -21,6 +21,8 @@ export type {
   EntityNode,
   EntityPathStep,
   FindEntityPathParams,
+} from '@neurome/entorhinal';
+export type {
   LtmEdge,
   LtmRecord,
   StorageAdapter,
@@ -32,10 +34,9 @@ export { SqliteAdapter } from './storage/sqlite-adapter.js';
 export { OpenAIEmbeddingAdapter } from './adapters/openai-embedding-adapter.js';
 
 export { LtmCategory, LtmEngine } from './ltm-engine.js';
+export type { EntityMention, EntityType } from '@neurome/entorhinal';
 export type {
   ConsolidateOptions,
-  EntityMention,
-  EntityType,
   LtmBulkInsertEntry,
   LtmEngineStats,
   LtmInsertError,

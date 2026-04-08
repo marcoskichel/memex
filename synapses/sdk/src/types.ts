@@ -1,3 +1,7 @@
+import type { EntityType } from '@neurome/entorhinal';
+
+export type { EntityType } from '@neurome/entorhinal';
+
 export type ConsolidateTarget = 'amygdala' | 'hippocampus' | 'all';
 
 export interface AgentProfile {
@@ -30,8 +34,6 @@ export interface RecallResult {
   };
   effectiveScore: number;
 }
-
-export type EntityType = 'person' | 'project' | 'concept' | 'preference' | 'decision' | 'tool';
 
 type RecallEntityPosition =
   | { currentEntityIds: number[]; currentEntityHint?: never }

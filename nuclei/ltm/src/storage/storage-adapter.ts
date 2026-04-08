@@ -1,33 +1,18 @@
+import type {
+  EntityEdge,
+  EntityNode,
+  EntityPathStep,
+  FindEntityPathParams,
+} from '@neurome/entorhinal';
+
 import type { EmbeddingMeta } from '../core/embedding-adapter.js';
-import type { EntityType } from '../ltm-engine-types.js';
 
-export interface EntityNode {
-  id: number;
-  name: string;
-  type: EntityType;
-  embedding: Float32Array;
-  createdAt: Date;
-}
-
-export interface EntityEdge {
-  id: number;
-  fromId: number;
-  toId: number;
-  type: string;
-  weight: number;
-  createdAt: Date;
-}
-
-export interface EntityPathStep {
-  entity: EntityNode;
-  via: { edgeId: number; type: string; weight: number } | undefined;
-}
-
-export interface FindEntityPathParams {
-  fromId: number;
-  toId: number;
-  maxHops?: number;
-}
+export type {
+  EntityEdge,
+  EntityNode,
+  EntityPathStep,
+  FindEntityPathParams,
+} from '@neurome/entorhinal';
 
 export interface LtmRecord {
   id: number;

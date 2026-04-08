@@ -29,5 +29,7 @@ scopes:
     path: nuclei/perirhinal
   - name: dendrite
     path: synapses/dendrite
+  - name: entorhinal
+    path: nuclei/entorhinal
   - name: sdk
     path: synapses/sdk

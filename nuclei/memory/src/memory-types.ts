@@ -1,10 +1,9 @@
 import type { AgentProfile, AgentState, AmygdalaProcess } from '@neurome/amygdala';
+import type { EntityNode, EntityPathStep } from '@neurome/entorhinal';
 import type { HippocampusProcess } from '@neurome/hippocampus';
 import type { LLMAdapter } from '@neurome/llm';
 import type {
   EmbeddingAdapter,
-  EntityNode,
-  EntityPathStep,
   LtmEngine,
   LtmInsertOptions,
   LtmQueryError,
