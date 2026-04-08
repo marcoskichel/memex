@@ -14,6 +14,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "e2e": "dotenv -e .env.e2e -- tsx scripts/e2e.ts",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint --fix . && prettier --write .",
     "test": "vitest run",
@@ -31,8 +32,10 @@
     "@neurome/eslint-config": "workspace:*",
     "@neurome/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   }
