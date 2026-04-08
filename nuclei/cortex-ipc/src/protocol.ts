@@ -110,10 +110,10 @@ export const recallOptionsSchema = z.object({
       'Filter and boost records associated with an entity whose name contains this string (case-insensitive substring match). Use to narrow recall to a specific person, project, or concept.',
     ),
   entityType: z
-    .enum(['person', 'project', 'concept', 'preference', 'decision', 'tool'])
+    .string()
     .optional()
     .describe(
-      'Filter and boost records associated with entities of this type. Combine with entityName for precise entity-scoped recall.',
+      'Filter and boost records associated with entities of this type. Suggested: person, project, concept, preference, decision, tool, screen. Combine with entityName for precise entity-scoped recall.',
     ),
   currentEntityIds: z
     .array(z.number().int().positive())

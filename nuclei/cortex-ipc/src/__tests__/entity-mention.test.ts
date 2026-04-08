@@ -15,6 +15,6 @@ test('EntityMention requires name and type', () => {
   expectTypeOf<{ name: string; type: EntityType }>().toExtend<EntityMention>();
 });
 
-test('EntityMention type field rejects unknown strings', () => {
-  expectTypeOf<'unknown-type'>().not.toExtend<EntityType>();
+test('EntityType accepts any string', () => {
+  expectTypeOf<'custom-type'>().toExtend<EntityType>();
 });
