@@ -75,10 +75,10 @@ For each of the top-3 results, `MemoryImpl` SHALL look up entities linked to the
 - **WHEN** two seeds are provided and one produces a shorter path than the other
 - **THEN** `navigationPath` contains the shorter path and `originEntity` is the winning seed's entity
 
-#### Scenario: no path from any seed — navigationPath is null
+#### Scenario: no path from any seed — navigationPath is undefined
 
 - **WHEN** no directed path exists from any seed to `selectedEntity` within `maxHops`
-- **THEN** `entityContext.navigationPath` is `null` and `entityContext.originEntity` is `null`
+- **THEN** `entityContext.navigationPath` is `undefined` and `entityContext.originEntity` is `undefined`
 
 ### Requirement: Path reliability is classified post-BFS using a 5-hop threshold
 

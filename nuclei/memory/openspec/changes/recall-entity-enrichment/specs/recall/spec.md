@@ -21,8 +21,8 @@ Supplying both fields simultaneously SHALL be a compile-time error (enforced by 
 interface EntityContext {
   entities: EntityNode[];
   selectedEntity: EntityNode;
-  originEntity: EntityNode | null;
-  navigationPath: EntityPathStep[] | null;
+  originEntity: EntityNode | undefined;
+  navigationPath: EntityPathStep[] | undefined;
   pathReliability: 'ok' | 'degraded';
   entityResolved: boolean;
 }
