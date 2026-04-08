@@ -118,7 +118,7 @@ const mcpConfig = engram.asMcpServer();
 
 #### Forking for parallel agents
 
-`fork` creates a read-only SQLite snapshot for parallel agent runs. The caller manages the fork lifecycle.
+`fork` creates an isolated SQLite copy for parallel agent runs. Each fork is fully writable and independent — writes do not affect the original. The caller manages the fork lifecycle.
 
 ```ts
 const forkPath = await engram.fork('/tmp/fork-agent.db');
