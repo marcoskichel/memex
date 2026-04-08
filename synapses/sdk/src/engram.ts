@@ -1,16 +1,30 @@
 import type { ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import type { AxonClient, InsertMemoryOptions, RecallParams, RecallResult } from '@neurome/axon';
-
-import type { McpServerConfig } from './types.js';
+import type {
+  InsertMemoryOptions,
+  LogInsightOptions,
+  McpServerConfig,
+  RecallParams,
+  RecallResult,
+} from './types.js';
 
 const FORCE_KILL_TIMEOUT_MS = 10_000;
+
+interface Axon {
+  recall(query: string, options?: RecallParams): Promise<RecallResult[]>;
+  logInsight(payload: LogInsightOptions): void;
+  insertMemory(data: string, options?: InsertMemoryOptions): Promise<number>;
+  getRecent(limit: number): Promise<unknown[]>;
+  getStats(): Promise<unknown>;
+  fork(outputPath: string): Promise<string>;
+  disconnect(): void;
+}
 
 interface EngramDeps {
   engramId: string;
   db: string;
-  axon: AxonClient;
+  axon: Axon;
   cortex: ChildProcess;
 }
 
@@ -29,7 +43,7 @@ export class Engram {
     return this.deps.axon.recall(query, options);
   }
 
-  logInsight(payload: Parameters<AxonClient['logInsight']>[0]): void {
+  logInsight(payload: LogInsightOptions): void {
     this.deps.axon.logInsight(payload);
   }
 

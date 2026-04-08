@@ -4,7 +4,7 @@ export default defineConfig([
   {
     entry: { index: 'src/index.ts' },
     format: ['esm'],
-    dts: true,
+    dts: { resolve: [/^@neurome\//] },
     sourcemap: true,
     clean: true,
     external: ['better-sqlite3'],

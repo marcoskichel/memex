@@ -12,3 +12,29 @@ export interface McpServerConfig {
   args: string[];
   env: Record<string, string>;
 }
+
+export interface RecallResult {
+  record: {
+    id: number;
+    tier: string;
+    data: string;
+    metadata: unknown;
+  };
+  effectiveScore: number;
+}
+
+export interface RecallParams {
+  options?: Record<string, unknown>;
+  timeoutMs?: number;
+}
+
+export interface InsertMemoryOptions {
+  options?: Record<string, unknown>;
+  timeoutMs?: number;
+}
+
+export interface LogInsightOptions {
+  summary: string;
+  contextFile: string;
+  tags?: string[];
+}
