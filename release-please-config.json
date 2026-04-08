@@ -8,11 +8,5 @@
       "package-name": "@neurome/sdk",
       "changelog-path": "CHANGELOG.md"
     }
-  },
-  "plugins": [
-    {
-      "type": "node-workspace",
-      "alwaysLinkLocal": true
-    }
-  ]
+  }
 }
