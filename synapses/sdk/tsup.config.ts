@@ -18,7 +18,7 @@ export default defineConfig([
     format: ['esm'],
     dts: false,
     sourcemap: true,
-    external: ['better-sqlite3'],
+    external: ['better-sqlite3', 'sqlite-vec'],
     noExternal: [/^@neurome\//],
   },
 ]);
