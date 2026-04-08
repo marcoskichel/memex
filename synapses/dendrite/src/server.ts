@@ -4,6 +4,8 @@ import type { AxonClient, RecallParams } from '@neurome/axon';
 import { recallOptionsSchema } from '@neurome/cortex-ipc';
 import { z } from 'zod';
 
+const LOG_INSIGHT_MAX_LENGTH = 10_000;
+
 function toTextContent(value: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(value, undefined, 2) }] };
 }
@@ -63,7 +65,27 @@ function registerGetStats(server: McpServer, axon: AxonClient): void {
   );
 }
 
-export function createServer(axon: AxonClient, engramId: string): McpServer {
+function registerLogInsight(server: McpServer, axon: AxonClient): void {
+  server.registerTool(
+    'log_insight',
+    {
+      description: 'Record an insight or observation into memory.',
+      inputSchema: z.object({ insight: z.string().max(LOG_INSIGHT_MAX_LENGTH) }),
+    },
+    ({ insight }) => {
+      axon.logInsight({ summary: insight, contextFile: '' });
+      return toTextContent({ logged: true });
+    },
+  );
+}
+
+export interface ServerConfig {
+  engramId: string;
+  accessMode: string;
+}
+
+export function createServer(axon: AxonClient, config: ServerConfig): McpServer {
+  const { engramId, accessMode } = config;
   const server = new McpServer({ name: 'dendrite', version: '0.0.0' });
 
   registerRecall(server, axon);
@@ -95,11 +117,16 @@ export function createServer(axon: AxonClient, engramId: string): McpServer {
 
   registerGetRecent(server, axon);
   registerGetStats(server, axon);
+
+  if (accessMode === 'full') {
+    registerLogInsight(server, axon);
+  }
+
   return server;
 }
 
-export async function startServer(axon: AxonClient, engramId: string): Promise<void> {
-  const server = createServer(axon, engramId);
+export async function startServer(axon: AxonClient, config: ServerConfig): Promise<void> {
+  const server = createServer(axon, config);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

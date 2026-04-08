@@ -6,6 +6,7 @@ import type {
   InsertMemoryOptions,
   LogInsightOptions,
   McpServerConfig,
+  McpServerOptions,
   RecallParams,
   RecallResult,
 } from './types.js';
@@ -69,7 +70,7 @@ export class Engram {
     return this.deps.axon.fork(outputPath);
   }
 
-  asMcpServer(): McpServerConfig {
+  asMcpServer(options?: McpServerOptions): McpServerConfig {
     const dendriteBin = fileURLToPath(new URL('bin/dendrite.js', import.meta.url));
     return {
       type: 'stdio',
@@ -78,6 +79,7 @@ export class Engram {
       env: {
         NEUROME_ENGRAM_ID: this.deps.engramId,
         MEMORY_DB_PATH: this.deps.db,
+        NEUROME_ACCESS_MODE: options?.accessMode ?? 'read-only',
       },
     };
   }

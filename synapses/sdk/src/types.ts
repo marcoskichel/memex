@@ -18,6 +18,12 @@ export interface StartEngramConfig {
   agentProfile?: AgentProfile;
 }
 
+export type McpAccessMode = 'read-only' | 'full';
+
+export interface McpServerOptions {
+  accessMode?: McpAccessMode;
+}
+
 export interface McpServerConfig {
   type: 'stdio';
   command: string;
