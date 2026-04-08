@@ -19,7 +19,6 @@ import { importTextImpl } from './memory-import.js';
 import type { AmygdalaStats, HippocampusStats, MemoryStats } from './memory-stats.js';
 import {
   DEFAULT_PENDING_CONSOLIDATION_TTL_MS,
-  ENTITY_HINT_SIMILARITY_THRESHOLD,
   InsertMemoryError,
   RecordNotFoundError,
   type ImportTextError,
@@ -33,13 +32,7 @@ import {
   type ShutdownReport,
 } from './memory-types.js';
 import { PendingConsolidationStore } from './pending-consolidation-store.js';
-import { enrichRecallResults, resolveHintSeeds } from './recall-enrichment.js';
-
-interface SafeEnrichParams {
-  results: LtmQueryResult[];
-  nlQuery: string;
-  options: RecallOptions | undefined;
-}
+import { safeEnrich } from './recall-enrichment.js';
 
 export class MemoryImpl implements Memory {
   readonly engramId: string;
@@ -135,35 +128,10 @@ export class MemoryImpl implements Memory {
       return base as unknown as ResultAsync<MemoryRecallResult[], LtmQueryError>;
     }
     return base.andThen((results) =>
-      ResultAsync.fromSafePromise(this.safeEnrich({ results, nlQuery, options })),
+      ResultAsync.fromSafePromise(
+        safeEnrich({ results, nlQuery, options, embedder: this.embedder, ltm: this.ltm }),
+      ),
     ) as unknown as ResultAsync<MemoryRecallResult[], LtmQueryError>;
-  }
-
-  private safeEnrich(params: SafeEnrichParams): Promise<MemoryRecallResult[]> {
-    const { results, nlQuery, options } = params;
-    const enrich = (queryEmbedding: Float32Array, seedIds: number[]) =>
-      seedIds.length === 0
-        ? (results as MemoryRecallResult[])
-        : enrichRecallResults({ results, queryEmbedding, seedEntityIds: seedIds, ltm: this.ltm });
-    return this.embedder
-      .embed(nlQuery)
-      .andThen((embedValue) => {
-        const queryEmbedding = embedValue.vector;
-        const seedIds = options?.currentEntityIds ?? [];
-        if (!options?.currentEntityHint?.length) {
-          return okAsync(enrich(queryEmbedding, seedIds));
-        }
-        return ResultAsync.fromSafePromise(
-          resolveHintSeeds(options.currentEntityHint, this.embedder).then((vecs) => {
-            const entities = vecs.flatMap((vec) =>
-              this.ltm.findEntityByEmbedding(vec, ENTITY_HINT_SIMILARITY_THRESHOLD),
-            );
-            const ids = [...new Set(entities.map((entity) => entity.id))];
-            return enrich(queryEmbedding, ids);
-          }),
-        );
-      })
-      .unwrapOr(results);
   }
 
   async recallSession(

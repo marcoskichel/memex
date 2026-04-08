@@ -6,9 +6,14 @@ import type {
   LtmQueryResult,
 } from '@neurome/ltm';
 import { cosineSimilarity } from '@neurome/ltm';
+import { okAsync, ResultAsync } from 'neverthrow';
 
-import type { EntityContext, MemoryRecallResult } from './memory-types.js';
-import { ENTITY_CONTEXT_TOP_K, ENTITY_PATH_RELIABILITY_THRESHOLD } from './memory-types.js';
+import type { EntityContext, MemoryRecallResult, RecallOptions } from './memory-types.js';
+import {
+  ENTITY_CONTEXT_TOP_K,
+  ENTITY_HINT_SIMILARITY_THRESHOLD,
+  ENTITY_PATH_RELIABILITY_THRESHOLD,
+} from './memory-types.js';
 
 interface EnrichParams {
   results: LtmQueryResult[];
@@ -27,6 +32,14 @@ interface EnrichSingleParams {
   result: LtmQueryResult;
   queryEmbedding: Float32Array;
   seedEntityIds: number[];
+  ltm: LtmEngine;
+}
+
+export interface SafeEnrichParams {
+  results: LtmQueryResult[];
+  nlQuery: string;
+  options: RecallOptions | undefined;
+  embedder: EmbeddingAdapter;
   ltm: LtmEngine;
 }
 
@@ -120,4 +133,31 @@ export async function resolveHintSeeds(
     }),
   );
   return results.filter((vec): vec is Float32Array => vec !== undefined);
+}
+
+export function safeEnrich(params: SafeEnrichParams): Promise<MemoryRecallResult[]> {
+  const { results, nlQuery, options, embedder, ltm } = params;
+  const enrich = (queryEmbedding: Float32Array, seedIds: number[]) =>
+    seedIds.length === 0
+      ? (results as MemoryRecallResult[])
+      : enrichRecallResults({ results, queryEmbedding, seedEntityIds: seedIds, ltm });
+  return embedder
+    .embed(nlQuery)
+    .andThen((embedValue) => {
+      const queryEmbedding = embedValue.vector;
+      const seedIds = options?.currentEntityIds ?? [];
+      if (!options?.currentEntityHint?.length) {
+        return okAsync(enrich(queryEmbedding, seedIds));
+      }
+      return ResultAsync.fromSafePromise(
+        resolveHintSeeds(options.currentEntityHint, embedder).then((vecs) => {
+          const entities = vecs.flatMap((vec) =>
+            ltm.findEntityByEmbedding(vec, ENTITY_HINT_SIMILARITY_THRESHOLD),
+          );
+          const ids = [...new Set(entities.map((entity) => entity.id))];
+          return enrich(queryEmbedding, ids);
+        }),
+      );
+    })
+    .unwrapOr(results);
 }

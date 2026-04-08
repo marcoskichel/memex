@@ -29,18 +29,18 @@
 
 ## 5. MemoryImpl integration
 
-- [ ] 5.1 Add `embedder` (or reuse existing embedding adapter reference) to `MemoryImplDeps` if not already present
-- [ ] 5.2 Update `MemoryImpl.recall()` to accept `RecallOptions` (with position fields) and call `enrichRecallResults` when position is supplied
-- [ ] 5.3 Update `Memory` interface `recall()` signature to accept `RecallOptions`
+- [x] 5.1 Add `embedder` (or reuse existing embedding adapter reference) to `MemoryImplDeps` if not already present
+- [x] 5.2 Update `MemoryImpl.recall()` to accept `RecallOptions` (with position fields) and call `enrichRecallResults` when position is supplied
+- [x] 5.3 Update `Memory` interface `recall()` signature to accept `RecallOptions`
 
 ## 6. Tests
 
-- [ ] 6.1 Unit test: `currentEntityIds` triggers enrichment; no position → no enrichment
-- [ ] 6.2 Unit test: `currentEntityHint` array — each hint embedded and resolved; merged entities deduplicated
-- [ ] 6.3 Unit test: hint resolution below threshold → enrichment silently skipped
-- [ ] 6.4 Unit test: record with no linked entities → no `entityContext`
-- [ ] 6.5 Unit test: `selectedEntity` is highest-cosine-sim entity among linked entities
-- [ ] 6.6 Unit test: multi-source BFS — shortest path from any seed wins; `originEntity` correct
-- [ ] 6.7 Unit test: `pathReliability: 'ok'` for ≤5 hops, `'degraded'` for >5 hops
-- [ ] 6.8 Unit test: no path found → `navigationPath: null`, `originEntity: null`
-- [ ] 6.9 Unit test: top-3 enrichment runs in parallel (spy on `findEntityPath` call count)
+- [x] 6.1 Unit test: `currentEntityIds` triggers enrichment; no position → no enrichment
+- [x] 6.2 Unit test: `currentEntityHint` array — each hint embedded and resolved; merged entities deduplicated
+- [x] 6.3 Unit test: hint resolution below threshold → enrichment silently skipped
+- [x] 6.4 Unit test: record with no linked entities → no `entityContext`
+- [x] 6.5 Unit test: `selectedEntity` is highest-cosine-sim entity among linked entities
+- [x] 6.6 Unit test: multi-source BFS — shortest path from any seed wins; `originEntity` correct
+- [x] 6.7 Unit test: `pathReliability: 'ok'` for ≤5 hops, `'degraded'` for >5 hops
+- [x] 6.8 Unit test: no path found → `navigationPath: null`, `originEntity: null`
+- [x] 6.9 Unit test: top-3 enrichment runs in parallel (spy on `findEntityPath` call count)

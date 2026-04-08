@@ -136,9 +136,25 @@ async function main(): Promise<void> {
   );
 
   // -----------------------------------------------
-  // Scenario 8: shutdown completes cleanly
+  // Scenario 8: recall with entity hint — graceful with no/partial entity graph
   // -----------------------------------------------
-  console.log('\n[Scenario 8] shutdown() — completes cleanly');
+  console.log('\n[Scenario 8] recall() with currentEntityHint — does not crash');
+  const recallWithHint = (
+    await memory.recall('machine learning engineer', { currentEntityHint: ['Lena Muller'] })
+  )._unsafeUnwrap();
+  if (recallWithHint.length === 0) {
+    console.warn('  WARN: recall with hint returned 0 results');
+  } else {
+    const enrichedCount = recallWithHint.filter((r) => r.entityContext !== undefined).length;
+    console.log(
+      `  OK: recall with hint returned ${String(recallWithHint.length)} result(s), ${String(enrichedCount)} with entityContext`,
+    );
+  }
+
+  // -----------------------------------------------
+  // Scenario 9: shutdown completes cleanly
+  // -----------------------------------------------
+  console.log('\n[Scenario 9] shutdown() — completes cleanly');
   const report = await memory.shutdown();
   if (report.engramId !== memory.engramId) {
     throw new Error(
