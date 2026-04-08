@@ -1,5 +1,6 @@
 import type { ExtractionError, PerirhinalStats } from '@neurome/perirhinal';
-import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
+import type { ResultAsync } from 'neverthrow';
+import { errAsync, okAsync } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryEventEmitter } from '../memory-events.js';
