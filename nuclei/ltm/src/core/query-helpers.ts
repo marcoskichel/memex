@@ -200,14 +200,21 @@ export function buildStrategyMap(
   return strategyMap;
 }
 
-export function applySupersedes(params: ApplySupersedesParams): boolean {
+export interface ApplySupersedesResult {
+  isSuperseded: boolean;
+  supersedingIds: number[];
+}
+
+export function applySupersedes(params: ApplySupersedesParams): ApplySupersedesResult {
   const { recordId, storage, shouldStrengthen } = params;
   const incomingSupersedes = storage.edgesTo(recordId).filter((edge) => edge.type === 'supersedes');
   let isSuperseded = false;
+  const supersedingIds: number[] = [];
   for (const edge of incomingSupersedes) {
     const edgeRetentionValue = retention(edge);
     if (edgeRetentionValue > SUPERSEDES_RETENTION_THRESHOLD) {
       isSuperseded = true;
+      supersedingIds.push(edge.fromId);
     }
     if (shouldStrengthen) {
       const newEdgeStability = Math.min(
@@ -220,7 +227,7 @@ export function applySupersedes(params: ApplySupersedesParams): boolean {
       });
     }
   }
-  return isSuperseded;
+  return { isSuperseded, supersedingIds };
 }
 
 export function strengthenResults(params: StrengthenResultsParams): void {

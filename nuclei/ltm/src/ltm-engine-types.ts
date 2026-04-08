@@ -54,7 +54,7 @@ export interface LtmQueryResult {
   record: LtmRecord;
   effectiveScore: number;
   rrfScore: number;
-  retrievalStrategies: ('semantic' | 'temporal' | 'associative')[];
+  retrievalStrategies: ('semantic' | 'temporal' | 'associative' | 'companion')[];
   isSuperseded: boolean;
   confidence?: number;
 }

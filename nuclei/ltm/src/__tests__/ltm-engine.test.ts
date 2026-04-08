@@ -601,6 +601,60 @@ describe('LtmEngine', () => {
     });
   });
 
+  describe('companion injection', () => {
+    it('superseded result triggers companion injection of superseding record', async () => {
+      const oldId = unwrap(await engine.insert('old fact'));
+      const newId = unwrap(await engine.insert('corrected fact'));
+      engine.relate({ fromId: newId, toId: oldId, type: 'supersedes' });
+
+      const result = await engine.query('fact', { threshold: 0, strengthen: false });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const ids = result.value.map((qr) => qr.record.id);
+        expect(ids).toContain(oldId);
+        expect(ids).toContain(newId);
+        const companion = result.value.find((qr) => qr.retrievalStrategies.includes('companion'));
+        if (companion) {
+          expect(companion.isSuperseded).toBe(false);
+        }
+      }
+    });
+
+    it('does not duplicate companion already in result set', async () => {
+      const oldId = unwrap(await engine.insert('old info'));
+      const newId = unwrap(await engine.insert('new info'));
+      engine.relate({ fromId: newId, toId: oldId, type: 'supersedes' });
+
+      const result = await engine.query('info', { threshold: 0, strengthen: false });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const idCounts = new Map<number, number>();
+        for (const qr of result.value) {
+          idCounts.set(qr.record.id, (idCounts.get(qr.record.id) ?? 0) + 1);
+        }
+        expect(idCounts.get(newId)).toBe(1);
+      }
+    });
+
+    it('one-hop cap: does not chase transitive supersedes chain', async () => {
+      const aId = unwrap(await engine.insert('version A'));
+      const bId = unwrap(await engine.insert('version B'));
+      const cId = unwrap(await engine.insert('version C'));
+      engine.relate({ fromId: bId, toId: aId, type: 'supersedes' });
+      engine.relate({ fromId: cId, toId: bId, type: 'supersedes' });
+
+      const result = await engine.query('version', { threshold: 0, strengthen: false });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const companionResults = result.value.filter((qr) =>
+          qr.retrievalStrategies.includes('companion'),
+        );
+        const companionIds = companionResults.map((qr) => qr.record.id);
+        expect(companionIds).not.toContain(cId);
+      }
+    });
+  });
+
   describe('stats', () => {
     it('reflects current store state', async () => {
       unwrap(await engine.insert('a'));

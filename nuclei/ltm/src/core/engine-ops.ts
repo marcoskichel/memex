@@ -1,14 +1,9 @@
 import type { ResultAsync } from 'neverthrow';
 import { errAsync, okAsync } from 'neverthrow';
 
-import type {
-  LtmEngineStats,
-  LtmQueryError,
-  LtmQueryOptions,
-  LtmQueryResult,
-} from '../ltm-engine-types.js';
+import type { LtmQueryError, LtmQueryOptions, LtmQueryResult } from '../ltm-engine-types.js';
+import { injectCompanions } from './companion-injection.js';
 import { buildEntityRankedList, filterCandidates, sortResults } from './query-filters.js';
-import { clusterEpisodic } from './query-filters.js';
 import type { QueryMaps } from './query-helpers.js';
 import {
   applySupersedes,
@@ -69,17 +64,14 @@ function checkModelMatch(records: LtmRecord[], queryModelId: string): LtmQueryEr
   return undefined;
 }
 
-export function executeQuery(context: QueryContext): ResultAsync<LtmQueryResult[], LtmQueryError> {
+interface RankingOutput {
+  collectContext: CollectResultsContext;
+  graphTraversalIds: Set<number>;
+}
+
+function buildRanking(context: QueryContext): RankingOutput {
   const { storage, onDecay } = context;
-  const allRecords = storage.getAllRecords();
-  if (allRecords.length === 0) {
-    return okAsync([]);
-  }
-  const modelError = checkModelMatch(allRecords, context.queryModelId);
-  if (modelError) {
-    return errAsync(modelError);
-  }
-  const candidates = filterCandidates(allRecords, context.options);
+  const candidates = filterCandidates(storage.getAllRecords(), context.options);
   const maps = buildQueryMaps(candidates, context.queryVector);
   const rankedLists = buildRankedLists({ candidates, maps, storage });
   const entityRanked = buildEntityRankedList({
@@ -94,26 +86,45 @@ export function executeQuery(context: QueryContext): ResultAsync<LtmQueryResult[
     rankedLists.associativeRanked,
     ...(entityRanked.length > 0 ? [entityRanked] : []),
   ]);
-  const collectContext: CollectResultsContext = {
-    rrfScores,
-    maps,
-    strategyMap,
-    threshold: context.threshold,
-    shouldStrengthen: context.shouldStrengthen,
-    onDecay,
-    storage,
+  return {
+    collectContext: {
+      rrfScores,
+      maps,
+      strategyMap,
+      threshold: context.threshold,
+      shouldStrengthen: context.shouldStrengthen,
+      onDecay,
+      storage,
+      queryVector: context.queryVector,
+    },
+    graphTraversalIds: rankedLists.graphTraversalIds,
   };
+}
+
+export function executeQuery(context: QueryContext): ResultAsync<LtmQueryResult[], LtmQueryError> {
+  const { storage } = context;
+  const allRecords = storage.getAllRecords();
+  if (allRecords.length === 0) {
+    return okAsync([]);
+  }
+  const modelError = checkModelMatch(allRecords, context.queryModelId);
+  if (modelError) {
+    return errAsync(modelError);
+  }
+  const { collectContext, graphTraversalIds } = buildRanking(context);
   const { results, excluded } = collectQueryResults(collectContext);
   sortResults(results, context.sort);
-  const withTopUp = applyTopUp({ results, excluded, minResults: context.minResults, storage });
+  const withTopUp = applyTopUp({
+    results,
+    excluded,
+    minResults: context.minResults,
+    storage,
+    queryVector: context.queryVector,
+  });
   const limited = context.limit === undefined ? withTopUp : withTopUp.slice(0, context.limit);
   if (context.shouldStrengthen && limited.length > 0) {
     const thresholdPassingInLimited = results.filter((result) => limited.includes(result));
-    strengthenResults({
-      results: thresholdPassingInLimited,
-      graphTraversalIds: rankedLists.graphTraversalIds,
-      storage,
-    });
+    strengthenResults({ results: thresholdPassingInLimited, graphTraversalIds, storage });
   }
   return okAsync(limited);
 }
@@ -126,6 +137,7 @@ export interface CollectResultsContext {
   shouldStrengthen: boolean;
   onDecay: (record: LtmRecord, retentionValue: number) => void;
   storage: StorageAdapter;
+  queryVector: Float32Array;
 }
 
 export interface CollectResultsOutput {
@@ -134,9 +146,19 @@ export interface CollectResultsOutput {
 }
 
 export function collectQueryResults(context: CollectResultsContext): CollectResultsOutput {
-  const { rrfScores, maps, strategyMap, threshold, shouldStrengthen, onDecay, storage } = context;
+  const {
+    rrfScores,
+    maps,
+    strategyMap,
+    threshold,
+    shouldStrengthen,
+    onDecay,
+    storage,
+    queryVector,
+  } = context;
   const results: LtmQueryResult[] = [];
   const excluded: ExcludedCandidate[] = [];
+  const supersededMap = new Map<number, number[]>();
   for (const [recordId, rrfScore] of rrfScores) {
     const record = maps.recordMap.get(recordId);
     if (!record) {
@@ -152,7 +174,14 @@ export function collectQueryResults(context: CollectResultsContext): CollectResu
       excluded.push({ record, rrfScore, effectiveScore, sim, strategyMap });
       continue;
     }
-    const isSuperseded = applySupersedes({ recordId, storage, shouldStrengthen });
+    const { isSuperseded, supersedingIds } = applySupersedes({
+      recordId,
+      storage,
+      shouldStrengthen,
+    });
+    if (isSuperseded) {
+      supersededMap.set(recordId, supersedingIds);
+    }
     const strategies = strategyMap.get(recordId);
     const result: LtmQueryResult = {
       record,
@@ -163,6 +192,7 @@ export function collectQueryResults(context: CollectResultsContext): CollectResu
         | 'semantic'
         | 'temporal'
         | 'associative'
+        | 'companion'
       )[],
     };
     if (record.tier === 'semantic' && record.metadata.confidence !== undefined) {
@@ -173,69 +203,11 @@ export function collectQueryResults(context: CollectResultsContext): CollectResu
       onDecay(record, retentionValue);
     }
   }
+
+  injectCompanions({ results, supersededMap, queryVector, storage });
+
   return { results, excluded };
 }
 
-export const DEFAULT_SIMILARITY_THRESHOLD = 0.75;
-export const DEFAULT_MIN_ACCESS_COUNT = 2;
-export const DEFAULT_PRUNE_RETENTION = 0.1;
-
-export interface PruneOptions {
-  minRetention?: number;
-  tier?: 'episodic' | 'semantic';
-}
-
-export interface FindConsolidationOptions {
-  similarityThreshold?: number;
-  minAccessCount?: number;
-}
-
-export function findConsolidationCandidates(
-  storage: StorageAdapter,
-  options?: FindConsolidationOptions,
-): LtmRecord[][] {
-  const episodic = storage
-    .getAllRecords()
-    .filter(
-      (record) =>
-        record.tier === 'episodic' &&
-        record.accessCount >= (options?.minAccessCount ?? DEFAULT_MIN_ACCESS_COUNT),
-    );
-  return clusterEpisodic(episodic, options?.similarityThreshold ?? DEFAULT_SIMILARITY_THRESHOLD);
-}
-
-export function pruneRecords(
-  storage: StorageAdapter,
-  pruneOptions?: PruneOptions,
-): { pruned: number; remaining: number } {
-  const minRetentionValue = pruneOptions?.minRetention ?? DEFAULT_PRUNE_RETENTION;
-  let allRecords = storage.getAllRecords();
-  if (pruneOptions?.tier) {
-    allRecords = allRecords.filter((record) => record.tier === pruneOptions.tier);
-  }
-  let pruned = 0;
-  for (const record of allRecords) {
-    if (retention(record) < minRetentionValue) {
-      if (storage.edgesTo(record.id).some((edge) => edge.type === 'consolidates')) {
-        storage.tombstoneRecord(record.id);
-      } else {
-        storage.deleteRecord(record.id);
-      }
-      pruned++;
-    }
-  }
-  return { pruned, remaining: storage.getAllRecords().length };
-}
-
-export function computeStats(storage: StorageAdapter): LtmEngineStats {
-  const allRecords = storage.getAllRecords();
-  const total = allRecords.length;
-  const episodic = allRecords.filter((record) => record.tier === 'episodic').length;
-  const semantic = allRecords.filter((record) => record.tier === 'semantic').length;
-  const avgStability =
-    total > 0 ? allRecords.reduce((sum, record) => sum + record.stability, 0) / total : 0;
-  const avgRetention =
-    total > 0 ? allRecords.reduce((sum, record) => sum + retention(record), 0) / total : 0;
-  const tombstoned = storage.countTombstoned();
-  return { total, episodic, semantic, tombstoned, avgStability, avgRetention };
-}
+export { computeStats, findConsolidationCandidates, pruneRecords } from './maintenance-ops.js';
+export type { FindConsolidationOptions, PruneOptions } from './maintenance-ops.js';
