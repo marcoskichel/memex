@@ -201,6 +201,10 @@ export class InMemoryAdapter implements StorageAdapter {
     return this.entityGraph.insertEntityRecordLink(entityId, recordId);
   }
 
+  getEntitiesForRecord(recordId: number): EntityNode[] {
+    return this.entityGraph.getEntitiesForRecord(recordId);
+  }
+
   getUnlinkedRecordIds(): number[] {
     const allIds = [...this.records.values()]
       .filter((record) => !record.tombstoned)

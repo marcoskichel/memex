@@ -1,13 +1,17 @@
-import type { AgentState } from '@neurome/amygdala';
+import type { AgentState, AmygdalaProcess } from '@neurome/amygdala';
+import type { HippocampusProcess } from '@neurome/hippocampus';
 import type { LLMAdapter } from '@neurome/llm';
 import type {
   EmbeddingAdapter,
+  EntityNode,
+  EntityPathStep,
+  LtmEngine,
   LtmInsertOptions,
+  LtmQueryError,
   LtmQueryOptions,
   LtmQueryResult,
   LtmRecord,
 } from '@neurome/ltm';
-import type { LtmEngine } from '@neurome/ltm';
 import type { InsightLogLike } from '@neurome/stm';
 import type { ResultAsync } from 'neverthrow';
 
@@ -47,6 +51,20 @@ export interface MemoryConfig {
   lowCostModeThreshold?: number;
   pendingConsolidationTtlMs?: number;
   agentState?: AgentState;
+}
+
+export interface MemoryImplDeps {
+  engramId: string;
+  events: MemoryEventEmitter;
+  ltm: LtmEngine;
+  embedder: EmbeddingAdapter;
+  stm: InsightLogLike;
+  amygdala: AmygdalaProcess;
+  hippocampus: HippocampusProcess;
+  contextDirectory: string;
+  llmAdapter: LLMAdapter;
+  forkFn: (outputPath: string) => Promise<string>;
+  pendingConsolidationTtlMs?: number;
 }
 
 export interface PendingConsolidation {
@@ -109,6 +127,28 @@ export class ImportTextError extends Error {
   }
 }
 
+export const ENTITY_HINT_SIMILARITY_THRESHOLD = 0.75;
+export const ENTITY_PATH_RELIABILITY_THRESHOLD = 5;
+export const ENTITY_CONTEXT_TOP_K = 3;
+
+type RecallEntityPosition =
+  | { currentEntityIds: number[]; currentEntityHint?: never }
+  | { currentEntityHint: string[]; currentEntityIds?: never }
+  | { currentEntityIds?: never; currentEntityHint?: never };
+
+export type RecallOptions = LtmQueryOptions & RecallEntityPosition;
+
+export interface EntityContext {
+  entities: EntityNode[];
+  selectedEntity: EntityNode;
+  originEntity: EntityNode | undefined;
+  navigationPath: EntityPathStep[] | undefined;
+  pathReliability: 'ok' | 'degraded';
+  entityResolved: boolean;
+}
+
+export type MemoryRecallResult = LtmQueryResult & { entityContext?: EntityContext };
+
 export interface LogInsightOptions {
   summary: string;
   contextFile: string;
@@ -119,7 +159,10 @@ export interface Memory {
   readonly engramId: string;
   readonly events: MemoryEventEmitter;
   logInsight(options: LogInsightOptions): void;
-  recall(nlQuery: string, options?: LtmQueryOptions): ReturnType<LtmEngine['query']>;
+  recall(
+    nlQuery: string,
+    options?: RecallOptions,
+  ): ResultAsync<MemoryRecallResult[], LtmQueryError>;
   recallSession(
     query: string,
     options: { engramId: string } & Omit<LtmQueryOptions, 'engramId'>,

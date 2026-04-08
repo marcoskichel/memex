@@ -113,6 +113,18 @@ export class SqliteEntityGraph {
     return result.lastInsertRowid as number;
   }
 
+  getEntitiesForRecord(recordId: number): EntityNode[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT e.id, e.name, e.type, e.embedding, e.created_at
+           FROM entities e JOIN entity_record_links erl ON e.id = erl.entity_id
+           WHERE erl.record_id = ?`,
+        )
+        .all(recordId) as Record<string, unknown>[]
+    ).map((row) => rowToEntityNode(row));
+  }
+
   getUnlinkedRecordIds(): number[] {
     const rows = this.db
       .prepare(

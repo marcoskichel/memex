@@ -75,6 +75,7 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
     engramId,
     events,
     ltm,
+    embedder: embeddingAdapter,
     stm,
     amygdala,
     hippocampus,

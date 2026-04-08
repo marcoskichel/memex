@@ -105,6 +105,19 @@ export class InMemoryEntityGraph {
     return id;
   }
 
+  getEntitiesForRecord(recordId: number): EntityNode[] {
+    const result: EntityNode[] = [];
+    for (const link of this.entityRecordLinks.values()) {
+      if (link.recordId === recordId) {
+        const entity = this.entities.get(link.entityId);
+        if (entity) {
+          result.push(entity);
+        }
+      }
+    }
+    return result;
+  }
+
   getUnlinkedRecordIds(allRecordIds: number[]): number[] {
     const linked = new Set<number>();
     for (const link of this.entityRecordLinks.values()) {

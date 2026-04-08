@@ -108,6 +108,7 @@ export interface StorageAdapter {
   insertEntityEdge(edge: Omit<EntityEdge, 'id' | 'weight'> & { weight?: number }): number;
   getEntityNeighbors(entityId: number, depth: number): EntityNode[];
   insertEntityRecordLink(entityId: number, recordId: number): number;
+  getEntitiesForRecord(recordId: number): EntityNode[];
   getUnlinkedRecordIds(): number[];
   findEntityPath(params: FindEntityPathParams): EntityPathStep[];
 }

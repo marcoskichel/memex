@@ -52,6 +52,7 @@ export type {
 export { LtmCategory } from './ltm-engine-types.js';
 export { findLiveRecord } from './core/query-helpers.js';
 import type {
+  EntityNode,
   EntityPathStep,
   FindEntityPathParams,
   LtmRecord,
@@ -237,6 +238,14 @@ export class LtmEngine {
 
   findEntityPath(params: FindEntityPathParams): EntityPathStep[] {
     return this.storage.findEntityPath(params);
+  }
+
+  getEntitiesForRecord(recordId: number): EntityNode[] {
+    return this.storage.getEntitiesForRecord(recordId);
+  }
+
+  findEntityByEmbedding(embedding: Float32Array, threshold: number): EntityNode[] {
+    return this.storage.findEntityByEmbedding(embedding, threshold);
   }
 
   stats(): LtmEngineStats {

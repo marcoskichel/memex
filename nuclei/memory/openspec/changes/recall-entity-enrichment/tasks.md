@@ -1,31 +1,31 @@
 ## 1. Types
 
-- [ ] 1.1 Add `RecallEntityPosition` discriminated union and update `RecallOptions` in `memory-types.ts`
-- [ ] 1.2 Add `EntityContext` interface to `memory-types.ts`
-- [ ] 1.3 Add `entityContext?: EntityContext` to `RecallResult` (or create a `MemoryRecallResult` wrapper type if `RecallResult` is owned by ltm)
-- [ ] 1.4 Export `EntityContext` and updated `RecallOptions` from `index.ts`
+- [x] 1.1 Add `RecallEntityPosition` discriminated union and update `RecallOptions` in `memory-types.ts`
+- [x] 1.2 Add `EntityContext` interface to `memory-types.ts`
+- [x] 1.3 Add `entityContext?: EntityContext` to `RecallResult` (or create a `MemoryRecallResult` wrapper type if `RecallResult` is owned by ltm)
+- [x] 1.4 Export `EntityContext` and updated `RecallOptions` from `index.ts`
 
 ## 2. Constants
 
-- [ ] 2.1 Add `ENTITY_HINT_SIMILARITY_THRESHOLD` constant
-- [ ] 2.2 Add `ENTITY_PATH_RELIABILITY_THRESHOLD = 5` constant
-- [ ] 2.3 Add `ENTITY_CONTEXT_TOP_K = 3` constant
+- [x] 2.1 Add `ENTITY_HINT_SIMILARITY_THRESHOLD` constant
+- [x] 2.2 Add `ENTITY_PATH_RELIABILITY_THRESHOLD = 5` constant
+- [x] 2.3 Add `ENTITY_CONTEXT_TOP_K = 3` constant
 
 ## 3. Storage — getEntitiesForRecord
 
-- [ ] 3.1 Add `getEntitiesForRecord(recordId: number): EntityNode[]` to `StorageAdapter` interface in `@neurome/ltm`
-- [ ] 3.2 Implement `getEntitiesForRecord` in `SqliteAdapter` (JOIN `entity_record_links` + `entities`)
-- [ ] 3.3 Implement `getEntitiesForRecord` in `InMemoryAdapter` (delegate to `InMemoryEntityGraph`)
-- [ ] 3.4 Expose `getEntitiesForRecord` on `LtmEngine`
+- [x] 3.1 Add `getEntitiesForRecord(recordId: number): EntityNode[]` to `StorageAdapter` interface in `@neurome/ltm`
+- [x] 3.2 Implement `getEntitiesForRecord` in `SqliteAdapter` (JOIN `entity_record_links` + `entities`)
+- [x] 3.3 Implement `getEntitiesForRecord` in `InMemoryAdapter` (delegate to `InMemoryEntityGraph`)
+- [x] 3.4 Expose `getEntitiesForRecord` on `LtmEngine`
 
 ## 4. Enrichment logic
 
-- [ ] 4.1 Create `recall-enrichment.ts` with `enrichRecallResults(params)` function
-- [ ] 4.2 Implement hint resolution: embed each string in `currentEntityHint`, call `findEntityByEmbedding` per hint, deduplicate resolved entities by ID
-- [ ] 4.3 Implement entity selection: for each result, fetch linked entities via `getEntitiesForRecord`, pick `selectedEntity` by highest cosine similarity to the recall query embedding
-- [ ] 4.4 Implement multi-source BFS: run `findEntityPath` from each seed to `selectedEntity`, pick shortest result; record `originEntity`
-- [ ] 4.5 Implement path reliability classification: `pathReliability: 'ok'` if hops ≤ `ENTITY_PATH_RELIABILITY_THRESHOLD`, else `'degraded'`
-- [ ] 4.6 Wire parallel enrichment: process top-`ENTITY_CONTEXT_TOP_K` results concurrently via `Promise.all`
+- [x] 4.1 Create `recall-enrichment.ts` with `enrichRecallResults(params)` function
+- [x] 4.2 Implement hint resolution: embed each string in `currentEntityHint`, call `findEntityByEmbedding` per hint, deduplicate resolved entities by ID
+- [x] 4.3 Implement entity selection: for each result, fetch linked entities via `getEntitiesForRecord`, pick `selectedEntity` by highest cosine similarity to the recall query embedding
+- [x] 4.4 Implement multi-source BFS: run `findEntityPath` from each seed to `selectedEntity`, pick shortest result; record `originEntity`
+- [x] 4.5 Implement path reliability classification: `pathReliability: 'ok'` if hops ≤ `ENTITY_PATH_RELIABILITY_THRESHOLD`, else `'degraded'`
+- [x] 4.6 Wire parallel enrichment: process top-`ENTITY_CONTEXT_TOP_K` results concurrently via `Promise.all`
 
 ## 5. MemoryImpl integration
 

@@ -37,28 +37,29 @@ export class SqliteAdapter implements StorageAdapter {
       record.embedding.byteOffset,
       record.embedding.byteLength,
     );
-    const stmt = this.db.prepare(`
-      INSERT INTO records (data, metadata, embedding, embedding_model_id, embedding_dimensions, tier, importance, stability, last_accessed_at, access_count, created_at, tombstoned, tombstoned_at, session_id, category, episode_summary)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    const result = stmt.run(
-      record.data,
-      JSON.stringify(record.metadata),
-      embeddingBuf,
-      record.embeddingMeta.modelId,
-      record.embeddingMeta.dimensions,
-      record.tier,
-      record.importance,
-      record.stability,
-      record.lastAccessedAt.getTime(),
-      record.accessCount,
-      record.createdAt.getTime(),
-      record.tombstoned ? 1 : 0,
-      record.tombstonedAt ? record.tombstonedAt.getTime() : undefined,
-      record.engramId,
-      record.category ?? undefined,
-      record.episodeSummary ?? undefined,
-    );
+    const result = this.db
+      .prepare(
+        `INSERT INTO records (data, metadata, embedding, embedding_model_id, embedding_dimensions, tier, importance, stability, last_accessed_at, access_count, created_at, tombstoned, tombstoned_at, session_id, category, episode_summary)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        record.data,
+        JSON.stringify(record.metadata),
+        embeddingBuf,
+        record.embeddingMeta.modelId,
+        record.embeddingMeta.dimensions,
+        record.tier,
+        record.importance,
+        record.stability,
+        record.lastAccessedAt.getTime(),
+        record.accessCount,
+        record.createdAt.getTime(),
+        record.tombstoned ? 1 : 0,
+        record.tombstonedAt ? record.tombstonedAt.getTime() : undefined,
+        record.engramId,
+        record.category ?? undefined,
+        record.episodeSummary ?? undefined,
+      );
     const id = result.lastInsertRowid as number;
     this.db.prepare('INSERT INTO ltm_records_fts(rowid, data) VALUES (?, ?)').run(id, record.data);
     return id;
@@ -66,12 +67,11 @@ export class SqliteAdapter implements StorageAdapter {
 
   bulkInsertRecords(records: Omit<LtmRecord, 'id'>[]): number[] {
     const ids: number[] = [];
-    const txn = this.db.transaction(() => {
+    this.db.transaction(() => {
       for (const record of records) {
         ids.push(this.insertRecord(record));
       }
-    });
-    txn();
+    })();
     return ids;
   }
 
@@ -137,15 +137,14 @@ export class SqliteAdapter implements StorageAdapter {
 
   tombstoneRecord(id: number): void {
     const now = Date.now();
-    const txn = this.db.transaction(() => {
+    this.db.transaction(() => {
       this.db
         .prepare(
           'UPDATE records SET tombstoned = 1, tombstoned_at = ?, data = NULL, embedding = NULL WHERE id = ?',
         )
         .run(now, id);
       this.db.prepare('DELETE FROM ltm_records_fts WHERE rowid = ?').run(id);
-    });
-    txn();
+    })();
   }
 
   countTombstoned(): number {
@@ -156,13 +155,12 @@ export class SqliteAdapter implements StorageAdapter {
   }
 
   deleteRecord(id: number): boolean {
-    const txn = this.db.transaction(() => {
+    return this.db.transaction(() => {
       this.db.prepare('DELETE FROM ltm_records_fts WHERE rowid = ?').run(id);
       this.deleteEdgesFor(id);
       const result = this.db.prepare('DELETE FROM records WHERE id = ?').run(id);
       return result.changes > 0;
-    });
-    return txn();
+    })();
   }
 
   insertEdge(edge: Omit<LtmEdge, 'id'>): number {
@@ -261,6 +259,10 @@ export class SqliteAdapter implements StorageAdapter {
 
   insertEntityRecordLink(entityId: number, recordId: number): number {
     return this.entityGraph.insertEntityRecordLink(entityId, recordId);
+  }
+
+  getEntitiesForRecord(recordId: number): EntityNode[] {
+    return this.entityGraph.getEntitiesForRecord(recordId);
   }
 
   getUnlinkedRecordIds(): number[] {
