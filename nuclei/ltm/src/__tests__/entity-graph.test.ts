@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryAdapter } from '../storage/in-memory-adapter.js';
 import { SqliteAdapter } from '../storage/sqlite-adapter.js';
 import { runMigrations, SCHEMA } from '../storage/sqlite-schema.js';
-import type { EntityNode } from '../storage/storage-adapter.js';
+import type { EntityNode, EntityPathStep } from '../storage/storage-adapter.js';
 
 function makeEntity(overrides: Partial<Omit<EntityNode, 'id'>> = {}): Omit<EntityNode, 'id'> {
   return {
@@ -66,19 +66,21 @@ describe('V3 migration (SqliteAdapter)', () => {
     db.close();
   });
 
-  it('7.3a upgrades V3 database to V4 — unique index created', () => {
+  it('8.2a upgrades V3 database to V4 — weight column added to entity_edges', () => {
     const db = new Database(dbPath);
     sqliteVec.load(db);
     db.exec(SCHEMA);
     db.pragma('user_version = 2');
     db.transaction(() => {
-      for (const sql of [
-        `CREATE TABLE IF NOT EXISTS entities (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL, embedding BLOB NOT NULL, created_at INTEGER NOT NULL)`,
-        `CREATE TABLE IF NOT EXISTS entity_edges (id INTEGER PRIMARY KEY AUTOINCREMENT, from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, type TEXT NOT NULL, created_at INTEGER NOT NULL)`,
-        `CREATE TABLE IF NOT EXISTS entity_record_links (id INTEGER PRIMARY KEY AUTOINCREMENT, entity_id INTEGER NOT NULL, record_id INTEGER NOT NULL, created_at INTEGER NOT NULL)`,
-      ]) {
-        db.exec(sql);
-      }
+      db.prepare(
+        'CREATE TABLE IF NOT EXISTS entities (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL, embedding BLOB NOT NULL, created_at INTEGER NOT NULL)',
+      ).run();
+      db.prepare(
+        'CREATE TABLE IF NOT EXISTS entity_edges (id INTEGER PRIMARY KEY AUTOINCREMENT, from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, type TEXT NOT NULL, created_at INTEGER NOT NULL)',
+      ).run();
+      db.prepare(
+        'CREATE TABLE IF NOT EXISTS entity_record_links (id INTEGER PRIMARY KEY AUTOINCREMENT, entity_id INTEGER NOT NULL, record_id INTEGER NOT NULL, created_at INTEGER NOT NULL)',
+      ).run();
       db.pragma('user_version = 3');
     })();
 
@@ -87,28 +89,27 @@ describe('V3 migration (SqliteAdapter)', () => {
     const version = db.pragma('user_version', { simple: true }) as number;
     expect(version).toBe(4);
 
-    const indexes = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_entity_edges_unique'",
-      )
-      .all() as { name: string }[];
-    expect(indexes).toHaveLength(1);
+    const columns = db.prepare('PRAGMA table_info(entity_edges)').all() as {
+      name: string;
+      dflt_value: string | null;
+    }[];
+    const weightCol = columns.find((col) => col.name === 'weight');
+    expect(weightCol).toBeDefined();
+    expect(weightCol?.dflt_value).toBe('1.0');
     db.close();
   });
 
-  it('7.3b V4 migration is a no-op on already-V4 database', () => {
+  it('8.2b V4 migration is idempotent', () => {
+    new SqliteAdapter(dbPath);
     const db = new Database(dbPath);
     sqliteVec.load(db);
-    db.exec(SCHEMA);
-    runMigrations(db);
 
-    const versionBefore = db.pragma('user_version', { simple: true }) as number;
-    expect(versionBefore).toBe(4);
+    expect(() => {
+      runMigrations(db);
+    }).not.toThrow();
 
-    runMigrations(db);
-
-    const versionAfter = db.pragma('user_version', { simple: true }) as number;
-    expect(versionAfter).toBe(4);
+    const version = db.pragma('user_version', { simple: true }) as number;
+    expect(version).toBe(4);
     db.close();
   });
 });
@@ -285,6 +286,130 @@ describe('SqliteAdapter entity graph', () => {
       const neighbors = adapter.getEntityNeighbors(aliceId, 1);
       expect(neighbors).toHaveLength(1);
     });
+
+    it('8.3a edge inserted without weight defaults to 1.0', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      adapter.insertEntityEdge({ fromId: aId, toId: bId, type: 'link', createdAt: new Date() });
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: bId });
+      expect(path).toHaveLength(2);
+      expect(path[1]?.via?.weight).toBe(1);
+    });
+
+    it('8.3b edge inserted with explicit weight stores the provided value', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      adapter.insertEntityEdge({
+        fromId: aId,
+        toId: bId,
+        type: 'link',
+        weight: 3,
+        createdAt: new Date(),
+      });
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: bId });
+      expect(path).toHaveLength(2);
+      expect(path[1]?.via?.weight).toBe(3);
+    });
+  });
+
+  describe('findEntityPath', () => {
+    it('8.1a direct path of one hop', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      adapter.insertEntityEdge({
+        fromId: aId,
+        toId: bId,
+        type: 'navigates_to',
+        createdAt: new Date(),
+      });
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: bId });
+      expect(path).toHaveLength(2);
+      expect(path[0]?.entity.id).toBe(aId);
+      expect(path[0]?.via).toBeUndefined();
+      expect(path[1]?.entity.id).toBe(bId);
+      expect(path[1]?.via?.type).toBe('navigates_to');
+    });
+
+    it('8.1b multi-hop path returned in order', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      const cId = adapter.insertEntity(makeEntity({ name: 'c' }));
+      adapter.insertEntityEdge({ fromId: aId, toId: bId, type: 'e1', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: bId, toId: cId, type: 'e2', createdAt: new Date() });
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: cId });
+      expect(path).toHaveLength(3);
+      expect(path.map((step: EntityPathStep) => step.entity.id)).toEqual([aId, bId, cId]);
+      expect(path[0]?.via).toBeUndefined();
+      expect(path[1]?.via?.type).toBe('e1');
+      expect(path[2]?.via?.type).toBe('e2');
+    });
+
+    it('8.1c shortest path chosen when multiple paths exist', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      const cId = adapter.insertEntity(makeEntity({ name: 'c' }));
+      const dId = adapter.insertEntity(makeEntity({ name: 'd' }));
+      const altId = adapter.insertEntity(makeEntity({ name: 'alt' }));
+      adapter.insertEntityEdge({ fromId: aId, toId: bId, type: 'x', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: bId, toId: cId, type: 'x', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: aId, toId: dId, type: 'x', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: dId, toId: altId, type: 'x', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: altId, toId: cId, type: 'x', createdAt: new Date() });
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: cId });
+      expect(path).toHaveLength(3);
+      expect(path.map((step: EntityPathStep) => step.entity.id)).toEqual([aId, bId, cId]);
+    });
+
+    it('8.1d no path returns empty array', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+
+      expect(adapter.findEntityPath({ fromId: aId, toId: bId })).toEqual([]);
+    });
+
+    it('8.1e fromId equals toId returns single-step array', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: aId });
+      expect(path).toHaveLength(1);
+      expect(path[0]?.entity.id).toBe(aId);
+      expect(path[0]?.via).toBeUndefined();
+    });
+
+    it('8.1f maxHops exceeded returns empty array', () => {
+      const nodeIds = Array.from({ length: 9 }, (_value, index) =>
+        adapter.insertEntity(makeEntity({ name: `node-${String(index)}` })),
+      );
+      for (let index = 0; index < nodeIds.length - 1; index++) {
+        const fromId = nodeIds[index];
+        const toId = nodeIds[index + 1];
+        if (fromId !== undefined && toId !== undefined) {
+          adapter.insertEntityEdge({ fromId, toId, type: 'x', createdAt: new Date() });
+        }
+      }
+      const firstId = nodeIds[0];
+      const lastId = nodeIds.at(-1);
+      expect(firstId).toBeDefined();
+      expect(lastId).toBeDefined();
+      if (firstId !== undefined && lastId !== undefined) {
+        expect(adapter.findEntityPath({ fromId: firstId, toId: lastId, maxHops: 5 })).toEqual([]);
+      }
+    });
+
+    it('8.1g cycle safety — traversal terminates', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      const cId = adapter.insertEntity(makeEntity({ name: 'c' }));
+      adapter.insertEntityEdge({ fromId: aId, toId: bId, type: 'x', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: bId, toId: aId, type: 'x', createdAt: new Date() });
+
+      expect(adapter.findEntityPath({ fromId: aId, toId: cId })).toEqual([]);
+    });
   });
 });
 
@@ -406,5 +531,100 @@ describe('InMemoryAdapter entity graph', () => {
     });
 
     expect(adapter.getEntityNeighbors(aliceId, 1)).toHaveLength(1);
+  });
+
+  it('8.3c insertEntityEdge without weight defaults to 1.0', () => {
+    const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+    const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+    adapter.insertEntityEdge({ fromId: aId, toId: bId, type: 'link', createdAt: new Date() });
+
+    const path = adapter.findEntityPath({ fromId: aId, toId: bId });
+    expect(path[1]?.via?.weight).toBe(1);
+  });
+
+  it('8.3d insertEntityEdge with explicit weight stores it', () => {
+    const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+    const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+    adapter.insertEntityEdge({
+      fromId: aId,
+      toId: bId,
+      type: 'link',
+      weight: 5,
+      createdAt: new Date(),
+    });
+
+    const path = adapter.findEntityPath({ fromId: aId, toId: bId });
+    expect(path[1]?.via?.weight).toBe(5);
+  });
+
+  describe('findEntityPath', () => {
+    it('8.1h direct path', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      adapter.insertEntityEdge({
+        fromId: aId,
+        toId: bId,
+        type: 'navigates_to',
+        createdAt: new Date(),
+      });
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: bId });
+      expect(path).toHaveLength(2);
+      expect(path[0]?.via).toBeUndefined();
+      expect(path[1]?.via?.type).toBe('navigates_to');
+    });
+
+    it('8.1i multi-hop path in order', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      const cId = adapter.insertEntity(makeEntity({ name: 'c' }));
+      adapter.insertEntityEdge({ fromId: aId, toId: bId, type: 'e1', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: bId, toId: cId, type: 'e2', createdAt: new Date() });
+
+      const path = adapter.findEntityPath({ fromId: aId, toId: cId });
+      expect(path.map((step: EntityPathStep) => step.entity.id)).toEqual([aId, bId, cId]);
+    });
+
+    it('8.1j no path returns empty array', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      expect(adapter.findEntityPath({ fromId: aId, toId: bId })).toEqual([]);
+    });
+
+    it('8.1k fromId equals toId returns single-step array', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const path = adapter.findEntityPath({ fromId: aId, toId: aId });
+      expect(path).toHaveLength(1);
+      expect(path[0]?.via).toBeUndefined();
+    });
+
+    it('8.1l maxHops exceeded returns empty array', () => {
+      const nodeIds = Array.from({ length: 9 }, (_value, index) =>
+        adapter.insertEntity(makeEntity({ name: `node-${String(index)}` })),
+      );
+      for (let index = 0; index < nodeIds.length - 1; index++) {
+        const fromId = nodeIds[index];
+        const toId = nodeIds[index + 1];
+        if (fromId !== undefined && toId !== undefined) {
+          adapter.insertEntityEdge({ fromId, toId, type: 'x', createdAt: new Date() });
+        }
+      }
+      const firstId = nodeIds[0];
+      const lastId = nodeIds.at(-1);
+      expect(firstId).toBeDefined();
+      expect(lastId).toBeDefined();
+      if (firstId !== undefined && lastId !== undefined) {
+        expect(adapter.findEntityPath({ fromId: firstId, toId: lastId, maxHops: 5 })).toEqual([]);
+      }
+    });
+
+    it('8.1m cycle safety — terminates without infinite loop', () => {
+      const aId = adapter.insertEntity(makeEntity({ name: 'a' }));
+      const bId = adapter.insertEntity(makeEntity({ name: 'b' }));
+      const cId = adapter.insertEntity(makeEntity({ name: 'c' }));
+      adapter.insertEntityEdge({ fromId: aId, toId: bId, type: 'x', createdAt: new Date() });
+      adapter.insertEntityEdge({ fromId: bId, toId: aId, type: 'x', createdAt: new Date() });
+      expect(adapter.findEntityPath({ fromId: aId, toId: cId })).toEqual([]);
+    });
   });
 });

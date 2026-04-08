@@ -1,9 +1,45 @@
 import type Database from 'better-sqlite3';
 
 import { MAX_ENTITY_NEIGHBOR_DEPTH, rowToEntityNode } from './sqlite-schema.js';
-import type { EntityEdge, EntityNode } from './storage-adapter.js';
+import type {
+  EntityEdge,
+  EntityNode,
+  EntityPathStep,
+  FindEntityPathParams,
+} from './storage-adapter.js';
+
+const MAX_PATH_HOPS = 20;
+const DEFAULT_MAX_HOPS = 10;
+
+interface EdgeEntry {
+  toId: number;
+  edgeId: number;
+  type: string;
+  weight: number;
+}
+
+interface ParentEntry {
+  fromId: number;
+  edgeId: number;
+  type: string;
+  weight: number;
+}
+
+interface BfsSearch {
+  fromId: number;
+  toId: number;
+  maxHops: number;
+}
+
+interface PathBuild {
+  fromId: number;
+  toId: number;
+  parent: Map<number, ParentEntry>;
+}
 
 export class SqliteEntityGraph {
+  private adjacencyCache: Map<number, EdgeEntry[]> | undefined;
+
   constructor(private db: Database.Database) {}
 
   insertEntity(entity: Omit<EntityNode, 'id'>): number {
@@ -36,12 +72,14 @@ export class SqliteEntityGraph {
     return rows.map((row) => rowToEntityNode(row));
   }
 
-  insertEntityEdge(edge: Omit<EntityEdge, 'id'>): number {
+  insertEntityEdge(edge: Omit<EntityEdge, 'id' | 'weight'> & { weight?: number }): number {
+    const weight = edge.weight ?? 1;
     const result = this.db
       .prepare(
-        'INSERT OR IGNORE INTO entity_edges (from_id, to_id, type, created_at) VALUES (?, ?, ?, ?)',
+        'INSERT OR IGNORE INTO entity_edges (from_id, to_id, type, weight, created_at) VALUES (?, ?, ?, ?, ?)',
       )
-      .run(edge.fromId, edge.toId, edge.type, edge.createdAt.getTime());
+      .run(edge.fromId, edge.toId, edge.type, weight, edge.createdAt.getTime());
+    this.adjacencyCache = undefined;
     return result.lastInsertRowid as number;
   }
 
@@ -84,5 +122,120 @@ export class SqliteEntityGraph {
       )
       .all() as { id: number }[];
     return rows.map((row) => row.id);
+  }
+
+  findEntityPath({
+    fromId,
+    toId,
+    maxHops = DEFAULT_MAX_HOPS,
+  }: FindEntityPathParams): EntityPathStep[] {
+    const clampedMaxHops = Math.min(Math.max(maxHops, 1), MAX_PATH_HOPS);
+
+    if (fromId === toId) {
+      return this.singleNodePath(fromId);
+    }
+
+    const parent = this.runBfs({ fromId, toId, maxHops: clampedMaxHops });
+    if (!parent) {
+      return [];
+    }
+
+    return this.buildPath({ fromId, toId, parent });
+  }
+
+  private singleNodePath(entityId: number): EntityPathStep[] {
+    const row = this.db.prepare('SELECT * FROM entities WHERE id = ?').get(entityId) as
+      | Record<string, unknown>
+      | undefined;
+    if (!row) {
+      return [];
+    }
+    return [{ entity: rowToEntityNode(row), via: undefined }];
+  }
+
+  private runBfs({ fromId, toId, maxHops }: BfsSearch): Map<number, ParentEntry> | undefined {
+    const adj = this.getAdjacencyCache();
+    const visited = new Set<number>([fromId]);
+    const parent = new Map<number, ParentEntry>();
+    const queue: { id: number; hops: number }[] = [{ id: fromId, hops: 0 }];
+
+    for (const current of iterateQueue(queue)) {
+      if (current.hops >= maxHops) {
+        continue;
+      }
+      for (const entry of adj.get(current.id) ?? []) {
+        if (visited.has(entry.toId)) {
+          continue;
+        }
+        visited.add(entry.toId);
+        parent.set(entry.toId, {
+          fromId: current.id,
+          edgeId: entry.edgeId,
+          type: entry.type,
+          weight: entry.weight,
+        });
+        if (entry.toId === toId) {
+          return parent;
+        }
+        queue.push({ id: entry.toId, hops: current.hops + 1 });
+      }
+    }
+    return undefined;
+  }
+
+  private buildPath({ fromId, toId, parent }: PathBuild): EntityPathStep[] {
+    const pathIds: number[] = [];
+    let current = toId;
+    while (current !== fromId) {
+      pathIds.unshift(current);
+      const entry = parent.get(current);
+      if (!entry) {
+        return [];
+      }
+      current = entry.fromId;
+    }
+    pathIds.unshift(fromId);
+
+    return pathIds.map((entityId, index) => {
+      const row = this.db.prepare('SELECT * FROM entities WHERE id = ?').get(entityId) as Record<
+        string,
+        unknown
+      >;
+      if (index === 0) {
+        return { entity: rowToEntityNode(row), via: undefined };
+      }
+      const entry = parent.get(entityId);
+      if (!entry) {
+        return { entity: rowToEntityNode(row), via: undefined };
+      }
+      return {
+        entity: rowToEntityNode(row),
+        via: { edgeId: entry.edgeId, type: entry.type, weight: entry.weight },
+      };
+    });
+  }
+
+  private getAdjacencyCache(): Map<number, EdgeEntry[]> {
+    if (!this.adjacencyCache) {
+      this.adjacencyCache = new Map();
+      const rows = this.db
+        .prepare('SELECT id, from_id, to_id, type, weight FROM entity_edges')
+        .all() as { id: number; from_id: number; to_id: number; type: string; weight: number }[];
+      for (const row of rows) {
+        const entries = this.adjacencyCache.get(row.from_id) ?? [];
+        entries.push({ toId: row.to_id, edgeId: row.id, type: row.type, weight: row.weight });
+        this.adjacencyCache.set(row.from_id, entries);
+      }
+    }
+    return this.adjacencyCache;
+  }
+}
+
+function* iterateQueue<T>(queue: T[]): Generator<T> {
+  while (queue.length > 0) {
+    const item = queue.shift();
+    if (item !== undefined) {
+      yield item;
+    }
   }
 }

@@ -51,7 +51,13 @@ export type {
 } from './ltm-engine-types.js';
 export { LtmCategory } from './ltm-engine-types.js';
 export { findLiveRecord } from './core/query-helpers.js';
-import type { LtmRecord, StorageAdapter, TombstonedRecord } from './storage/storage-adapter.js';
+import type {
+  EntityPathStep,
+  FindEntityPathParams,
+  LtmRecord,
+  StorageAdapter,
+  TombstonedRecord,
+} from './storage/storage-adapter.js';
 
 const DEFAULT_QUERY_THRESHOLD = 0.5;
 
@@ -227,6 +233,10 @@ export class LtmEngine {
 
   prune(pruneOptions?: PruneOptions): { pruned: number; remaining: number } {
     return pruneRecords(this.storage, pruneOptions);
+  }
+
+  findEntityPath(params: FindEntityPathParams): EntityPathStep[] {
+    return this.storage.findEntityPath(params);
   }
 
   stats(): LtmEngineStats {

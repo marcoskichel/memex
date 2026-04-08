@@ -6,6 +6,8 @@ import { rowToEdge, rowToRecord, runMigrations, SCHEMA } from './sqlite-schema.j
 import type {
   EntityEdge,
   EntityNode,
+  EntityPathStep,
+  FindEntityPathParams,
   LtmEdge,
   LtmRecord,
   StorageAdapter,
@@ -249,7 +251,7 @@ export class SqliteAdapter implements StorageAdapter {
     return this.entityGraph.findEntityByEmbedding(embedding, threshold);
   }
 
-  insertEntityEdge(edge: Omit<EntityEdge, 'id'>): number {
+  insertEntityEdge(edge: Omit<EntityEdge, 'id' | 'weight'> & { weight?: number }): number {
     return this.entityGraph.insertEntityEdge(edge);
   }
 
@@ -263,6 +265,10 @@ export class SqliteAdapter implements StorageAdapter {
 
   getUnlinkedRecordIds(): number[] {
     return this.entityGraph.getUnlinkedRecordIds();
+  }
+
+  findEntityPath(params: FindEntityPathParams): EntityPathStep[] {
+    return this.entityGraph.findEntityPath(params);
   }
 
   async fork(outputPath: string): Promise<string> {

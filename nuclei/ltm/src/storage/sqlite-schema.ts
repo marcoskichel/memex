@@ -83,13 +83,7 @@ const V3_MIGRATION = [
   `CREATE INDEX IF NOT EXISTS idx_entity_record_links_record ON entity_record_links(record_id)`,
 ];
 
-const V4_MIGRATION = [
-  `DELETE FROM entity_edges
-   WHERE id NOT IN (
-     SELECT MIN(id) FROM entity_edges GROUP BY from_id, to_id, type
-   )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_edges_unique ON entity_edges(from_id, to_id, type)`,
-];
+const V4_MIGRATION = [`ALTER TABLE entity_edges ADD COLUMN weight REAL NOT NULL DEFAULT 1.0`];
 
 const SCHEMA_VERSION_3 = 3;
 
@@ -185,6 +179,7 @@ export function rowToEntityEdge(row: Record<string, unknown>): EntityEdge {
     fromId: row.from_id as number,
     toId: row.to_id as number,
     type: row.type as string,
+    weight: (row.weight as number | undefined) ?? 1,
     createdAt: new Date(row.created_at as number),
   };
 }
