@@ -16,7 +16,7 @@ function vec(...values: number[]): Float32Array {
 }
 
 function makeEntity(id: number, embedding: Float32Array): EntityNode {
-  return { id, name: `entity-${String(id)}`, type: 'PERSON', embedding, createdAt: new Date() };
+  return { id, name: `entity-${String(id)}`, type: 'person', embedding, createdAt: new Date() };
 }
 
 function makeStep(entity: EntityNode): EntityPathStep {
@@ -229,7 +229,7 @@ describe('resolveHintSeeds', () => {
       embed: vi
         .fn()
         .mockReturnValueOnce(okAsync({ vector: vec(1, 0, 0), modelId: 'mock', dimensions: 3 }))
-        .mockReturnValueOnce(errAsync({ type: 'EMBED_ERROR' })),
+        .mockReturnValueOnce(errAsync({ type: 'EMBED_EMPTY_INPUT' as const })),
     };
 
     const result = await resolveHintSeeds(['Alice', 'Bob'], embedder);
@@ -308,7 +308,7 @@ describe('safeEnrich', () => {
     const embedder: EmbeddingAdapter = {
       modelId: 'mock',
       dimensions: 3,
-      embed: vi.fn(() => errAsync({ type: 'EMBED_ERROR' })),
+      embed: vi.fn(() => errAsync({ type: 'EMBED_EMPTY_INPUT' as const })),
     };
     const results = [makeRecord(1)];
 
