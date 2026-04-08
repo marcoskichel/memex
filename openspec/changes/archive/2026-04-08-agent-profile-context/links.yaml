@@ -1,0 +1,9 @@
+scopes:
+  - name: amygdala
+    path: nuclei/amygdala
+  - name: cortex
+    path: synapses/cortex
+  - name: sdk
+    path: synapses/sdk
+  - name: memory
+    path: nuclei/memory

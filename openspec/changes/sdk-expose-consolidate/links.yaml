@@ -1,0 +1,11 @@
+scopes:
+  - name: cortex-ipc
+    path: nuclei/cortex-ipc
+  - name: memory
+    path: nuclei/memory
+  - name: axon
+    path: nuclei/axon
+  - name: cortex
+    path: synapses/cortex
+  - name: sdk
+    path: synapses/sdk
