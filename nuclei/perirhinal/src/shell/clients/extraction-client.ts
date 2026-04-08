@@ -4,8 +4,8 @@ import type { ResultAsync } from 'neverthrow';
 import type { ExtractedEdge, ExtractedEntity, ExtractionError } from '../../core/types.js';
 
 interface ExtractionOutput {
-  entities: { name: string; type: string }[];
-  edges: { fromName: string; toName: string; relationshipType: string }[];
+  entities?: { name: string; type: string }[];
+  edges?: { fromName: string; toName: string; relationshipType: string }[];
 }
 
 interface DeduplicationOutput {
@@ -73,12 +73,12 @@ export function callExtractionLlm(
   return llm
     .completeStructured<ExtractionOutput>({ prompt, schema: EXTRACTION_SCHEMA })
     .map((output) => ({
-      entities: output.entities.map((entity) => ({
+      entities: (output.entities ?? []).map((entity) => ({
         name: entity.name,
         type: entity.type as ExtractedEntity['type'],
         embedding: new Float32Array(0),
       })),
-      edges: output.edges.map((edge) => ({
+      edges: (output.edges ?? []).map((edge) => ({
         fromName: edge.fromName,
         toName: edge.toName,
         relationshipType: edge.relationshipType,
