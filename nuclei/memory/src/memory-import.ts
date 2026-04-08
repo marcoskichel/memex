@@ -15,9 +15,7 @@ const MEMORIES_SCHEMA = {
   name: 'memories',
   description: 'A list of discrete memory strings extracted from the input text',
   shape: {
-    type: 'object' as const,
-    properties: { memories: { type: 'array' as const, items: { type: 'string' as const } } },
-    required: ['memories'],
+    memories: { type: 'array' as const, items: { type: 'string' as const } },
   },
   parse: (raw: unknown): string[] => {
     const object = raw as { memories: string[] };
@@ -45,6 +43,9 @@ export function importTextImpl(
   deps: ImportTextDeps,
   text: string,
 ): ResultAsync<{ inserted: number }, ImportTextError> {
+  if (text.trim().length === 0) {
+    return ResultAsync.fromSafePromise(Promise.resolve({ inserted: 0 }));
+  }
   return deps.llmAdapter
     .completeStructured({ prompt: EXTRACT_PROMPT(text), schema: MEMORIES_SCHEMA })
     .mapErr((error) => new ImportTextError(error.type))

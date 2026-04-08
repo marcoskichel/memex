@@ -19,7 +19,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
-    "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
+    "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test",
+    "e2e": "dotenv -e .env.e2e -- tsx scripts/e2e.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
@@ -32,8 +33,10 @@
     "@neurome/typescript-config": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   }

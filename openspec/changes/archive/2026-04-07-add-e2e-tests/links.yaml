@@ -1,0 +1,5 @@
+scopes:
+  - name: ltm
+    path: nuclei/ltm
+  - name: memory
+    path: nuclei/memory
