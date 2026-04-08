@@ -1,4 +1,5 @@
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import type { ExtractionError, PerirhinalStats } from '@neurome/perirhinal';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryEventEmitter } from '../memory-events.js';
@@ -101,7 +102,9 @@ const defaultPerirhinalStats = {
   entitiesReused: 0,
   errors: 0,
 };
-const mockPerirhinalRun = vi.fn(() => okAsync(defaultPerirhinalStats));
+const mockPerirhinalRun = vi.fn(
+  () => okAsync(defaultPerirhinalStats) as ResultAsync<PerirhinalStats, ExtractionError>,
+);
 
 vi.mock('@neurome/perirhinal', () => ({
   EntityExtractionProcess: vi.fn(() => ({
@@ -633,11 +636,7 @@ describe('perirhinal orchestration', () => {
   });
 
   it('4.2 perirhinal error emits event without throwing', async () => {
-    mockPerirhinalRun.mockReturnValue(
-      ResultAsync.fromSafePromise(Promise.resolve()).andThen(() =>
-        errAsync({ type: 'LOCK_FAILED' as const }),
-      ),
-    );
+    mockPerirhinalRun.mockReturnValue(errAsync({ type: 'LOCK_FAILED' as const }));
     const { memory } = await createMemory(baseConfig);
 
     const handler = vi.fn();

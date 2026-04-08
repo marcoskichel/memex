@@ -99,7 +99,7 @@ export class MemoryImpl implements Memory {
       amygdalaStats: this.amygdalaStats,
       hippocampusStats: this.hippocampusStats,
       pendingStore: this.pendingStore,
-      perirhinalProcess: deps.perirhinalProcess,
+      ...(deps.perirhinalProcess !== undefined && { perirhinalProcess: deps.perirhinalProcess }),
       setPerirhinalStats: (stats: PerirhinalStats) => {
         this.perirhinalStats = stats;
       },
