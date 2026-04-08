@@ -152,6 +152,9 @@ importers:
       '@neurome/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       eslint:
         specifier: ^9.39.4
         version: 9.39.4
