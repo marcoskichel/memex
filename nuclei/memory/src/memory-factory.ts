@@ -15,6 +15,10 @@ import { MemoryEventEmitter } from './memory-events.js';
 import { MemoryImpl } from './memory-impl.js';
 import type { CreateMemoryResult, MemoryConfig } from './memory-types.js';
 
+function opt<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
+  return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
+}
+
 function buildAmygdala(
   config: MemoryConfig,
   deps: { ltm: LtmEngine; stm: InsightLogLike; events: MemoryEventEmitter; engramId: string },
@@ -24,15 +28,12 @@ function buildAmygdala(
     stm: deps.stm,
     llmAdapter: config.llmAdapter,
     engramId: deps.engramId,
-    ...(config.amygdalaCadenceMs !== undefined && { cadenceMs: config.amygdalaCadenceMs }),
-    ...(config.maxLLMCallsPerHour !== undefined && {
-      maxLLMCallsPerHour: config.maxLLMCallsPerHour,
-    }),
-    ...(config.lowCostModeThreshold !== undefined && {
-      lowCostModeThreshold: config.lowCostModeThreshold,
-    }),
+    ...opt('cadenceMs', config.amygdalaCadenceMs),
+    ...opt('maxLLMCallsPerHour', config.maxLLMCallsPerHour),
+    ...opt('lowCostModeThreshold', config.lowCostModeThreshold),
     events: deps.events as unknown as AmygdalaEventBus,
-    ...(config.agentState !== undefined && { agentState: config.agentState }),
+    ...opt('agentState', config.agentState),
+    ...opt('agentProfile', config.agentProfile),
   });
 }
 
@@ -43,10 +44,8 @@ function buildHippocampus(
   return new HippocampusProcess({
     ltm: deps.ltm,
     llmAdapter: config.llmAdapter,
-    ...(config.hippocampusScheduleMs !== undefined && { scheduleMs: config.hippocampusScheduleMs }),
-    ...(config.maxLLMCallsPerHour !== undefined && {
-      maxLLMCallsPerHour: config.maxLLMCallsPerHour,
-    }),
+    ...opt('scheduleMs', config.hippocampusScheduleMs),
+    ...opt('maxLLMCallsPerHour', config.maxLLMCallsPerHour),
     contextDir: deps.contextDirectory,
     events: deps.events,
   });

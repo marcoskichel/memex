@@ -1,4 +1,4 @@
-import type { AgentState, AmygdalaProcess } from '@neurome/amygdala';
+import type { AgentProfile, AgentState, AmygdalaProcess } from '@neurome/amygdala';
 import type { HippocampusProcess } from '@neurome/hippocampus';
 import type { LLMAdapter } from '@neurome/llm';
 import type {
@@ -19,7 +19,7 @@ import type { ResultAsync } from 'neverthrow';
 import type { MemoryEventEmitter } from './memory-events.js';
 import type { MemoryStats } from './memory-stats.js';
 
-export type { AgentState } from '@neurome/amygdala';
+export type { AgentProfile, AgentState } from '@neurome/amygdala';
 
 export type ConsolidateTarget = 'amygdala' | 'hippocampus' | 'all';
 
@@ -54,6 +54,7 @@ export interface MemoryConfig {
   lowCostModeThreshold?: number;
   pendingConsolidationTtlMs?: number;
   agentState?: AgentState;
+  agentProfile?: AgentProfile;
 }
 
 export interface MemoryImplDeps {

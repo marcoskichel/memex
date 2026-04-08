@@ -1,11 +1,17 @@
 export type ConsolidateTarget = 'amygdala' | 'hippocampus' | 'all';
 
+export interface AgentProfile {
+  type?: string;
+  purpose?: string;
+}
+
 export interface StartEngramConfig {
   engramId: string;
   db: string;
   source?: string;
   anthropicApiKey?: string;
   openaiApiKey?: string;
+  agentProfile?: AgentProfile;
 }
 
 export interface McpServerConfig {

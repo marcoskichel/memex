@@ -11,11 +11,16 @@ import { SocketServer } from '../ipc/socket-server.js';
 
 const FORCE_EXIT_TIMEOUT_MS = 30_000;
 
+function opt<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
+  return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
+}
+
 export interface CortexConfig {
   dbPath: string;
   apiKey: string;
   openaiApiKey: string;
   engramId?: string;
+  agentProfile?: { type?: string; purpose?: string };
 }
 
 export class ConfigError extends Error {
@@ -38,13 +43,18 @@ export function readConfig(): CortexConfig {
   if (!openaiApiKey) {
     throw new ConfigError('OPENAI_API_KEY is required');
   }
+  const profileType = process.env.AGENT_PROFILE_TYPE;
+  const profilePurpose = process.env.AGENT_PROFILE_PURPOSE;
+  const agentProfile =
+    profileType !== undefined || profilePurpose !== undefined
+      ? { ...opt('type', profileType), ...opt('purpose', profilePurpose) }
+      : undefined;
   return {
     dbPath,
     apiKey,
     openaiApiKey,
-    ...(process.env.NEUROME_ENGRAM_ID !== undefined && {
-      engramId: process.env.NEUROME_ENGRAM_ID,
-    }),
+    ...opt('engramId', process.env.NEUROME_ENGRAM_ID),
+    ...opt('agentProfile', agentProfile),
   };
 }
 
@@ -118,7 +128,8 @@ export async function main(): Promise<void> {
     llmAdapter,
     embeddingAdapter,
     stm,
-    ...(config.engramId !== undefined && { engramId: config.engramId }),
+    ...opt('engramId', config.engramId),
+    ...opt('agentProfile', config.agentProfile),
   });
 
   const { memory } = result;

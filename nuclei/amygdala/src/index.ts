@@ -1,5 +1,6 @@
 export { AmygdalaProcess } from './amygdala-process.js';
 export type {
+  AgentProfile,
   AgentState,
   AmygdalaConfig,
   AmygdalaScoringResult,

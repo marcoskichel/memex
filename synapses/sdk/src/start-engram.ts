@@ -7,6 +7,10 @@ import Database from 'better-sqlite3';
 import { Engram } from './engram.js';
 import type { StartEngramConfig } from './types.js';
 
+function opt<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
+  return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
+}
+
 const CORTEX_STARTUP_TIMEOUT_MS = 30_000;
 const CORTEX_CONNECT_RETRIES = 10;
 const CORTEX_CONNECT_RETRY_DELAY_MS = 200;
@@ -90,8 +94,10 @@ export async function startEngram(config: StartEngramConfig): Promise<Engram> {
       ...process.env,
       MEMORY_DB_PATH: db,
       NEUROME_ENGRAM_ID: engramId,
-      ...(config.anthropicApiKey !== undefined && { ANTHROPIC_API_KEY: config.anthropicApiKey }),
-      ...(config.openaiApiKey !== undefined && { OPENAI_API_KEY: config.openaiApiKey }),
+      ...opt('ANTHROPIC_API_KEY', config.anthropicApiKey),
+      ...opt('OPENAI_API_KEY', config.openaiApiKey),
+      ...opt('AGENT_PROFILE_TYPE', config.agentProfile?.type),
+      ...opt('AGENT_PROFILE_PURPOSE', config.agentProfile?.purpose),
     },
     stdio: ['ignore', 'ignore', 'pipe'],
   });

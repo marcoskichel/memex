@@ -613,6 +613,27 @@ describe('4.7 createMemory engramId wiring', () => {
   });
 });
 
+describe('agentProfile wiring', () => {
+  makeBaseStatsSetup();
+
+  it('passes agentProfile to AmygdalaProcess when provided', async () => {
+    const { AmygdalaProcess } = await import('@neurome/amygdala');
+    const agentProfile = { type: 'qa', purpose: 'Find UI bugs in the mobile app' };
+    await createMemory({ ...baseConfig, agentProfile });
+    expect(AmygdalaProcess).toHaveBeenCalledWith(expect.objectContaining({ agentProfile }));
+  });
+
+  it('does not include agentProfile in AmygdalaProcess when absent', async () => {
+    const { AmygdalaProcess } = await import('@neurome/amygdala');
+    await createMemory(baseConfig);
+    const callArgument = (AmygdalaProcess as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect('agentProfile' in callArgument).toBe(false);
+  });
+});
+
 describe('perirhinal orchestration', () => {
   makeBaseStatsSetup();
 

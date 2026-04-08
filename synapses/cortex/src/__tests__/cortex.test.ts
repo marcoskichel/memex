@@ -39,6 +39,8 @@ describe('readConfig', () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
     delete process.env.NEUROME_ENGRAM_ID;
+    delete process.env.AGENT_PROFILE_TYPE;
+    delete process.env.AGENT_PROFILE_PURPOSE;
   });
 
   afterEach(() => {
@@ -84,6 +86,34 @@ describe('readConfig', () => {
     process.env.OPENAI_API_KEY = 'sk-openai';
     const config = readConfig();
     expect('engramId' in config).toBe(false);
+  });
+
+  it('3.1 both AGENT_PROFILE_TYPE and AGENT_PROFILE_PURPOSE set → agentProfile populated', () => {
+    process.env.MEMORY_DB_PATH = '/tmp/test.db';
+    process.env.ANTHROPIC_API_KEY = 'sk-test';
+    process.env.OPENAI_API_KEY = 'sk-openai';
+    process.env.AGENT_PROFILE_TYPE = 'qa';
+    process.env.AGENT_PROFILE_PURPOSE = 'Find UI bugs';
+    const config = readConfig();
+    expect(config.agentProfile).toEqual({ type: 'qa', purpose: 'Find UI bugs' });
+  });
+
+  it('3.2 only AGENT_PROFILE_PURPOSE set → agentProfile has purpose only', () => {
+    process.env.MEMORY_DB_PATH = '/tmp/test.db';
+    process.env.ANTHROPIC_API_KEY = 'sk-test';
+    process.env.OPENAI_API_KEY = 'sk-openai';
+    process.env.AGENT_PROFILE_PURPOSE = 'Measure performance';
+    const config = readConfig();
+    expect(config.agentProfile).toEqual({ purpose: 'Measure performance' });
+    expect(config.agentProfile).not.toHaveProperty('type');
+  });
+
+  it('3.3 neither AGENT_PROFILE_TYPE nor AGENT_PROFILE_PURPOSE set → agentProfile is undefined', () => {
+    process.env.MEMORY_DB_PATH = '/tmp/test.db';
+    process.env.ANTHROPIC_API_KEY = 'sk-test';
+    process.env.OPENAI_API_KEY = 'sk-openai';
+    const config = readConfig();
+    expect('agentProfile' in config).toBe(false);
   });
 });
 
