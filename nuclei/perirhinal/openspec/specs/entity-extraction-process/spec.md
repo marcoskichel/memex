@@ -1,4 +1,10 @@
-## ADDED Requirements
+# entity-extraction-process Specification
+
+## Purpose
+
+Defines the entity extraction process that polls LTM records with populated entity metadata, deduplicates entities against the existing graph, and creates entity graph links.
+
+## Requirements
 
 ### Requirement: resolveEntityIdentity applies type-first deduplication logic
 
@@ -61,7 +67,7 @@
 
 ### Requirement: EntityExtractionProcess processes unlinked records in batches
 
-`EntityExtractionProcess` SHALL poll for `LtmRecord` rows that have `metadata.entities` populated but no corresponding `entity_record_links` rows. It SHALL process them in batches, run the full extraction-deduplication-insert pipeline for each, and create `entity_record_links` rows upon completion. The process SHALL use `StorageAdapter.acquireLock` to prevent concurrent runs.
+`EntityExtractionProcess` SHALL poll for `LtmRecord` rows that have `metadata.entities` populated but no corresponding `entity_record_links` rows. It SHALL process them in batches, run the full extraction-deduplication-insert pipeline for each, and create `entity_record_links` rows upon completion. The process SHALL use `StorageAdapter.acquireLock` to prevent concurrent runs. `run()` SHALL return `ResultAsync<PerirhinalStats, ExtractionError>` with counts accumulated across the batch.
 
 #### Scenario: Unprocessed record gets entity graph populated
 
@@ -80,6 +86,11 @@
 - **WHEN** `EntityExtractionProcess` holds the lock
 - **WHEN** a second instance of `EntityExtractionProcess` attempts to start
 - **THEN** the second instance exits without processing any records
+
+#### Scenario: run() returns PerirhinalStats after processing
+
+- **WHEN** `EntityExtractionProcess.run()` completes successfully
+- **THEN** it returns `Ok<PerirhinalStats>` with `recordsProcessed` equal to the number of unlinked records that entered the pipeline
 
 ### Requirement: LLM confirmation is batched across all ambiguous candidates in a run
 

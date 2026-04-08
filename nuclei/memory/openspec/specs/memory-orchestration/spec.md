@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# memory-orchestration Specification
+
+## Purpose
+
+Defines how the memory module orchestrates its internal components — amygdala, LTM, and perirhinal — wiring config fields, managing lifecycle subscriptions, and exposing stats.
+
+## Requirements
 
 ### Requirement: MemoryConfig requires sessionId
 
@@ -12,7 +18,6 @@
 #### Scenario: createMemory without sessionId is a type error
 
 - **WHEN** `createMemory({})` is called without `sessionId`
-- **THEN** TypeScript reports a type error at compile time
 - **THEN** TypeScript reports a type error at compile time
 
 ### Requirement: recall() defaults minResults to 1
@@ -47,3 +52,26 @@
 
 - **WHEN** `memory.recall('tools', { entityType: 'tool' })` is called
 - **THEN** only LTM records with at least one entity of type `'tool'` in `metadata.entities` are returned
+
+### Requirement: MemoryStats includes perirhinal field
+
+`MemoryStats` SHALL include a `perirhinal` field of type `PerirhinalStats` (imported from `@neurome/perirhinal`) containing the stats from the most recent `EntityExtractionProcess.run()` call.
+
+#### Scenario: getStats returns perirhinal stats after extraction run
+
+- **WHEN** perirhinal has completed at least one run
+- **THEN** `memory.getStats()` returns a `perirhinal` field with non-zero `recordsProcessed` if records were processed
+
+#### Scenario: getStats returns zero perirhinal stats before first run
+
+- **WHEN** perirhinal has not yet run
+- **THEN** `memory.getStats()` returns `perirhinal` with all fields equal to `0`
+
+### Requirement: MemoryImplDeps accepts optional perirhinalProcess
+
+`MemoryImplDeps` SHALL include an optional `perirhinalProcess: EntityExtractionProcess` field. When provided, `MemoryImpl` subscribes it to `amygdala:cycle:end`. When absent, no entity extraction is scheduled.
+
+#### Scenario: MemoryImpl without perirhinalProcess is valid
+
+- **WHEN** `MemoryImpl` is constructed without `perirhinalProcess`
+- **THEN** no entity extraction runs and no errors are thrown

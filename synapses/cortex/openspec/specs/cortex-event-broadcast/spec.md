@@ -1,8 +1,14 @@
-## ADDED Requirements
+# cortex-event-broadcast Specification
+
+## Purpose
+
+Defines how cortex broadcasts memory events to connected socket clients, forwarding all MemoryEvents to clients in real-time.
+
+## Requirements
 
 ### Requirement: All MemoryEvents forwarded to connected clients
 
-Cortex SHALL register listeners for every event name in `MemoryEvents` and broadcast each to all currently connected socket clients.
+Cortex SHALL register listeners for every event name in `MemoryEvents` — including `perirhinal:extraction:end` — and broadcast each to all currently connected socket clients.
 
 #### Scenario: Event with one client connected
 
@@ -18,6 +24,11 @@ Cortex SHALL register listeners for every event name in `MemoryEvents` and broad
 
 - **WHEN** an event is emitted and three clients are connected
 - **THEN** all three receive the push message
+
+#### Scenario: perirhinal:extraction:end is broadcast to connected clients
+
+- **WHEN** `memory` emits `perirhinal:extraction:end` after an entity extraction run
+- **THEN** all connected cortex clients receive the event push message
 
 ### Requirement: Disconnected clients removed from broadcast set
 
