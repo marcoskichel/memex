@@ -1,7 +1,7 @@
+export type { EntityType } from '@neurome/entorhinal';
 export type {
   EntityInsertPlan,
   EntityResolution,
-  EntityType,
   ExtractedEdge,
   ExtractedEntity,
   ExtractionError,

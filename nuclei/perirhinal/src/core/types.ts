@@ -1,6 +1,7 @@
+import type { EntityType } from '@neurome/entorhinal';
 import type { EntityNode, LtmRecord } from '@neurome/ltm';
 
-export type EntityType = 'person' | 'project' | 'concept' | 'preference' | 'decision' | 'tool';
+export type { EntityType } from '@neurome/entorhinal';
 
 export interface ExtractedEntity {
   name: string;

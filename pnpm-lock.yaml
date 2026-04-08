@@ -372,6 +372,9 @@ importers:
 
   nuclei/perirhinal:
     dependencies:
+      '@neurome/entorhinal':
+        specifier: workspace:*
+        version: link:../entorhinal
       '@neurome/llm':
         specifier: workspace:*
         version: link:../llm

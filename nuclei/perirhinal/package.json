@@ -23,6 +23,7 @@
     "e2e": "dotenv -e .env.e2e -- tsx scripts/e2e.ts"
   },
   "dependencies": {
+    "@neurome/entorhinal": "workspace:*",
     "@neurome/ltm": "workspace:*",
     "@neurome/llm": "workspace:*",
     "neverthrow": "^8.2.0"
