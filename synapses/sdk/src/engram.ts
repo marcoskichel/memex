@@ -2,6 +2,7 @@ import type { ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import type {
+  ConsolidateTarget,
   InsertMemoryOptions,
   LogInsightOptions,
   McpServerConfig,
@@ -17,6 +18,7 @@ interface Axon {
   insertMemory(data: string, options?: InsertMemoryOptions): Promise<number>;
   getRecent(limit: number): Promise<unknown[]>;
   getStats(): Promise<unknown>;
+  consolidate(target?: ConsolidateTarget): Promise<void>;
   fork(outputPath: string): Promise<string>;
   disconnect(): void;
 }
@@ -49,6 +51,10 @@ export class Engram {
 
   insertMemory(data: string, options?: InsertMemoryOptions): Promise<number> {
     return this.deps.axon.insertMemory(data, options);
+  }
+
+  consolidate(target?: ConsolidateTarget): Promise<void> {
+    return this.deps.axon.consolidate(target);
   }
 
   getRecent(limit: number): Promise<unknown[]> {

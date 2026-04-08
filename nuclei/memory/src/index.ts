@@ -6,7 +6,12 @@ export type {
   PruneContextFilesReport,
   ShutdownReport,
 } from './memory.js';
-export type { EntityContext, MemoryRecallResult, RecallOptions } from './memory-types.js';
+export type {
+  ConsolidateTarget,
+  EntityContext,
+  MemoryRecallResult,
+  RecallOptions,
+} from './memory-types.js';
 export { MemoryEventEmitter } from './memory-events.js';
 export type { MemoryEvents } from './memory-events.js';
 export type {

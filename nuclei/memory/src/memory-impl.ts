@@ -27,6 +27,7 @@ import {
   DEFAULT_PENDING_CONSOLIDATION_TTL_MS,
   InsertMemoryError,
   RecordNotFoundError,
+  type ConsolidateTarget,
   type ImportTextError,
   type LogInsightOptions,
   type Memory,
@@ -164,10 +165,14 @@ export class MemoryImpl implements Memory {
     return this.ltm.getRecent(limit);
   }
 
-  async consolidate(): Promise<void> {
+  async consolidate(target: ConsolidateTarget = 'all'): Promise<void> {
     this.pendingStore.purgeStale();
-    await this.amygdala.run();
-    await this.hippocampus.run();
+    if (target === 'amygdala' || target === 'all') {
+      await this.amygdala.run();
+    }
+    if (target === 'hippocampus' || target === 'all') {
+      await this.hippocampus.run();
+    }
   }
 
   getPendingConsolidations(): PendingConsolidation[] {

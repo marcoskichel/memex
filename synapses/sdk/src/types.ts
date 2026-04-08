@@ -1,3 +1,5 @@
+export type ConsolidateTarget = 'amygdala' | 'hippocampus' | 'all';
+
 export interface StartEngramConfig {
   engramId: string;
   db: string;

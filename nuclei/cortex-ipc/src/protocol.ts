@@ -1,6 +1,6 @@
 import type { LtmInsertOptions } from '@neurome/ltm';
 export type { EntityMention, EntityType, LtmRecord } from '@neurome/ltm';
-import type { Memory, MemoryEvents } from '@neurome/memory';
+import type { ConsolidateTarget, Memory, MemoryEvents } from '@neurome/memory';
 import { z } from 'zod';
 
 const VALID_ENGRAM_ID = /^[\da-z][\w-]{0,127}$/i;
@@ -155,7 +155,9 @@ export interface GetRecentPayload {
   limit: number;
 }
 
-export type ConsolidatePayload = Record<string, never>;
+export interface ConsolidatePayload {
+  target?: ConsolidateTarget;
+}
 
 export interface ForkPayload {
   outputPath: string;
@@ -202,3 +204,5 @@ export interface PushMessage {
   name: MemoryEventName;
   payload: unknown;
 }
+
+export { type ConsolidateTarget } from '@neurome/memory';

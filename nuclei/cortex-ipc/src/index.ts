@@ -1,6 +1,7 @@
 export { IPC_SOCKET_PATH, recallOptionsSchema, REQUEST_TYPES } from './protocol.js';
 export type {
   ConsolidatePayload,
+  ConsolidateTarget,
   EntityMention,
   EntityType,
   ForkPayload,

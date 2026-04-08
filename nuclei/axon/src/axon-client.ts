@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   ConsolidatePayload,
+  ConsolidateTarget,
   ForkPayload,
   GetContextPayload,
   GetRecentPayload,
@@ -114,8 +115,11 @@ export class AxonClient {
     return this.sendRequest<{ inserted: number }>({ type: 'importText', payload, timeoutMs });
   }
 
-  async consolidate(timeoutMs = DEFAULT_READ_TIMEOUT_MS): Promise<void> {
-    const payload: ConsolidatePayload = {};
+  async consolidate(
+    target?: ConsolidateTarget,
+    timeoutMs = DEFAULT_READ_TIMEOUT_MS,
+  ): Promise<void> {
+    const payload: ConsolidatePayload = target === undefined ? {} : { target };
     await this.sendRequest<undefined>({ type: 'consolidate', payload, timeoutMs });
   }
 

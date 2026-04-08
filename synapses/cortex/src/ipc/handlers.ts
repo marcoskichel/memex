@@ -63,7 +63,7 @@ async function dispatch(message: RequestMessage, memory: Memory): Promise<unknow
         .map(({ embedding: _embedding, ...record }) => record);
     }
     case 'consolidate': {
-      await memory.consolidate();
+      await memory.consolidate(message.payload.target);
       return undefined;
     }
     case 'fork': {

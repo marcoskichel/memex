@@ -21,6 +21,8 @@ import type { MemoryStats } from './memory-stats.js';
 
 export type { AgentState } from '@neurome/amygdala';
 
+export type ConsolidateTarget = 'amygdala' | 'hippocampus' | 'all';
+
 export type {
   AmygdalaStats,
   DiskStats,
@@ -175,7 +177,7 @@ export interface Memory {
   insertMemory(data: string, options?: LtmInsertOptions): ResultAsync<number, InsertMemoryError>;
   importText(text: string): ResultAsync<{ inserted: number }, ImportTextError>;
   getRecent(limit: number): LtmRecord[];
-  consolidate(): Promise<void>;
+  consolidate(target?: ConsolidateTarget): Promise<void>;
   getPendingConsolidations(): PendingConsolidation[];
   approveConsolidation(pendingId: string): ResultAsync<number, InsertMemoryError>;
   discardConsolidation(pendingId: string): void;
