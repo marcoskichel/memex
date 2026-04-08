@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.3.0...sdk-v0.4.0) (2026-04-08)
+
+
+### Features
+
+* **dendrite,sdk:** expose full recall options including entity recall ([49a218c](https://github.com/marcoskichel/neurome/commit/49a218c78a01f5e53631a630ceaeed4c83f60568))
+
+
+### Bug Fixes
+
+* **sdk:** bundle axon types into sdk type declarations ([902e583](https://github.com/marcoskichel/neurome/commit/902e583c9a72253626a3c5a7cdd3488a45e56804))
+
 ## [0.3.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.2.2...sdk-v0.3.0) (2026-04-08)
 
 
