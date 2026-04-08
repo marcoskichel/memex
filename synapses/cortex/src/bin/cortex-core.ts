@@ -82,9 +82,10 @@ export function shutdownOnce(): void {
   void shutdown();
 }
 
-const MEMORY_EVENT_NAMES: (keyof MemoryEvents)[] = [
+export const MEMORY_EVENT_NAMES: (keyof MemoryEvents)[] = [
   'amygdala:cycle:start',
   'amygdala:cycle:end',
+  'perirhinal:extraction:end',
   'amygdala:entry:scored',
   'hippocampus:consolidation:start',
   'hippocampus:consolidation:end',

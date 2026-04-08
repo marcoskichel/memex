@@ -1,0 +1,7 @@
+scopes:
+  - name: memory
+    path: nuclei/memory
+  - name: perirhinal
+    path: nuclei/perirhinal
+  - name: cortex
+    path: synapses/cortex

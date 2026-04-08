@@ -1,4 +1,12 @@
+import type { PerirhinalStats } from '@neurome/perirhinal';
+
 export interface MemoryEvents {
+  'perirhinal:extraction:end': [
+    payload: {
+      stats: PerirhinalStats;
+      errorType?: string;
+    },
+  ];
   'amygdala:cycle:start': [payload: { cycleId: string; pendingCount: number; startedAt: Date }];
   'amygdala:cycle:end': [
     payload: {

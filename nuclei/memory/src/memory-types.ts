@@ -12,6 +12,7 @@ import type {
   LtmQueryResult,
   LtmRecord,
 } from '@neurome/ltm';
+import type { EntityExtractionProcess } from '@neurome/perirhinal';
 import type { InsightLogLike } from '@neurome/stm';
 import type { ResultAsync } from 'neverthrow';
 
@@ -61,6 +62,7 @@ export interface MemoryImplDeps {
   stm: InsightLogLike;
   amygdala: AmygdalaProcess;
   hippocampus: HippocampusProcess;
+  perirhinalProcess?: EntityExtractionProcess;
   contextDirectory: string;
   llmAdapter: LLMAdapter;
   forkFn: (outputPath: string) => Promise<string>;

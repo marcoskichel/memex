@@ -27,25 +27,34 @@ const proc = new EntityExtractionProcess({
 
 // Process all unlinked LTM records — extracts entities, deduplicates, inserts edges
 const result = await proc.run();
-if (result.isErr()) console.error(result.error);
+if (result.isOk()) {
+  console.log(`Processed ${result.value.recordsProcessed} records`);
+  console.log(`Inserted ${result.value.entitiesInserted} new entities`);
+  console.log(`Reused ${result.value.entitiesReused} existing entities`);
+} else {
+  console.error(result.error);
+}
 ```
 
 Records must carry an `entities` metadata field (array of `{ name, type }` objects) for the process to pick them up. Records without it are skipped.
 
+> **Note:** When using `@neurome/memory`, `EntityExtractionProcess` is instantiated and scheduled automatically — it fires after each amygdala cycle. You only need to manage it directly when using `@neurome/ltm` or `@neurome/perirhinal` standalone.
+
 ## API
 
-| Export                           | Kind     | Description                                                                                                |
-| -------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `EntityExtractionProcess`        | class    | Main process — `run()` acquires lock, processes all unlinked records, releases lock                        |
-| `persistInsertPlan`              | function | Low-level helper — writes a resolved `EntityInsertPlan` to storage (inserts entities, edges, record links) |
-| `EntityExtractionProcessOptions` | type     | Constructor options: `storage`, `llm`, `embedEntity`                                                       |
-| `EntityType`                     | type     | `'person' \| 'tool' \| 'concept' \| 'project' \| 'organization'`                                           |
-| `ExtractedEntity`                | type     | `{ name: string; type: EntityType; embedding?: Float32Array }`                                             |
-| `ExtractedEdge`                  | type     | `{ from: string; to: string; relation: string }`                                                           |
-| `EntityInsertPlan`               | type     | Resolved plan: `toInsert`, `toReuse`, `edgesToInsert`                                                      |
-| `EntityResolution`               | type     | Per-entity decision: `distinct`, `exact`, `merge`, or `llm-needed`                                         |
-| `ExtractionError`                | type     | `LOCK_FAILED \| LLM_ERROR \| STORAGE_FAILED`                                                               |
-| `ExtractionInput`                | type     | Internal extraction prompt input shape                                                                     |
+| Export                           | Kind     | Description                                                                                                                                  |
+| -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EntityExtractionProcess`        | class    | Main process — `run()` acquires lock, processes all unlinked records, releases lock; returns `ResultAsync<PerirhinalStats, ExtractionError>` |
+| `PerirhinalStats`                | type     | Run metrics: `recordsProcessed`, `entitiesInserted`, `entitiesReused`, `errors`                                                              |
+| `persistInsertPlan`              | function | Low-level helper — writes a resolved `EntityInsertPlan` to storage (inserts entities, edges, record links)                                   |
+| `EntityExtractionProcessOptions` | type     | Constructor options: `storage`, `llm`, `embedEntity`                                                                                         |
+| `EntityType`                     | type     | `'person' \| 'tool' \| 'concept' \| 'project' \| 'organization'`                                                                             |
+| `ExtractedEntity`                | type     | `{ name: string; type: EntityType; embedding?: Float32Array }`                                                                               |
+| `ExtractedEdge`                  | type     | `{ from: string; to: string; relation: string }`                                                                                             |
+| `EntityInsertPlan`               | type     | Resolved plan: `toInsert`, `toReuse`, `edgesToInsert`                                                                                        |
+| `EntityResolution`               | type     | Per-entity decision: `distinct`, `exact`, `merge`, or `llm-needed`                                                                           |
+| `ExtractionError`                | type     | `LOCK_FAILED \| LLM_ERROR \| STORAGE_FAILED`                                                                                                 |
+| `ExtractionInput`                | type     | Internal extraction prompt input shape                                                                                                       |
 
 ## Key behaviours
 

@@ -17,7 +17,7 @@ const { memory } = await createMemory({
   llmAdapter: myLlmAdapter,
   sessionId: 'session-abc',
 });
-// => memory system initialised, background amygdala + hippocampus schedulers running
+// => memory system initialised, background amygdala + hippocampus + perirhinal schedulers running
 
 memory.logInsight({
   summary: 'User prefers dark mode and concise responses',
@@ -61,19 +61,21 @@ const report = await memory.shutdown();
 
 ### `MemoryConfig`
 
-| Field                   | Type               | Default                        | Description                                       |
-| ----------------------- | ------------------ | ------------------------------ | ------------------------------------------------- |
-| `storagePath`           | `string`           | required                       | SQLite file path                                  |
-| `llmAdapter`            | `LLMAdapter`       | required                       | LLM used for scoring and consolidation            |
-| `sessionId`             | `string`           | random UUID                    | Identifies the current session                    |
-| `contextDirectory`      | `string`           | `dirname(storagePath)/context` | Directory for context files                       |
-| `embeddingAdapter`      | `EmbeddingAdapter` | required                       | Embedding model for semantic search               |
-| `stm`                   | `InsightLogLike`   | in-memory `InsightLog`         | Short-term memory store                           |
-| `maxTokens`             | `number`           | `100000`                       | Token budget before STM compression triggers      |
-| `amygdalaCadenceMs`     | `number`           | `300000`                       | How often the amygdala scores STM insights (ms)   |
-| `hippocampusScheduleMs` | `number`           | `3600000`                      | How often the hippocampus consolidates LTM (ms)   |
-| `maxLLMCallsPerHour`    | `number`           | `200`                          | Rate limit on LLM calls across all subsystems     |
-| `agentState`            | `AgentState`       | —                              | Optional agent state passed to importance scoring |
+| Field                   | Type               | Default                        | Description                                     |
+| ----------------------- | ------------------ | ------------------------------ | ----------------------------------------------- |
+| `storagePath`           | `string`           | required                       | SQLite file path                                |
+| `llmAdapter`            | `LLMAdapter`       | required                       | LLM used for scoring and consolidation          |
+| `sessionId`             | `string`           | random UUID                    | Identifies the current session                  |
+| `contextDirectory`      | `string`           | `dirname(storagePath)/context` | Directory for context files                     |
+| `embeddingAdapter`      | `EmbeddingAdapter` | required                       | Embedding model for semantic search             |
+| `stm`                   | `InsightLogLike`   | in-memory `InsightLog`         | Short-term memory store                         |
+| `maxTokens`             | `number`           | `100000`                       | Token budget before STM compression triggers    |
+| `amygdalaCadenceMs`     | `number`           | `300000`                       | How often the amygdala scores STM insights (ms) |
+| `hippocampusScheduleMs` | `number`           | `3600000`                      | How often the hippocampus consolidates LTM (ms) |
+
+Entity extraction via `@neurome/perirhinal` runs automatically after each amygdala cycle — no configuration required. It reads LTM records with `metadata.entities`, deduplicates against the existing entity graph, and persists typed `EntityNode` entries and edges.
+| `maxLLMCallsPerHour` | `number` | `200` | Rate limit on LLM calls across all subsystems |
+| `agentState` | `AgentState` | — | Optional agent state passed to importance scoring |
 
 ### `Memory` interface (key methods)
 
@@ -121,6 +123,7 @@ Full API reference → <!-- link to docs -->
 - [`@neurome/ltm`](../ltm) — long-term memory store and semantic retrieval
 - [`@neurome/amygdala`](../amygdala) — importance scoring and emotional tagging
 - [`@neurome/hippocampus`](../hippocampus) — memory consolidation and decay
+- [`@neurome/perirhinal`](../perirhinal) — entity extraction and knowledge graph construction (wired automatically)
 - [`@neurome/cortex`](../cortex) — synapses: higher-level reasoning over memory
 
 ## License

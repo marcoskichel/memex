@@ -16,8 +16,20 @@ vi.mock('@neurome/stm', () => ({
   SqliteInsightLog: vi.fn(() => ({})),
 }));
 
-const { readConfig, ConfigError, shutdownOnce, resetShutdownState, setActiveMemory } =
-  await import('../bin/cortex-core.js');
+const {
+  readConfig,
+  ConfigError,
+  shutdownOnce,
+  resetShutdownState,
+  setActiveMemory,
+  MEMORY_EVENT_NAMES,
+} = await import('../bin/cortex-core.js');
+
+describe('MEMORY_EVENT_NAMES', () => {
+  it('includes perirhinal:extraction:end for broadcast to clients', () => {
+    expect(MEMORY_EVENT_NAMES).toContain('perirhinal:extraction:end');
+  });
+});
 
 describe('readConfig', () => {
   const originalEnv = { ...process.env };

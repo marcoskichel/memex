@@ -1,4 +1,4 @@
-import { errAsync, okAsync } from 'neverthrow';
+import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryEventEmitter } from '../memory-events.js';
@@ -92,6 +92,20 @@ vi.mock('@neurome/hippocampus', () => ({
   HippocampusProcess: vi.fn(() => ({
     start: mockHippocampusStart,
     stop: mockHippocampusStop,
+  })),
+}));
+
+const defaultPerirhinalStats = {
+  recordsProcessed: 0,
+  entitiesInserted: 0,
+  entitiesReused: 0,
+  errors: 0,
+};
+const mockPerirhinalRun = vi.fn(() => okAsync(defaultPerirhinalStats));
+
+vi.mock('@neurome/perirhinal', () => ({
+  EntityExtractionProcess: vi.fn(() => ({
+    run: mockPerirhinalRun,
   })),
 }));
 
@@ -592,5 +606,89 @@ describe('4.7 createMemory engramId wiring', () => {
     expect(AmygdalaProcess).toHaveBeenCalledWith(
       expect.objectContaining({ engramId: 'explicit-engram-id' }),
     );
+  });
+});
+
+describe('perirhinal orchestration', () => {
+  makeBaseStatsSetup();
+
+  it('4.1 amygdala:cycle:end triggers perirhinal run()', async () => {
+    mockPerirhinalRun.mockReturnValue(
+      okAsync({ recordsProcessed: 2, entitiesInserted: 1, entitiesReused: 1, errors: 0 }),
+    );
+    const { memory } = await createMemory(baseConfig);
+
+    memory.events.emit('amygdala:cycle:end', {
+      cycleId: 'c1',
+      durationMs: 100,
+      processed: 2,
+      failures: 0,
+      llmCalls: 2,
+      estimatedTokens: 800,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockPerirhinalRun).toHaveBeenCalledOnce();
+  });
+
+  it('4.2 perirhinal error emits event without throwing', async () => {
+    mockPerirhinalRun.mockReturnValue(
+      ResultAsync.fromSafePromise(Promise.resolve()).andThen(() =>
+        errAsync({ type: 'LOCK_FAILED' as const }),
+      ),
+    );
+    const { memory } = await createMemory(baseConfig);
+
+    const handler = vi.fn();
+    memory.events.on('perirhinal:extraction:end', handler);
+
+    memory.events.emit('amygdala:cycle:end', {
+      cycleId: 'c2',
+      durationMs: 50,
+      processed: 1,
+      failures: 0,
+      llmCalls: 1,
+      estimatedTokens: 400,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ errorType: 'LOCK_FAILED' }));
+  });
+
+  it('4.3 getStats() returns perirhinal field with last run values', async () => {
+    mockPerirhinalRun.mockReturnValue(
+      okAsync({ recordsProcessed: 3, entitiesInserted: 2, entitiesReused: 1, errors: 0 }),
+    );
+    const { memory } = await createMemory(baseConfig);
+
+    memory.events.emit('amygdala:cycle:end', {
+      cycleId: 'c3',
+      durationMs: 200,
+      processed: 3,
+      failures: 0,
+      llmCalls: 3,
+      estimatedTokens: 1200,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const stats = await memory.getStats();
+    expect(stats.perirhinal.recordsProcessed).toBe(3);
+    expect(stats.perirhinal.entitiesInserted).toBe(2);
+    expect(stats.perirhinal.entitiesReused).toBe(1);
+    expect(stats.perirhinal.errors).toBe(0);
+  });
+
+  it('4.4 getStats() returns all-zero perirhinal stats before first run', async () => {
+    const { memory } = await createMemory(baseConfig);
+    const stats = await memory.getStats();
+    expect(stats.perirhinal).toEqual({
+      recordsProcessed: 0,
+      entitiesInserted: 0,
+      entitiesReused: 0,
+      errors: 0,
+    });
   });
 });

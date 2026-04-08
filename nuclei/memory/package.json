@@ -27,6 +27,7 @@
     "@neurome/hippocampus": "workspace:*",
     "@neurome/llm": "workspace:*",
     "@neurome/ltm": "workspace:*",
+    "@neurome/perirhinal": "workspace:*",
     "@neurome/stm": "workspace:*",
     "neverthrow": "^8.2.0"
   },

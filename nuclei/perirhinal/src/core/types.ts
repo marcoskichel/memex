@@ -32,6 +32,13 @@ export interface ExtractionInput {
   prompt: string;
 }
 
+export interface PerirhinalStats {
+  recordsProcessed: number;
+  entitiesInserted: number;
+  entitiesReused: number;
+  errors: number;
+}
+
 export type ExtractionError =
   | { type: 'LLM_CALL_FAILED'; cause: unknown }
   | { type: 'STORAGE_FAILED'; cause: unknown }

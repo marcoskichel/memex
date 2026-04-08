@@ -39,6 +39,8 @@ export interface DiskStats {
   contextDirectory: string;
 }
 
+import type { PerirhinalStats } from '@neurome/perirhinal';
+
 export interface MemoryStats {
   capturedAt: Date;
   engramId: string;
@@ -46,5 +48,8 @@ export interface MemoryStats {
   stm: StmStats;
   amygdala: AmygdalaStats;
   hippocampus: HippocampusStats;
+  perirhinal: PerirhinalStats;
   disk: DiskStats;
 }
+
+export { type PerirhinalStats } from '@neurome/perirhinal';

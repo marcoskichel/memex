@@ -7,6 +7,7 @@ import { AmygdalaProcess } from '@neurome/amygdala';
 import { HippocampusProcess } from '@neurome/hippocampus';
 import type { EmbeddingAdapter } from '@neurome/ltm';
 import { LtmEngine, SqliteAdapter } from '@neurome/ltm';
+import { EntityExtractionProcess } from '@neurome/perirhinal';
 import type { InsightLogLike } from '@neurome/stm';
 import { InsightLog } from '@neurome/stm';
 
@@ -68,6 +69,15 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
   const amygdala = buildAmygdala(config, { ltm, stm, events, engramId });
   const hippocampus = buildHippocampus(config, { ltm, events, contextDirectory });
 
+  const perirhinalProcess = new EntityExtractionProcess({
+    storage,
+    llm: config.llmAdapter,
+    embedEntity: async (entity) => {
+      const result = await embeddingAdapter.embed(`${entity.name} (${entity.type})`);
+      return result._unsafeUnwrap().vector;
+    },
+  });
+
   amygdala.start();
   hippocampus.start();
 
@@ -79,6 +89,7 @@ export async function createMemory(config: MemoryConfig): Promise<CreateMemoryRe
     stm,
     amygdala,
     hippocampus,
+    perirhinalProcess,
     contextDirectory: engramContextDirectory,
     llmAdapter: config.llmAdapter,
     forkFn: (outputPath: string) => storage.fork(outputPath),

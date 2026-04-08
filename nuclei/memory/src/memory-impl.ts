@@ -14,9 +14,15 @@ import type { InsightLogLike } from '@neurome/stm';
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 
 import { collectDiskStats, pruneContextFiles } from './memory-disk.js';
+import { wireMemoryEvents } from './memory-event-wiring.js';
 import type { MemoryEventEmitter } from './memory-events.js';
 import { importTextImpl } from './memory-import.js';
-import type { AmygdalaStats, HippocampusStats, MemoryStats } from './memory-stats.js';
+import type {
+  AmygdalaStats,
+  HippocampusStats,
+  MemoryStats,
+  PerirhinalStats,
+} from './memory-stats.js';
 import {
   DEFAULT_PENDING_CONSOLIDATION_TTL_MS,
   InsertMemoryError,
@@ -66,6 +72,13 @@ export class MemoryImpl implements Memory {
     nextScheduledRunAt: undefined,
   };
 
+  private perirhinalStats: PerirhinalStats = {
+    recordsProcessed: 0,
+    entitiesInserted: 0,
+    entitiesReused: 0,
+    errors: 0,
+  };
+
   constructor(deps: MemoryImplDeps) {
     this.engramId = deps.engramId;
     this.events = deps.events;
@@ -81,30 +94,16 @@ export class MemoryImpl implements Memory {
       deps.pendingConsolidationTtlMs ?? DEFAULT_PENDING_CONSOLIDATION_TTL_MS,
     );
 
-    this.events.on('amygdala:cycle:start', ({ startedAt }) => {
-      this.amygdalaStats.lastCycleStartedAt = startedAt;
-    });
-
-    this.events.on(
-      'amygdala:cycle:end',
-      ({ durationMs, processed, failures, llmCalls, estimatedTokens }) => {
-        this.amygdalaStats.lastCycleDurationMs = durationMs;
-        this.amygdalaStats.lastCycleInsightsProcessed = processed;
-        this.amygdalaStats.lastCycleFailures = failures;
-        this.amygdalaStats.sessionTotalLlmCalls += llmCalls;
-        this.amygdalaStats.sessionEstimatedTokens += estimatedTokens;
+    wireMemoryEvents({
+      events: this.events,
+      amygdalaStats: this.amygdalaStats,
+      hippocampusStats: this.hippocampusStats,
+      pendingStore: this.pendingStore,
+      perirhinalProcess: deps.perirhinalProcess,
+      setPerirhinalStats: (stats: PerirhinalStats) => {
+        this.perirhinalStats = stats;
       },
-    );
-
-    this.events.on('hippocampus:consolidation:end', ({ clustersConsolidated, recordsPruned }) => {
-      this.hippocampusStats.lastConsolidationAt = new Date();
-      this.hippocampusStats.lastRunClustersConsolidated = clustersConsolidated;
-      this.hippocampusStats.lastRunRecordsPruned = recordsPruned;
-    });
-
-    this.events.on('hippocampus:false-memory-risk', (payload) => {
-      this.hippocampusStats.falseMemoryCandidates += 1;
-      this.pendingStore.add({ ...payload, createdAt: new Date() });
+      getPerirhinalStats: () => this.perirhinalStats,
     });
   }
 
@@ -213,6 +212,7 @@ export class MemoryImpl implements Memory {
       stm: { pendingInsights: unprocessed.length, averageInsightAgeMs, oldestInsightAgeMs },
       amygdala: { ...this.amygdalaStats },
       hippocampus: { ...this.hippocampusStats },
+      perirhinal: { ...this.perirhinalStats },
       disk: diskStats,
     };
   }

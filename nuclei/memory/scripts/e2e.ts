@@ -126,13 +126,16 @@ async function main(): Promise<void> {
   // -----------------------------------------------
   // Scenario 7: stats reflect insertions
   // -----------------------------------------------
-  console.log('\n[Scenario 7] getStats() — reflects insertions');
+  console.log('\n[Scenario 7] getStats() — reflects insertions and perirhinal field');
   const stats7 = await memory.getStats();
   if (stats7.ltm.totalRecords <= 0) {
     throw new Error(`Expected ltm.totalRecords > 0, got ${String(stats7.ltm.totalRecords)}`);
   }
+  if (typeof stats7.perirhinal.recordsProcessed !== 'number') {
+    throw new Error('stats.perirhinal.recordsProcessed is not a number');
+  }
   console.log(
-    `  OK: ltm.totalRecords=${String(stats7.ltm.totalRecords)}, stm.pendingInsights=${String(stats7.stm.pendingInsights)}`,
+    `  OK: ltm.totalRecords=${String(stats7.ltm.totalRecords)}, stm.pendingInsights=${String(stats7.stm.pendingInsights)}, perirhinal.recordsProcessed=${String(stats7.perirhinal.recordsProcessed)}`,
   );
 
   // -----------------------------------------------

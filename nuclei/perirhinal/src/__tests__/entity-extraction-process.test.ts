@@ -59,9 +59,73 @@ describe('EntityExtractionProcess integration', () => {
 
     const result = await process.run();
     expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.recordsProcessed).toBe(1);
+      expect(result.value.entitiesInserted).toBeGreaterThanOrEqual(1);
+      expect(result.value.errors).toBe(0);
+    }
 
     const unlinkedAfter = storage.getUnlinkedRecordIds();
     expect(unlinkedAfter).not.toContain(recordId);
+  });
+
+  it('3.2 run with no unlinked records returns all-zero stats', async () => {
+    const llm = makeMockLlm([]);
+    const process = new EntityExtractionProcess({ storage, llm, embedEntity: embedAlice });
+
+    const result = await process.run();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        recordsProcessed: 0,
+        entitiesInserted: 0,
+        entitiesReused: 0,
+        errors: 0,
+      });
+    }
+  });
+
+  it('3.3 run with one new entity and one reused entity returns correct counts', async () => {
+    const aliceEmbedding = makeAliceEmbedding();
+    storage.insertEntity({
+      name: 'alice',
+      type: 'person',
+      embedding: aliceEmbedding,
+      createdAt: new Date(),
+    });
+
+    storage.insertRecord(
+      makeRecord({
+        metadata: {
+          entities: [
+            { name: 'Alice', type: 'person' },
+            { name: 'Bob', type: 'person' },
+          ],
+        },
+      }),
+    );
+
+    function embedBoth(entity: ExtractedEntity): Promise<Float32Array> {
+      if (entity.name === 'Alice') {
+        return Promise.resolve(aliceEmbedding);
+      }
+      return Promise.resolve(new Float32Array([0, 1, 0]));
+    }
+
+    const llm = makeMockLlm([
+      { name: 'Alice', type: 'person' },
+      { name: 'Bob', type: 'person' },
+    ]);
+    const process = new EntityExtractionProcess({ storage, llm, embedEntity: embedBoth });
+
+    const result = await process.run();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.recordsProcessed).toBe(1);
+      expect(result.value.entitiesInserted).toBe(1);
+      expect(result.value.entitiesReused).toBe(1);
+      expect(result.value.errors).toBe(0);
+    }
   });
 
   it('8.1 second run is idempotent — no duplicate nodes', async () => {

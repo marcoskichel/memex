@@ -11,6 +11,7 @@ import type {
   ExtractedEdge,
   ExtractedEntity,
   ExtractionError,
+  PerirhinalStats,
 } from '../core/types.js';
 import type { DeduplicationCandidate } from './clients/extraction-client.js';
 import { callDeduplicationLlm, callExtractionLlm } from './clients/extraction-client.js';
@@ -35,7 +36,7 @@ export class EntityExtractionProcess {
     this.embedEntity = options.embedEntity;
   }
 
-  run(): ResultAsync<void, ExtractionError> {
+  run(): ResultAsync<PerirhinalStats, ExtractionError> {
     if (!this.storage.acquireLock(LOCK_NAME, LOCK_TTL_MS)) {
       return errAsync({ type: 'LOCK_FAILED' as const });
     }
@@ -45,7 +46,7 @@ export class EntityExtractionProcess {
     });
   }
 
-  private processUnlinkedRecords(): ResultAsync<void, ExtractionError> {
+  private processUnlinkedRecords(): ResultAsync<PerirhinalStats, ExtractionError> {
     const unlinkedIds = this.storage.getUnlinkedRecordIds();
     const records: LtmRecord[] = [];
 
@@ -61,19 +62,35 @@ export class EntityExtractionProcess {
       return Array.isArray(entities) && entities.length > 0;
     });
 
+    const zero: PerirhinalStats = {
+      recordsProcessed: 0,
+      entitiesInserted: 0,
+      entitiesReused: 0,
+      errors: 0,
+    };
+
     if (processable.length === 0) {
-      return okAsync();
+      return okAsync(zero);
     }
 
-    return ResultAsync.combine(processable.map((record) => this.processRecord(record))).map(() => {
-      return;
-    });
+    return ResultAsync.combine(processable.map((record) => this.processRecord(record))).map(
+      (allStats) => {
+        const total: PerirhinalStats = { ...zero };
+        for (const stat of allStats) {
+          total.recordsProcessed += stat.recordsProcessed;
+          total.entitiesInserted += stat.entitiesInserted;
+          total.entitiesReused += stat.entitiesReused;
+          total.errors += stat.errors;
+        }
+        return total;
+      },
+    );
   }
 
-  private processRecord(record: LtmRecord): ResultAsync<void, ExtractionError> {
+  private processRecord(record: LtmRecord): ResultAsync<PerirhinalStats, ExtractionError> {
     const input = extractEntitiesFromRecord(record);
     if (!input) {
-      return okAsync();
+      return okAsync({ recordsProcessed: 0, entitiesInserted: 0, entitiesReused: 0, errors: 0 });
     }
 
     return callExtractionLlm(this.llm, input.prompt)
@@ -164,14 +181,20 @@ export class EntityExtractionProcess {
   private executePlan(
     plan: EntityInsertPlan,
     recordId: number,
-  ): ResultAsync<void, ExtractionError> {
+  ): ResultAsync<PerirhinalStats, ExtractionError> {
     const safePersist = fromThrowable(
       () => {
         persistInsertPlan(this.storage, { plan, recordId });
+        return {
+          recordsProcessed: 1,
+          entitiesInserted: plan.toInsert.length,
+          entitiesReused: plan.toReuse.length,
+          errors: 0,
+        } satisfies PerirhinalStats;
       },
       (error): ExtractionError => ({ type: 'STORAGE_FAILED', cause: error }),
     );
-    return safePersist().asyncMap(() => Promise.resolve());
+    return safePersist().asyncMap((stats) => Promise.resolve(stats));
   }
 }
 

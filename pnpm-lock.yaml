@@ -305,6 +305,9 @@ importers:
       '@neurome/ltm':
         specifier: workspace:*
         version: link:../ltm
+      '@neurome/perirhinal':
+        specifier: workspace:*
+        version: link:../perirhinal
       '@neurome/stm':
         specifier: workspace:*
         version: link:../stm
