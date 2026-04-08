@@ -17,6 +17,8 @@ export { RRF_K, rrfMerge } from './core/rrf-merge.js';
 export type { RankedCandidate } from './core/rrf-merge.js';
 
 export type {
+  EntityEdge,
+  EntityNode,
   LtmEdge,
   LtmRecord,
   StorageAdapter,

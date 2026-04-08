@@ -72,16 +72,17 @@ Neurome's architecture maps directly onto the human memory system. Each package 
 
 Core packages — compose via `@neurome/memory` or use individually.
 
-| Package                                        | Role                                                                               |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [`@neurome/memory`](./nuclei/memory)           | Orchestration — unified interface composing all nuclei; start here                 |
-| [`@neurome/stm`](./nuclei/stm)                 | Short-term memory — engram-scoped observation buffer                               |
-| [`@neurome/ltm`](./nuclei/ltm)                 | Long-term memory — durable semantic store with cross-engram persistence            |
-| [`@neurome/amygdala`](./nuclei/amygdala)       | Salience filter — LLM-scores STM observations and routes them to LTM               |
-| [`@neurome/hippocampus`](./nuclei/hippocampus) | Consolidation — clusters episodic records and distills them into semantic memories |
-| [`@neurome/llm`](./nuclei/llm)                 | LLM adapter — Anthropic and OpenAI-compatible client                               |
-| [`@neurome/axon`](./nuclei/axon)               | IPC client — connects to a running cortex server over a Unix socket                |
-| [`@neurome/cortex-ipc`](./nuclei/cortex-ipc)   | IPC protocol — shared message types and socket-path convention                     |
+| Package                                        | Role                                                                                                                             |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| [`@neurome/memory`](./nuclei/memory)           | Orchestration — unified interface composing all nuclei; start here                                                               |
+| [`@neurome/stm`](./nuclei/stm)                 | Short-term memory — engram-scoped observation buffer                                                                             |
+| [`@neurome/ltm`](./nuclei/ltm)                 | Long-term memory — durable semantic store with cross-engram persistence                                                          |
+| [`@neurome/amygdala`](./nuclei/amygdala)       | Salience filter — LLM-scores STM observations and routes them to LTM                                                             |
+| [`@neurome/hippocampus`](./nuclei/hippocampus) | Consolidation — clusters episodic records and distills them into semantic memories                                               |
+| [`@neurome/perirhinal`](./nuclei/perirhinal)   | Entity extraction — identifies named entities in LTM records, deduplicates against the knowledge graph, and persists typed edges |
+| [`@neurome/llm`](./nuclei/llm)                 | LLM adapter — Anthropic and OpenAI-compatible client                                                                             |
+| [`@neurome/axon`](./nuclei/axon)               | IPC client — connects to a running cortex server over a Unix socket                                                              |
+| [`@neurome/cortex-ipc`](./nuclei/cortex-ipc)   | IPC protocol — shared message types and socket-path convention                                                                   |
 
 ## Synapses
 

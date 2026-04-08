@@ -91,19 +91,20 @@ graph TD
 
 ### Biological Analogy Table
 
-| Biological Term                               | Software Concept                        | Package                |
-| --------------------------------------------- | --------------------------------------- | ---------------------- |
-| Short-term / working memory buffer            | `InsightLog` / `SqliteInsightLog` (STM) | `@neurome/stm`         |
-| Amygdala — emotional/importance gating        | `AmygdalaProcess`                       | `@neurome/amygdala`    |
-| Hippocampus + neocortex storage               | `LtmEngine` (LTM)                       | `@neurome/ltm`         |
-| Hippocampal consolidation during sleep        | `HippocampusProcess`                    | `@neurome/hippocampus` |
-| Prefrontal cortex — executive orchestration   | `Memory`                                | `@neurome/memory`      |
-| Axon — long-range signal carrier              | `AxonClient`                            | `@neurome/axon`        |
-| Dendrite — receives signals from LLMs         | MCP server                              | `@neurome/dendrite`    |
-| Brainstem / neural substrate — always-on host | Cortex process                          | `@neurome/cortex`      |
-| Synaptic protocol                             | IPC protocol                            | `@neurome/cortex-ipc`  |
-| Afferent neuron — fire-and-forget             | Afferent emitter                        | `@neurome/afferent`    |
-| Cognitive processing layer                    | LLM adapters                            | `@neurome/llm`         |
+| Biological Term                                              | Software Concept                        | Package                |
+| ------------------------------------------------------------ | --------------------------------------- | ---------------------- |
+| Short-term / working memory buffer                           | `InsightLog` / `SqliteInsightLog` (STM) | `@neurome/stm`         |
+| Amygdala — emotional/importance gating                       | `AmygdalaProcess`                       | `@neurome/amygdala`    |
+| Hippocampus + neocortex storage                              | `LtmEngine` (LTM)                       | `@neurome/ltm`         |
+| Hippocampal consolidation during sleep                       | `HippocampusProcess`                    | `@neurome/hippocampus` |
+| Perirhinal cortex — entity recognition & relational encoding | `EntityExtractionProcess`               | `@neurome/perirhinal`  |
+| Prefrontal cortex — executive orchestration                  | `Memory`                                | `@neurome/memory`      |
+| Axon — long-range signal carrier                             | `AxonClient`                            | `@neurome/axon`        |
+| Dendrite — receives signals from LLMs                        | MCP server                              | `@neurome/dendrite`    |
+| Brainstem / neural substrate — always-on host                | Cortex process                          | `@neurome/cortex`      |
+| Synaptic protocol                                            | IPC protocol                            | `@neurome/cortex-ipc`  |
+| Afferent neuron — fire-and-forget                            | Afferent emitter                        | `@neurome/afferent`    |
+| Cognitive processing layer                                   | LLM adapters                            | `@neurome/llm`         |
 
 ---
 
@@ -981,6 +982,53 @@ type LLMError =
 | `OpenAIEmbeddingAdapter` | `text-embedding-3-small`    | 1536       | Requires `OPENAI_API_KEY`            |
 | `SqliteAdapter`          | —                           | —          | SQLite-backed storage adapter        |
 | `InMemoryAdapter`        | —                           | —          | In-process adapter for testing       |
+
+### `@neurome/perirhinal` — EntityExtractionProcess
+
+Processes unlinked LTM records: extracts named entities via LLM, deduplicates them against the existing entity graph using embedding similarity, and persists typed edges.
+
+```typescript
+class EntityExtractionProcess {
+  constructor(options: EntityExtractionProcessOptions);
+  run(): ResultAsync<void, ExtractionError>;
+}
+
+interface EntityExtractionProcessOptions {
+  storage: StorageAdapter;
+  llm: LLMAdapter;
+  embedEntity: (entity: ExtractedEntity) => Promise<Float32Array>;
+}
+
+function persistInsertPlan(
+  storage: StorageAdapter,
+  { plan, recordId }: { plan: EntityInsertPlan; recordId: number },
+): void;
+```
+
+#### Entity types
+
+```typescript
+type EntityType = 'person' | 'tool' | 'concept' | 'project' | 'organization';
+```
+
+#### Error type
+
+```typescript
+type ExtractionError =
+  | { type: 'LOCK_FAILED' }
+  | { type: 'LLM_ERROR'; cause: unknown }
+  | { type: 'STORAGE_FAILED'; cause: unknown };
+```
+
+#### Deduplication thresholds
+
+| Cosine similarity | Same type? | Decision                   |
+| ----------------- | ---------- | -------------------------- |
+| ≥ 0.95            | —          | `exact` — reuse entity     |
+| 0.70–0.95         | Yes        | `llm-needed` — LLM decides |
+| < 0.70            | —          | `distinct` — insert new    |
+
+Records must carry `metadata.entities: { name, type }[]` to be processed. Records without it are skipped. The process is lock-guarded (`entity-extraction`, 60 s TTL); concurrent callers receive `LOCK_FAILED` immediately.
 
 ---
 

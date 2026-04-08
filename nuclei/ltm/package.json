@@ -22,9 +22,10 @@
     "check:fix": "pnpm run lint:fix && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "neverthrow": "^8.2.0",
     "better-sqlite3": "^12.8.0",
-    "openai": "^6.33.0"
+    "neverthrow": "^8.2.0",
+    "openai": "^6.33.0",
+    "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
     "@neurome/eslint-config": "workspace:*",

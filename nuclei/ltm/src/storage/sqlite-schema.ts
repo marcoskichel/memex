@@ -1,8 +1,10 @@
 import type Database from 'better-sqlite3';
 
-import type { LtmEdge, LtmRecord } from './storage-adapter.js';
+import type { EntityEdge, EntityNode, LtmEdge, LtmRecord } from './storage-adapter.js';
 
 export const FLOAT32_BYTES = 4;
+export const SCHEMA_VERSION = 4;
+export const MAX_ENTITY_NEIGHBOR_DEPTH = 5;
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS records (
@@ -53,6 +55,44 @@ const V2_MIGRATION = [
   `CREATE INDEX IF NOT EXISTS idx_ltm_category ON records(category)`,
 ];
 
+const V3_MIGRATION = [
+  `CREATE TABLE IF NOT EXISTS entities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    embedding BLOB NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS entity_edges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_id INTEGER NOT NULL,
+    to_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS entity_record_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_id INTEGER NOT NULL,
+    record_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)`,
+  `CREATE INDEX IF NOT EXISTS idx_entity_edges_from ON entity_edges(from_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_entity_edges_to ON entity_edges(to_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_entity_record_links_entity ON entity_record_links(entity_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_entity_record_links_record ON entity_record_links(record_id)`,
+];
+
+const V4_MIGRATION = [
+  `DELETE FROM entity_edges
+   WHERE id NOT IN (
+     SELECT MIN(id) FROM entity_edges GROUP BY from_id, to_id, type
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_edges_unique ON entity_edges(from_id, to_id, type)`,
+];
+
+const SCHEMA_VERSION_3 = 3;
+
 export function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version < 2) {
@@ -61,6 +101,22 @@ export function runMigrations(db: Database.Database): void {
         db.exec(sql);
       }
       db.pragma('user_version = 2');
+    })();
+  }
+  if (version < SCHEMA_VERSION_3) {
+    db.transaction(() => {
+      for (const sql of V3_MIGRATION) {
+        db.exec(sql);
+      }
+      db.pragma('user_version = ' + String(SCHEMA_VERSION_3));
+    })();
+  }
+  if (version < SCHEMA_VERSION) {
+    db.transaction(() => {
+      for (const sql of V4_MIGRATION) {
+        db.exec(sql);
+      }
+      db.pragma('user_version = ' + String(SCHEMA_VERSION));
     })();
   }
 }
@@ -104,6 +160,31 @@ export function rowToEdge(row: Record<string, unknown>): LtmEdge {
     type: row.type as LtmEdge['type'],
     stability: row.stability as number,
     lastAccessedAt: new Date(row.last_accessed_at as number),
+    createdAt: new Date(row.created_at as number),
+  };
+}
+
+export function rowToEntityNode(row: Record<string, unknown>): EntityNode {
+  const embeddingBuf = row.embedding as Buffer;
+  return {
+    id: row.id as number,
+    name: row.name as string,
+    type: row.type as EntityNode['type'],
+    embedding: new Float32Array(
+      embeddingBuf.buffer,
+      embeddingBuf.byteOffset,
+      embeddingBuf.byteLength / FLOAT32_BYTES,
+    ),
+    createdAt: new Date(row.created_at as number),
+  };
+}
+
+export function rowToEntityEdge(row: Record<string, unknown>): EntityEdge {
+  return {
+    id: row.id as number,
+    fromId: row.from_id as number,
+    toId: row.to_id as number,
+    type: row.type as string,
     createdAt: new Date(row.created_at as number),
   };
 }

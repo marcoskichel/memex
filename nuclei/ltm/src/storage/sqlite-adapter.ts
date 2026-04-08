@@ -1,7 +1,11 @@
 import Database from 'better-sqlite3';
+import * as sqliteVec from 'sqlite-vec';
 
+import { SqliteEntityGraph } from './sqlite-entity-graph.js';
 import { rowToEdge, rowToRecord, runMigrations, SCHEMA } from './sqlite-schema.js';
 import type {
+  EntityEdge,
+  EntityNode,
   LtmEdge,
   LtmRecord,
   StorageAdapter,
@@ -13,13 +17,16 @@ import type {
 
 export class SqliteAdapter implements StorageAdapter {
   private db: Database.Database;
+  private entityGraph: SqliteEntityGraph;
 
   constructor(dbPath: string) {
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('synchronous = NORMAL');
+    sqliteVec.load(this.db);
     this.db.exec(SCHEMA);
     runMigrations(this.db);
+    this.entityGraph = new SqliteEntityGraph(this.db);
   }
 
   insertRecord(record: Omit<LtmRecord, 'id'>): number {
@@ -232,6 +239,30 @@ export class SqliteAdapter implements StorageAdapter {
 
   releaseLock(process: string): void {
     this.db.prepare('DELETE FROM process_locks WHERE process = ?').run(process);
+  }
+
+  insertEntity(entity: Omit<EntityNode, 'id'>): number {
+    return this.entityGraph.insertEntity(entity);
+  }
+
+  findEntityByEmbedding(embedding: Float32Array, threshold: number): EntityNode[] {
+    return this.entityGraph.findEntityByEmbedding(embedding, threshold);
+  }
+
+  insertEntityEdge(edge: Omit<EntityEdge, 'id'>): number {
+    return this.entityGraph.insertEntityEdge(edge);
+  }
+
+  getEntityNeighbors(entityId: number, depth: number): EntityNode[] {
+    return this.entityGraph.getEntityNeighbors(entityId, depth);
+  }
+
+  insertEntityRecordLink(entityId: number, recordId: number): number {
+    return this.entityGraph.insertEntityRecordLink(entityId, recordId);
+  }
+
+  getUnlinkedRecordIds(): number[] {
+    return this.entityGraph.getUnlinkedRecordIds();
   }
 
   async fork(outputPath: string): Promise<string> {
