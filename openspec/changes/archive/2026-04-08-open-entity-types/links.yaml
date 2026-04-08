@@ -1,0 +1,5 @@
+scopes:
+  - name: perirhinal
+    path: nuclei/perirhinal
+  - name: ltm
+    path: nuclei/ltm
