@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.5.0...sdk-v0.6.0) (2026-04-09)
+
+
+### Features
+
+* **entorhinal:** create @neurome/entorhinal shared entity types package ([8b90165](https://github.com/marcoskichel/neurome/commit/8b90165c193f35ee53e834b93f75d095cd773974))
+* **memory,cortex,sdk:** thread agentProfile through the full stack ([0a3ac73](https://github.com/marcoskichel/neurome/commit/0a3ac73e928a699096013e3a5bf5b3356f8bfab3))
+* **sdk,dendrite:** add accessMode to asMcpServer with log_insight tool ([5de9e7e](https://github.com/marcoskichel/neurome/commit/5de9e7e9c1c20dc1b7a2d63960fc5ef8755f3d9c))
+* **sdk:** expose consolidate(target?) on Engram ([e00eec7](https://github.com/marcoskichel/neurome/commit/e00eec715b45e3a5aa20861b4ec39d9892e999b7))
+
 ## [0.5.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.4.0...sdk-v0.5.0) (2026-04-08)
 
 ### Features
