@@ -261,6 +261,7 @@ describe('LtmEngine', () => {
       const oldResult = results.find((record) => record.record.id === oldId);
       if (oldResult) {
         expect(oldResult.isSuperseded).toBe(true);
+        expect(oldResult.supersedingIds).toContain(newId);
       }
     });
 

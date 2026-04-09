@@ -145,67 +145,68 @@ export interface CollectResultsOutput {
   excluded: ExcludedCandidate[];
 }
 
+interface ProcessCandidateParams {
+  recordId: number;
+  rrfScore: number;
+  context: CollectResultsContext;
+  results: LtmQueryResult[];
+  excluded: ExcludedCandidate[];
+  supersededMap: Map<number, number[]>;
+}
+
+function processCandidate(params: ProcessCandidateParams): void {
+  const { recordId, rrfScore, context, results, excluded, supersededMap } = params;
+  const { maps, strategyMap, threshold, shouldStrengthen, onDecay, storage } = context;
+  const record = maps.recordMap.get(recordId);
+  if (!record) {
+    return;
+  }
+  const sim = maps.semanticScores.get(recordId) ?? 0;
+  const retentionValue = maps.retentionMap.get(recordId) ?? retention(record);
+  const effectiveScore = sim * retentionValue;
+  if (effectiveScore < threshold) {
+    if (retentionValue < DECAY_THRESHOLD) {
+      onDecay(record, retentionValue);
+    }
+    excluded.push({ record, rrfScore, effectiveScore, sim, strategyMap });
+    return;
+  }
+  const { isSuperseded, supersedingIds } = applySupersedes({ recordId, storage, shouldStrengthen });
+  if (isSuperseded) {
+    supersededMap.set(recordId, supersedingIds);
+  }
+  const strategies = strategyMap.get(recordId);
+  const result: LtmQueryResult = {
+    record,
+    effectiveScore,
+    rrfScore,
+    isSuperseded,
+    supersedingIds,
+    retrievalStrategies: (strategies ? [...strategies] : ['semantic']) as (
+      | 'semantic'
+      | 'temporal'
+      | 'associative'
+      | 'companion'
+    )[],
+  };
+  if (record.tier === 'semantic' && record.metadata.confidence !== undefined) {
+    result.confidence = record.metadata.confidence as number;
+  }
+  results.push(result);
+  if (retentionValue < DECAY_THRESHOLD) {
+    onDecay(record, retentionValue);
+  }
+}
+
 export function collectQueryResults(context: CollectResultsContext): CollectResultsOutput {
-  const {
-    rrfScores,
-    maps,
-    strategyMap,
-    threshold,
-    shouldStrengthen,
-    onDecay,
-    storage,
-    queryVector,
-  } = context;
+  const { rrfScores, queryVector, storage } = context;
   const results: LtmQueryResult[] = [];
   const excluded: ExcludedCandidate[] = [];
   const supersededMap = new Map<number, number[]>();
   for (const [recordId, rrfScore] of rrfScores) {
-    const record = maps.recordMap.get(recordId);
-    if (!record) {
-      continue;
-    }
-    const sim = maps.semanticScores.get(recordId) ?? 0;
-    const retentionValue = maps.retentionMap.get(recordId) ?? retention(record);
-    const effectiveScore = sim * retentionValue;
-    if (effectiveScore < threshold) {
-      if (retentionValue < DECAY_THRESHOLD) {
-        onDecay(record, retentionValue);
-      }
-      excluded.push({ record, rrfScore, effectiveScore, sim, strategyMap });
-      continue;
-    }
-    const { isSuperseded, supersedingIds } = applySupersedes({
-      recordId,
-      storage,
-      shouldStrengthen,
-    });
-    if (isSuperseded) {
-      supersededMap.set(recordId, supersedingIds);
-    }
-    const strategies = strategyMap.get(recordId);
-    const result: LtmQueryResult = {
-      record,
-      effectiveScore,
-      rrfScore,
-      isSuperseded,
-      retrievalStrategies: (strategies ? [...strategies] : ['semantic']) as (
-        | 'semantic'
-        | 'temporal'
-        | 'associative'
-        | 'companion'
-      )[],
-    };
-    if (record.tier === 'semantic' && record.metadata.confidence !== undefined) {
-      result.confidence = record.metadata.confidence as number;
-    }
-    results.push(result);
-    if (retentionValue < DECAY_THRESHOLD) {
-      onDecay(record, retentionValue);
-    }
+    processCandidate({ recordId, rrfScore, context, results, excluded, supersededMap });
   }
-
   injectCompanions({ results, supersededMap, queryVector, storage });
-
   return { results, excluded };
 }
 

@@ -56,6 +56,7 @@ export interface LtmQueryResult {
   rrfScore: number;
   retrievalStrategies: ('semantic' | 'temporal' | 'associative' | 'companion')[];
   isSuperseded: boolean;
+  supersedingIds: number[];
   confidence?: number;
 }
 

@@ -50,6 +50,7 @@ export function applyTopUp(context: TopUpContext): LtmQueryResult[] {
       effectiveScore,
       rrfScore,
       isSuperseded,
+      supersedingIds,
       retrievalStrategies: (strategies ? [...strategies] : ['semantic']) as (
         | 'semantic'
         | 'temporal'

@@ -31,6 +31,7 @@ export function injectCompanions(params: CompanionInjectionParams): void {
         effectiveScore: companionScore,
         rrfScore: 0,
         isSuperseded: false,
+        supersedingIds: [],
         retrievalStrategies: ['companion'],
       });
       resultIds.add(supId);
