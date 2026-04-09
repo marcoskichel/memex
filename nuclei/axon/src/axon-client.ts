@@ -18,6 +18,7 @@ import { IPC_SOCKET_PATH } from '@neurome/cortex-ipc';
 import { Connection, type PendingRequest } from './connection.js';
 
 const DEFAULT_READ_TIMEOUT_MS = 200;
+const DEFAULT_RECALL_TIMEOUT_MS = 10_000;
 
 export type MemoryStats = Record<string, unknown>;
 
@@ -62,7 +63,7 @@ export class AxonClient {
     return this.sendRequest<RecallResult[]>({
       type: 'recall',
       payload,
-      timeoutMs: recallOptions?.timeoutMs ?? DEFAULT_READ_TIMEOUT_MS,
+      timeoutMs: recallOptions?.timeoutMs ?? DEFAULT_RECALL_TIMEOUT_MS,
     });
   }
 
