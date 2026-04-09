@@ -1,4 +1,5 @@
 export type { EntityMention, EntityType } from '@neurome/entorhinal';
+import type { EntityMention } from '@neurome/entorhinal';
 import type { LtmInsertOptions } from '@neurome/ltm';
 export type { LtmRecord } from '@neurome/ltm';
 import type { ConsolidateTarget, Memory, MemoryEvents } from '@neurome/memory';
@@ -207,3 +208,21 @@ export interface PushMessage {
 }
 
 export { type ConsolidateTarget } from '@neurome/memory';
+
+export interface MemoryEntry {
+  memory: string;
+  tier: 'episodic' | 'semantic';
+  relevance: 'high' | 'medium' | 'low';
+  tags: string[];
+  entities: EntityMention[];
+  recordedAt: string;
+  superseded?: true;
+}
+
+export interface MemoryChange {
+  type: 'changed';
+  current: MemoryEntry;
+  supersedes: MemoryEntry;
+}
+
+export type RecallResult = MemoryEntry | MemoryChange;
