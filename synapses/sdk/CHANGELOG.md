@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/marcoskichel/neurome/compare/sdk-v0.6.0...sdk-v0.6.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* move entorhnal to dev dependency ([fba8fda](https://github.com/marcoskichel/neurome/commit/fba8fda18636ee171214104805dcb47e0f623142))
+
 ## [0.6.0](https://github.com/marcoskichel/neurome/compare/sdk-v0.5.0...sdk-v0.6.0) (2026-04-09)
 
 
