@@ -45,6 +45,7 @@ function makeRecord(id: number): LtmQueryResult {
     rrfScore: 0.9,
     retrievalStrategies: ['semantic'],
     isSuperseded: false,
+    supersedingIds: [],
   };
 }
 

@@ -1,3 +1,4 @@
+import type { MemoryRecallResult } from '@neurome/memory';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { handleRequest, serializeRecallResults } from '../../ipc/handlers.js';
@@ -23,7 +24,7 @@ function makeResult(overrides: Record<string, unknown> = {}) {
     supersedingIds: [] as number[],
     retrievalStrategies: ['semantic'] as ('semantic' | 'temporal' | 'associative' | 'companion')[],
     ...overrides,
-  };
+  } as unknown as MemoryRecallResult;
 }
 
 const mockRecall = vi.fn();
