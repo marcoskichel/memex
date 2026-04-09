@@ -47,7 +47,7 @@
     "@neurome/typescript-config": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
-    "eslint": "^9.39.4",
+    "eslint": "^10.2.0",
     "prettier": "^3.8.1",
     "tsup": "^8.5.1",
     "typescript": "^5.8.3",

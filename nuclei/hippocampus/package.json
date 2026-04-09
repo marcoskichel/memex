@@ -33,7 +33,7 @@
     "@neurome/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "dotenv-cli": "^8.0.0",
-    "eslint": "^9.39.4",
+    "eslint": "^10.2.0",
     "tsx": "^4.19.4",
     "prettier": "^3.8.1",
     "typescript": "^5.8.3",
