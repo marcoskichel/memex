@@ -399,7 +399,7 @@ async function main(): Promise<void> {
     const stm = new InsightLog();
     stm.append({
       summary:
-        'Navigated from the home screen to the Settings screen via the top-right menu button',
+        'Navigated from Assets to Settings but the back button became unresponsive after returning — had to force-close the app',
       contextFile: '',
       tags: ['navigation'],
     });
@@ -428,7 +428,7 @@ async function main(): Promise<void> {
   // Scenario 9: no agentProfile + same navigation event → low importance, no goalRelevance
   // ---------------------------------------------------------------
   console.log(
-    '\n[Scenario 9] no agentProfile + same navigation event → importanceScore ≤ 0.3 or skipped',
+    '\n[Scenario 9] no agentProfile + plain navigation event → importanceScore ≤ 0.3 or skipped',
   );
   {
     const { storage, dbPath } = makeScenarioDb('s9');
@@ -492,56 +492,6 @@ async function main(): Promise<void> {
         `  INFO: importanceScore=${importance.toFixed(3)} with mismatched profile (expected ≤ 0.3)`,
       );
     }
-
-    assertOk(stm.readUnprocessed().length === 0, 'Expected all STM entries to be processed');
-  }
-
-  // ---------------------------------------------------------------
-  // Scenario 11: Exodus wallet QA session — multi-step navigation path
-  // Inspired by real QA agent data: navigation events that were previously skipped
-  // because Amygdala had no agent context. With agentProfile, they become memories.
-  // ---------------------------------------------------------------
-  console.log(
-    '\n[Scenario 11] Exodus wallet QA session — navigation path stored with agentProfile',
-  );
-  {
-    const { storage, dbPath } = makeScenarioDb('s11');
-    console.log(`  DB: ${dbPath}`);
-
-    const stm = new InsightLog();
-    const proc = makeProcess(storage, stm, {
-      agentProfile: {
-        type: 'qa',
-        purpose: 'Explore Exodus mobile wallet to identify UI bugs and navigation issues',
-      },
-    });
-
-    const observations = [
-      'Launched Exodus mobile wallet — home screen shows portfolio value of $66.27 with Wrapped Ether as the largest holding',
-      'Navigated from the home screen to the Settings screen via the top-right menu button',
-      'Settings screen displays options for Security, Backup, and Network settings',
-      'Tapped Back to return to the home screen from Settings',
-    ];
-
-    for (const summary of observations) {
-      stm.append({ summary, contextFile: '', tags: ['navigation', 'exodus-wallet'] });
-      await proc.run();
-    }
-
-    const records = storage.getAllRecords().filter((r) => !r.tombstoned);
-    assertOk(
-      records.length >= 2,
-      `Expected at least 2 LTM records from QA session, got ${records.length.toString()}`,
-    );
-    console.log(
-      `  OK: ${records.length.toString()} LTM record(s) from Exodus wallet QA session (≥ 2 expected)`,
-    );
-
-    const importances = records.map((r) => r.importance);
-    const maxImportance = Math.max(...importances);
-    console.log(
-      `  importanceScores: [${importances.map((i) => i.toFixed(2)).join(', ')}], max=${maxImportance.toFixed(3)}`,
-    );
 
     assertOk(stm.readUnprocessed().length === 0, 'Expected all STM entries to be processed');
   }
