@@ -1,7 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { handleRequest } from '../../ipc/handlers.js';
+import { handleRequest, serializeRecallResults } from '../../ipc/handlers.js';
 import type { RequestMessage } from '../../ipc/protocol.js';
+
+function makeRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    data: 'test memory',
+    tier: 'episodic' as const,
+    createdAt: new Date('2026-04-09T00:00:00Z'),
+    metadata: {},
+    ...overrides,
+  };
+}
+
+function makeResult(overrides: Record<string, unknown> = {}) {
+  return {
+    record: makeRecord(),
+    effectiveScore: 0.6,
+    rrfScore: 0.04,
+    isSuperseded: false,
+    supersedingIds: [] as number[],
+    retrievalStrategies: ['semantic'] as ('semantic' | 'temporal' | 'associative' | 'companion')[],
+    ...overrides,
+  };
+}
 
 const mockRecall = vi.fn();
 const mockGetStats = vi.fn();
@@ -57,10 +80,8 @@ describe('handleRequest — logInsight', () => {
 });
 
 describe('handleRequest — recall', () => {
-  it('delegates to memory.recall and returns results', async () => {
-    const fakeItems = [
-      { record: { data: 'foo', metadata: {}, tier: 'episodic' }, effectiveScore: 0.9 },
-    ];
+  it('delegates to memory.recall and returns serialized results', async () => {
+    const fakeItems = [makeResult({ record: makeRecord({ data: 'foo' }), effectiveScore: 0.9 })];
     mockRecall.mockResolvedValueOnce(okResult(fakeItems));
     const message: RequestMessage = {
       id: '2',
@@ -69,7 +90,9 @@ describe('handleRequest — recall', () => {
     };
     const response = await handleRequest(message, mockMemory);
     expect(mockRecall).toHaveBeenCalledWith('auth flow', { limit: 5 });
-    expect(response).toMatchObject({ id: '2', ok: true, result: fakeItems });
+    expect(response).toMatchObject({ id: '2', ok: true });
+    const result = (response as { result: unknown[] }).result;
+    expect(result[0]).toMatchObject({ memory: 'foo', tier: 'episodic', relevance: 'high' });
   });
 
   it('returns error response when recall fails', async () => {
@@ -268,5 +291,137 @@ describe('handleRequest — getContext', () => {
     const response = await handleRequest(message, mockMemory);
     expect(response).toMatchObject({ id: '10', ok: true });
     expect((response as { result: string }).result).toContain('identity hit');
+  });
+});
+
+describe('serializeRecallResults', () => {
+  it('normal record serialized as MemoryEntry with correct fields', () => {
+    const result = makeResult({
+      record: makeRecord({
+        data: 'some memory',
+        metadata: { tags: ['navigation'], entities: [{ name: 'settings', type: 'screen' }] },
+      }),
+      effectiveScore: 0.6,
+    });
+    const output = serializeRecallResults([result]);
+    expect(output).toHaveLength(1);
+    expect(output[0]).toMatchObject({
+      memory: 'some memory',
+      tier: 'episodic',
+      relevance: 'medium',
+      tags: ['navigation'],
+      entities: [{ name: 'settings', type: 'screen' }],
+      recordedAt: '2026-04-09',
+    });
+    expect(output[0]).not.toHaveProperty('rrfScore');
+    expect(output[0]).not.toHaveProperty('embeddingMeta');
+    expect(output[0]).not.toHaveProperty('accessCount');
+    expect(output[0]).not.toHaveProperty('stability');
+    expect(output[0]).not.toHaveProperty('episodeSummary');
+  });
+
+  it('hash-format tags are stripped, semantic tags retained', () => {
+    const result = makeResult({
+      record: makeRecord({
+        metadata: {
+          tags: [
+            'navigation',
+            'e746227e08f44f1e42d2226b8025373afa403d38283e578be42aa0d90acca0f2',
+            'Settings',
+          ],
+        },
+      }),
+    });
+    const output = serializeRecallResults([result]);
+    expect((output[0] as { tags: string[] }).tags).toEqual(['navigation', 'Settings']);
+  });
+
+  it('effectiveScore >= 0.7 maps to high relevance', () => {
+    const output = serializeRecallResults([makeResult({ effectiveScore: 0.7 })]);
+    expect((output[0] as { relevance: string }).relevance).toBe('high');
+  });
+
+  it('effectiveScore >= 0.5 and < 0.7 maps to medium relevance', () => {
+    const output = serializeRecallResults([makeResult({ effectiveScore: 0.5 })]);
+    expect((output[0] as { relevance: string }).relevance).toBe('medium');
+  });
+
+  it('effectiveScore < 0.5 maps to low relevance', () => {
+    const output = serializeRecallResults([makeResult({ effectiveScore: 0.43 })]);
+    expect((output[0] as { relevance: string }).relevance).toBe('low');
+  });
+
+  it('superseded + companion grouped as MemoryChange', () => {
+    const supersededRecord = makeRecord({ id: 1, data: 'old path' });
+    const companionRecord = makeRecord({ id: 2, data: 'new path' });
+    const superseded = makeResult({
+      record: supersededRecord,
+      effectiveScore: 0.85,
+      isSuperseded: true,
+      supersedingIds: [2],
+    });
+    const companion = makeResult({
+      record: companionRecord,
+      effectiveScore: 0.52,
+      retrievalStrategies: ['companion'] as (
+        | 'semantic'
+        | 'temporal'
+        | 'associative'
+        | 'companion'
+      )[],
+    });
+    const output = serializeRecallResults([superseded, companion]);
+    expect(output).toHaveLength(1);
+    expect(output[0]).toMatchObject({
+      type: 'changed',
+      current: { memory: 'new path', relevance: 'medium' },
+      supersedes: { memory: 'old path', relevance: 'high' },
+    });
+  });
+
+  it('superseded with no companion in results emitted with superseded: true', () => {
+    const result = makeResult({
+      record: makeRecord({ data: 'orphaned stale memory' }),
+      isSuperseded: true,
+      supersedingIds: [99],
+    });
+    const output = serializeRecallResults([result]);
+    expect(output).toHaveLength(1);
+    expect(output[0]).toMatchObject({ memory: 'orphaned stale memory', superseded: true });
+  });
+
+  it('multiple companions — first matching companion used', () => {
+    const supersededRecord = makeRecord({ id: 1, data: 'old fact' });
+    const companion10 = makeRecord({ id: 10, data: 'first replacement' });
+    const companion11 = makeRecord({ id: 11, data: 'second replacement' });
+    const superseded = makeResult({
+      record: supersededRecord,
+      isSuperseded: true,
+      supersedingIds: [10, 11],
+    });
+    const c10 = makeResult({
+      record: companion10,
+      retrievalStrategies: ['companion'] as (
+        | 'semantic'
+        | 'temporal'
+        | 'associative'
+        | 'companion'
+      )[],
+    });
+    const c11 = makeResult({
+      record: companion11,
+      retrievalStrategies: ['companion'] as (
+        | 'semantic'
+        | 'temporal'
+        | 'associative'
+        | 'companion'
+      )[],
+    });
+    const output = serializeRecallResults([superseded, c10, c11]);
+    expect(output).toHaveLength(2);
+    const change = output.find((entry) => 'type' in entry) as
+      | { current: { memory: string } }
+      | undefined;
+    expect(change?.current.memory).toBe('first replacement');
   });
 });

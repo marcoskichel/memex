@@ -3,7 +3,10 @@ import path from 'node:path';
 
 import type { Memory } from '@neurome/memory';
 
-import type { RequestMessage, ResponseMessage } from './protocol.js';
+import type { RecallResult, RequestMessage, ResponseMessage } from './protocol.js';
+import { serializeRecallResults } from './recall-serializer.js';
+
+export { serializeRecallResults } from './recall-serializer.js';
 
 const RECALL_LIMIT_FOR_CONTEXT = 5;
 const SECONDARY_QUERY_LIMIT = 2;
@@ -84,9 +87,9 @@ function logInsight(
   memory.logInsight(payload);
 }
 
-type RecallResult = Awaited<ReturnType<Memory['recall']>>;
+type RecallQueryResult = Awaited<ReturnType<Memory['recall']>>;
 
-function mergeRecallResults(results: RecallResult[], limit: number) {
+function mergeRecallResults(results: RecallQueryResult[], limit: number) {
   const seen = new Map<
     number,
     {
@@ -183,16 +186,13 @@ async function getContext(
 async function recallMemory(
   payload: Extract<RequestMessage, { type: 'recall' }>['payload'],
   memory: Memory,
-): Promise<unknown> {
+): Promise<RecallResult[]> {
   const { engramId: _engramId, ...safeOptions } = payload.options ?? {};
   const result = await memory.recall(payload.query, safeOptions);
   if (result.isErr()) {
     throw new Error(`recall failed: ${result.error.type}`);
   }
-  return result.value.map(({ record: { embedding: _embedding, ...record }, ...rest }) => ({
-    ...rest,
-    record,
-  }));
+  return serializeRecallResults(result.value);
 }
 
 async function getStats(memory: Memory): Promise<unknown> {
