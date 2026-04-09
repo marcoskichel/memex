@@ -23,7 +23,7 @@
     "@neurome/entorhinal": "workspace:*",
     "@neurome/ltm": "workspace:*",
     "@neurome/memory": "workspace:*",
-    "zod": "^3.25.76"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@neurome/eslint-config": "workspace:*",
