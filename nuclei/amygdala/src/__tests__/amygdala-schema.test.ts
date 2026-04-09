@@ -68,17 +68,22 @@ describe('amygdalaScoringSchema.parse', () => {
     expect(result.entities).toEqual([]);
   });
 
-  it('filters out entities with invalid type', () => {
+  it('accepts any non-empty entity type string', () => {
     const result = amygdalaScoringSchema.parse({
       action: 'insert',
       importanceScore: 0.5,
       reasoning: 'ok',
       entities: [
         { name: 'Valid', type: 'person' },
-        { name: 'Invalid', type: 'unknown-type' },
+        { name: 'HomeScreen', type: 'screen' },
+        { name: 'Custom', type: 'unknown-type' },
       ],
     });
-    expect(result.entities).toEqual([{ name: 'valid', type: 'person' }]);
+    expect(result.entities).toEqual([
+      { name: 'valid', type: 'person' },
+      { name: 'homescreen', type: 'screen' },
+      { name: 'custom', type: 'unknown-type' },
+    ]);
   });
 
   it('returns empty entities on skip action', () => {

@@ -56,13 +56,7 @@ For each observation, you must:
    - elaborates: Adds detail to existing memory
    - supersedes: Replaces or updates existing memory
    - contradicts: Conflicts with existing memory
-4. Extract named entities mentioned in the observation. Use these types:
-   - person: named individuals (e.g. "Alice", "the CEO")
-   - project: software projects, products, or initiatives (e.g. "Neurome", "Project X")
-   - concept: technical or domain topics (e.g. "vector embeddings", "consolidation")
-   - preference: explicit preferences (e.g. "prefers TypeScript", "avoids ORMs")
-   - decision: explicit choices made (e.g. "decided to use SQLite")
-   - tool: software tools, libraries, or services (e.g. "pnpm", "Anthropic API")
+4. Extract named entities mentioned in the observation. Choose the most fitting type; common types include: person, project, concept, preference, decision, tool, screen. You may use any lowercase type that best describes the entity.
 
 When naming entities, always use the most complete known proper name (e.g. "Alice Smith" not "Alice", "TypeScript" not "TS"). Use role-based or alias names (e.g. "the CEO", "the user") only when no proper name is known.
 
@@ -97,7 +91,7 @@ function buildProfileBlock(profile: AgentProfile): string {
   }
   lines.push(
     '',
-    "Use the agent's purpose to assess goal-relevance: observations that directly advance or reveal blockers to this purpose deserve higher scores, even if syntactically simple. Capture this in the goalRelevance dimension.",
+    "Use the agent's purpose when scoring importanceScore: observations that directly advance the agent's goals or reveal blockers deserve importanceScore ≥ 0.5, even if the content is syntactically simple. Also capture goal-relevance separately in the goalRelevance field (0.0 = unrelated to purpose, 1.0 = central to purpose).",
   );
   return lines.join('\n');
 }
@@ -133,15 +127,6 @@ export interface EventBus {
   on(event: string, listener: (...arguments_: unknown[]) => void): unknown;
 }
 
-const VALID_ENTITY_TYPES = new Set([
-  'person',
-  'project',
-  'concept',
-  'preference',
-  'decision',
-  'tool',
-]);
-
 function parseEntities(raw: unknown): EntityMention[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -150,8 +135,8 @@ function parseEntities(raw: unknown): EntityMention[] {
   for (const item of raw) {
     if (typeof item === 'object' && item !== null) {
       const { name, type } = item as Record<string, unknown>;
-      if (typeof name === 'string' && typeof type === 'string' && VALID_ENTITY_TYPES.has(type)) {
-        result.push({ name: name.toLowerCase(), type: type as EntityMention['type'] });
+      if (typeof name === 'string' && typeof type === 'string' && type.length > 0) {
+        result.push({ name: name.toLowerCase(), type: type.toLowerCase().trim() });
       }
     }
   }
@@ -174,10 +159,7 @@ export const amygdalaScoringSchema: StructuredOutputSchema<AmygdalaScoringResult
         type: 'object',
         properties: {
           name: { type: 'string' },
-          type: {
-            type: 'string',
-            enum: ['person', 'project', 'concept', 'preference', 'decision', 'tool'],
-          },
+          type: { type: 'string' },
         },
       },
     },
