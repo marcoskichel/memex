@@ -34,11 +34,11 @@
     "e2e": "pnpm build && dotenv -e .env.e2e -- tsx scripts/e2e.ts"
   },
   "dependencies": {
-    "@neurome/entorhinal": "workspace:*",
     "better-sqlite3": "^12.8.0",
     "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
+    "@neurome/entorhinal": "workspace:*",
     "@neurome/axon": "workspace:*",
     "dotenv-cli": "^8.0.0",
     "@neurome/cortex": "workspace:*",

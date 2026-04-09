@@ -596,9 +596,6 @@ importers:
 
   synapses/sdk:
     dependencies:
-      '@neurome/entorhinal':
-        specifier: workspace:*
-        version: link:../../nuclei/entorhinal
       better-sqlite3:
         specifier: ^12.8.0
         version: 12.8.0
@@ -615,6 +612,9 @@ importers:
       '@neurome/dendrite':
         specifier: workspace:*
         version: link:../dendrite
+      '@neurome/entorhinal':
+        specifier: workspace:*
+        version: link:../../nuclei/entorhinal
       '@neurome/eslint-config':
         specifier: workspace:*
         version: link:../../nuclei/eslint-config
