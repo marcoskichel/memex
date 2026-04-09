@@ -190,6 +190,7 @@ export const amygdalaScoringSchema: StructuredOutputSchema<AmygdalaScoringResult
     const rawGoalRelevance = Number(object.goalRelevance);
     if (!Number.isNaN(rawGoalRelevance)) {
       result.goalRelevance = Math.max(0, Math.min(1, rawGoalRelevance));
+      result.importanceScore = Math.max(result.importanceScore, result.goalRelevance);
     }
     return result;
   },
