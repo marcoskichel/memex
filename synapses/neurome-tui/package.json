@@ -26,7 +26,7 @@
   "devDependencies": {
     "@neurome/eslint-config": "workspace:*",
     "@neurome/typescript-config": "workspace:*",
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.5.2",
     "@types/react": "^18.3.21",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",

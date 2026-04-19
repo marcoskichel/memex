@@ -36,7 +36,7 @@
     "@neurome/eslint-config": "workspace:*",
     "@neurome/typescript-config": "workspace:*",
     "@neurome/stm": "workspace:*",
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.5.2",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.8.1",
