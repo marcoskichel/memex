@@ -26,7 +26,7 @@
     "@neurome/entorhinal": "workspace:*",
     "better-sqlite3": "^12.8.0",
     "neverthrow": "^8.2.0",
-    "openai": "^6.33.0",
+    "openai": "^6.34.0",
     "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
